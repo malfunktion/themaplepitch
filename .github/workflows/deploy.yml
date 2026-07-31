@@ -3,7 +3,7 @@ name: Deploy The Maple Pitch to Cloudflare
 on:
   push:
     branches:
-      - main
+      - dev
 
 jobs:
   deploy:
