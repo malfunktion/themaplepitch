@@ -6,6 +6,7 @@ import PlayerDatabaseSpotlights from '@/components/home/PlayerDatabaseSpotlights
 import { homeLayout } from '@/lib/homeLayout.config';
 import type { WireStory, StandingsRow } from '@/lib/types';
 import type { UpcomingFixture } from '@/lib/data/matches';
+import LegendsGallery from '@/components/home/LegendsGallery';
 
 export default function HomePage() {
   // Mock data definitions inside the component
@@ -42,7 +43,8 @@ const rest: WireStory[] = [];
   wire: <WireFeedList stories={rest} />,
   scout: <ScoutDash standings={standings} fixture={fixture} />,
   'player-database': <PlayerDatabaseSpotlights />,
-  'stats-dashboard': <StatsDashboard />, // <-- NEW
+  'stats-dashboard': <StatsDashboard />,
+  'legends-gallery': <LegendsGallery />, // <-- NEW
 };
 
   return (
