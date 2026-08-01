@@ -1,7 +1,7 @@
 import React from 'react';
 import ScoutDash from '@/components/home/ScoutDash';
-import { WireFeedList } from '@/components/home/WireFeedList';
-import { HeroDossier } from '@/components/home/HeroDossier';
+import WireFeedList from '@/components/home/WireFeedList';
+import HeroDossier from '@/components/home/HeroDossier';
 import type { WireStory, StandingsRow, UpcomingFixture } from '@/lib/types';
 
 export default function Home() {
