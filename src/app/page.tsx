@@ -35,10 +35,20 @@ export default function Home() {
   };
 
   return (
-    <main className="min-h-screen bg-white text-black p-4 md:p-8">
-      {featured && <HeroDossier story={featured} />}
-      <WireFeedList stories={rest} />
-      <ScoutDash standings={standings} fixture={fixture} />
-    </main>
-  );
+  <main className="min-h-screen bg-white text-black p-4 md:p-8">
+    <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
+      {featured && (
+        <div className="lg:col-span-1">
+          <HeroDossier story={featured} />
+        </div>
+      )}
+      <div className="lg:col-span-1">
+        <WireFeedList stories={rest} />
+      </div>
+      <div className="lg:col-span-1">
+        <ScoutDash standings={standings} fixture={fixture} />
+      </div>
+    </div>
+  </main>
+);
 }
