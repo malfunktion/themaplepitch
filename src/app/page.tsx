@@ -35,20 +35,30 @@ export default function Home() {
   };
 
   return (
-  <main className="min-h-screen bg-white text-black p-4 md:p-8">
-    <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-3 gap-6">
-      {featured && (
-        <div className="lg:col-span-1">
-          <HeroDossier story={featured} />
-        </div>
-      )}
-      <div className="lg:col-span-1">
-        <WireFeedList stories={rest} />
-      </div>
-      <div className="lg:col-span-1">
-        <ScoutDash standings={standings} fixture={fixture} />
-      </div>
+{/* Replace your current grid wrapper: */}
+{/* <div className="grid grid-cols-1 lg:grid-cols-3 gap-6"> */}
+
+{/* With this (Forces 3 side-by-side columns instantly on all devices & desktop view): */}
+<main className="max-w-7xl mx-auto px-2 py-4">
+  <div className="grid grid-cols-3 gap-3 md:gap-6">
+    
+    {/* Left Column: Hero Editorial */}
+    <div className="col-span-1 space-y-4">
+      {/* Component */}
     </div>
-  </main>
+
+    {/* Center Column: The Wire */}
+    <div className="col-span-1 space-y-4">
+      {/* Component */}
+    </div>
+
+    {/* Right Column: Scout Dashboard */}
+    <div className="col-span-1 space-y-4">
+      {/* Component */}
+    </div>
+
+  </div>
+</main>
+
 );
 }
