@@ -21,16 +21,6 @@ const fixture: UpcomingFixture = {
     { position: 3, clubName: "Cavalry FC", played: 0, points: 0, goalDifference: 0 },
   ];
 
-  const fixture: UpcomingFixture = {
-    id: 'f1',
-    homeTeam: 'Pacific FC',
-    awayTeam: 'Forge FC',
-    league: 'CPL',
-    date: '2026-06-06',
-    time: '15:00',
-    venue: 'Westhills Stadium',
-  };
-
   const sections: Record<string, React.ReactNode> = {
     hero: featured ? <HeroDossier story={featured} /> : null,
     wire: <WireFeedList stories={rest} />,
