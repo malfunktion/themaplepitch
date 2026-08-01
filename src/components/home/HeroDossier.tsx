@@ -2,9 +2,11 @@ import type { WireStory } from "@/lib/types";
 
 export default function HeroDossier({ story }: { story: WireStory }) {
   return (
-    <section className="flex flex-col gap-6 lg:col-span-3">
+    // Removed the hardcoded lg:col-span-3 so it obeys your layout config
+    <section className="flex flex-col gap-6">
       <div className="group cursor-pointer border-b border-border pb-6">
-        <div className="relative mb-4 aspect-[4/3] w-full overflow-hidden bg-charcoal">
+        {/* Changed to aspect-video (16:9) and clamped maximum height */}
+        <div className="relative mb-4 aspect-video w-full max-h-[50vh] md:max-h-[450px] overflow-hidden bg-charcoal">
           <div className="absolute inset-0 flex items-center justify-center text-xs uppercase tracking-widest text-charcoal-soft">
             [ Hero Image: 16:9 Desaturated ]
           </div>
