@@ -1,3 +1,4 @@
+import StatsDashboard from '@/components/home/StatsDashboard';
 import HeroDossier from '@/components/home/HeroDossier';
 import WireFeedList from '@/components/home/WireFeedList';
 import ScoutDash from '@/components/home/ScoutDash';
@@ -37,11 +38,12 @@ const rest: WireStory[] = [];
 
   // Map section IDs to components
   const sections: Record<string, React.ReactNode> = {
-    hero: featured ? <HeroDossier story={featured} /> : null,
-    wire: <WireFeedList stories={rest} />,
-    scout: <ScoutDash standings={standings} fixture={fixture} />,
-    'player-database': <PlayerDatabaseSpotlights />,
-  };
+  hero: featured ? <HeroDossier story={featured} /> : null,
+  wire: <WireFeedList stories={rest} />,
+  scout: <ScoutDash standings={standings} fixture={fixture} />,
+  'player-database': <PlayerDatabaseSpotlights />,
+  'stats-dashboard': <StatsDashboard />, // <-- NEW
+};
 
   return (
     <main className="min-h-screen bg-white text-neutral-900 selection:bg-red-600 selection:text-white">
