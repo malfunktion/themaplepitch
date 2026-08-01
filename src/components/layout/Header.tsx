@@ -1,5 +1,6 @@
 import Link from "next/link";
 import { getLiveTicker } from "@/lib/data/standings";
+import MobileNav from "./MobileNav";
 
 const NAV_LINKS = [
   { href: "/the-wire", label: "The Wire" },
@@ -38,7 +39,7 @@ export default async function Header() {
       </div>
 
       {/* Main nav */}
-      <div className="mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
+      <div className="relative mx-auto flex max-w-7xl items-center justify-between px-4 py-3">
         <Link href="/" className="flex items-center gap-2">
           <span className="text-lg font-bold tracking-tight">
             THE <span className="text-crimson">MAPLE PITCH</span>
@@ -57,10 +58,11 @@ export default async function Header() {
         </nav>
         <Link
           href="/supporter"
-          className="rounded-md bg-crimson px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-crimson-dim"
+          className="hidden rounded-md bg-crimson px-4 py-2 text-sm font-semibold text-white transition-colors hover:bg-crimson-dim md:inline-block"
         >
           Become a Supporter
         </Link>
+        <MobileNav />
       </div>
     </header>
   );

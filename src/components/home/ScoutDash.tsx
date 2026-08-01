@@ -1,12 +1,21 @@
 import type { StandingsRow } from "@/lib/types";
+import type { UpcomingFixture } from "@/lib/data/matches";
+import UpcomingFixtureWidget from "./UpcomingFixtureWidget";
 import StandingsWidget from "./StandingsWidget";
 import SupporterCTA from "./SupporterCTA";
 
-export default function ScoutDash({ standings }: { standings: StandingsRow[] }) {
+export default function ScoutDash({
+  standings,
+  fixture,
+}: {
+  standings: StandingsRow[];
+  fixture: UpcomingFixture;
+}) {
   return (
-    <aside className="space-y-4">
+    <section className="flex flex-col gap-6 lg:col-span-4">
+      <UpcomingFixtureWidget fixture={fixture} />
       <StandingsWidget rows={standings} />
       <SupporterCTA />
-    </aside>
+    </section>
   );
 }
