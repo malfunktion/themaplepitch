@@ -36,7 +36,8 @@ export default function Home() {
 
   return (
     <main className="max-w-7xl mx-auto px-2 py-4">
-      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-6">
+      {/* Forces 3 columns instantly on all devices, bypassing mobile viewport traps */}
+      <div className="grid grid-cols-3 gap-3 md:gap-6">
         
         {/* Left Column: Hero Editorial */}
         <div className="col-span-1 space-y-4">
