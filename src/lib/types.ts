@@ -49,7 +49,8 @@ export interface UpcomingFixture {
   venue?: string;
   ticketUrl?: string;
 };
-export type HomeSectionId = 'hero' | 'wire' | 'scout' | 'player-database';
+export type HomeSectionId = 'hero' | 'wire' | 'scout' | 'player-database' | 'stats-dashboard';
+
 
 export interface HomeLayoutItem {
   id: HomeSectionId;
