@@ -1,5 +1,6 @@
 import React from 'react';
-import type { StandingsRow, UpcomingFixture } from '@/lib/types';
+import type { StandingsRow } from '@/lib/types';
+import type { UpcomingFixture } from '@/lib/data/matches';
 
 interface ScoutDashProps {
   standings?: StandingsRow[];
@@ -52,17 +53,24 @@ export default function ScoutDash({ standings = [], fixture }: ScoutDashProps) {
                 {fixture.homeTeam.toUpperCase()} vs {fixture.awayTeam.toUpperCase()}
               </div>
               <div className="text-[10px] text-neutral-500 font-mono">
-                {fixture.venue} • {fixture.date} {fixture.time}
+                {fixture.homeCity} vs {fixture.awayCity}
               </div>
             </div>
-            
-                          <a
-              href="#tickets"
-              className="bg-red-600 hover:bg-red-700 text-white text-[10px] font-mono font-bold px-3 py-1.5 transition-colors"
-            >
-              TICKETS
-            </a>
 
+            {fixture.ticketUrl ? (
+              
+                href={fixture.ticketUrl}
+                target="_blank"
+                rel="noopener noreferrer"
+                className="bg-red-600 hover:bg-red-700 text-white text-[10px] font-mono font-bold px-3 py-1.5 transition-colors"
+              >
+                TICKETS
+              </a>
+            ) : (
+              <span className="text-[10px] font-mono text-neutral-400">
+                TICKETS SOON
+              </span>
+            )}
           </div>
         ) : (
           <p className="text-[10px] text-neutral-500 font-mono">No upcoming fixtures scheduled.</p>
@@ -70,4 +78,4 @@ export default function ScoutDash({ standings = [], fixture }: ScoutDashProps) {
       </div>
     </section>
   );
-}
+            }
