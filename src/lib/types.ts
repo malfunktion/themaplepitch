@@ -53,4 +53,15 @@ export type HomeSectionId = 'hero' | 'wire' | 'scout';
 export interface HomeLayoutItem {
   id: HomeSectionId;
   span: string; // Tailwind col-span classes for this section
+};
+export type WireStory = {
+  id: string;
+  headline: string;
+  summary: string;
+  league: League;
+  sourceName: string;
+  sourceUrl: string;
+  thumbnailUrl: string | null;   // ← missing from the suggested fallback
+  publishedAt: string;            // ← missing
+  isEditorPick: boolean;          // ← missing
 }
