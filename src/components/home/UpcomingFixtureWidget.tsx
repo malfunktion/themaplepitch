@@ -20,8 +20,8 @@ export default function UpcomingFixtureWidget({
         <div className="text-xs text-charcoal-soft">{fixture.homeCity}</div>
       </div>
 
-      {fixture.ticketUrl ? (
-        
+            {fixture.ticketUrl ? (
+        <a
           href={fixture.ticketUrl}
           target="_blank"
           rel="noopener noreferrer"
@@ -34,6 +34,6 @@ export default function UpcomingFixtureWidget({
           Tickets Coming Soon
         </span>
       )}
-    </div>
+>
   );
       }
