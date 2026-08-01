@@ -9,7 +9,7 @@ export default function Home() {
   const featured: WireStory = {
     id: '1',
     headline: "DAVID’S BRACE FUELS LILLE VICTORY; TRANSFER RUMOURS HEAT UP",
-    summary: " Canadian striker Jonathan David delivered another clinical performance in Europe.",
+    summary: "Canadian striker Jonathan David delivered another clinical performance in Europe.",
     league: "Abroad",
     sourceName: "TSN",
     sourceUrl: "https://tsn.ca",
@@ -35,30 +35,25 @@ export default function Home() {
   };
 
   return (
-{/* Replace your current grid wrapper: */}
-{/* <div className="grid grid-cols-1 lg:grid-cols-3 gap-6"> */}
+    <main className="max-w-7xl mx-auto px-2 py-4">
+      <div className="grid grid-cols-1 lg:grid-cols-3 gap-3 md:gap-6">
+        
+        {/* Left Column: Hero Editorial */}
+        <div className="col-span-1 space-y-4">
+          <HeroDossier story={featured} />
+        </div>
 
-{/* With this (Forces 3 side-by-side columns instantly on all devices & desktop view): */}
-<main className="max-w-7xl mx-auto px-2 py-4">
-  <div className="grid grid-cols-3 gap-3 md:gap-6">
-    
-    {/* Left Column: Hero Editorial */}
-    <div className="col-span-1 space-y-4">
-      {/* Component */}
-    </div>
+        {/* Center Column: The Wire */}
+        <div className="col-span-1 space-y-4">
+          <WireFeedList stories={rest} />
+        </div>
 
-    {/* Center Column: The Wire */}
-    <div className="col-span-1 space-y-4">
-      {/* Component */}
-    </div>
+        {/* Right Column: Scout Dashboard */}
+        <div className="col-span-1 space-y-4">
+          <ScoutDash />
+        </div>
 
-    {/* Right Column: Scout Dashboard */}
-    <div className="col-span-1 space-y-4">
-      {/* Component */}
-    </div>
-
-  </div>
-</main>
-
-);
+      </div>
+    </main>
+  );
 }
