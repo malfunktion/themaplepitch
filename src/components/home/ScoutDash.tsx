@@ -56,11 +56,13 @@ export default function ScoutDash({ standings = [], fixture }: ScoutDashProps) {
               </div>
             </div>
             
+                          <a
               href="#tickets"
               className="bg-red-600 hover:bg-red-700 text-white text-[10px] font-mono font-bold px-3 py-1.5 transition-colors"
             >
               TICKETS
             </a>
+
           </div>
         ) : (
           <p className="text-[10px] text-neutral-500 font-mono">No upcoming fixtures scheduled.</p>
