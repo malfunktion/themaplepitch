@@ -37,3 +37,20 @@ export type LiveTickerItem = {
   minute: number | null; // null when the match hasn't kicked off / has ended
   isLive: boolean;
 };
+
+export interface UpcomingFixture {
+  id: string;
+  homeTeam: string;
+  awayTeam: string;
+  league: string;
+  date: string;
+  time: string;
+  venue?: string;
+  ticketUrl?: string;
+};
+export type HomeSectionId = 'hero' | 'wire' | 'scout';
+
+export interface HomeLayoutItem {
+  id: HomeSectionId;
+  span: string; // Tailwind col-span classes for this section
+}
