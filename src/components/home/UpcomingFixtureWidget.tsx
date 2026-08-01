@@ -1,33 +1,62 @@
-export default function UpcomingFixtureWidget() {
+import React from 'react';
+
+// Define the shape of your fixture data
+export interface UpcomingFixture {
+  homeTeam: string;
+  awayTeam: string;
+  league: string;
+  date: string;
+  time: string;
+  venue: string;
+  ticketUrl?: string;
+}
+
+interface UpcomingFixtureWidgetProps {
+  fixture?: UpcomingFixture;
+}
+
+export default function UpcomingFixtureWidget({ fixture }: UpcomingFixtureWidgetProps) {
+  // Fallback default if no fixture data is passed yet
+  const defaultFixture: UpcomingFixture = {
+    homeTeam: 'Forge FC',
+    awayTeam: 'Pacific FC',
+    league: 'CPL',
+    date: 'AUG 03',
+    time: '4:00 PM EDT',
+    venue: 'Tim Hortons Field',
+    ticketUrl: '#'
+  };
+
+  const data = fixture || defaultFixture;
+
   return (
-    <div className="border border-neutral-800 bg-white p-4">
-      <div className="flex justify-between items-center mb-4 border-b border-neutral-200 pb-2">
-        <h3 className="text-xs font-bold uppercase tracking-widest text-black">Next Match</h3>
-        <span className="text-[10px] font-bold text-red-600 tracking-wider">CPL</span>
+    <div className="bg-white border border-charcoal/20 p-5 flex flex-col gap-4">
+      <div className="flex justify-between items-center text-xs font-mono text-charcoal/60">
+        <span>NEXT MATCH // {data.league}</span>
+        <span className="text-crimson font-bold">● LIVE SOON</span>
       </div>
-      
-      <div className="flex justify-between items-center mb-6">
-        <div className="flex-1 text-center">
-          <span className="block font-bold text-sm text-black">FORGE FC</span>
-        </div>
-        <div className="px-2">
-          <span className="text-[10px] font-mono text-neutral-400">VS</span>
-        </div>
-        <div className="flex-1 text-center">
-          <span className="block font-bold text-sm text-black">PACIFIC FC</span>
-        </div>
+
+      <div className="flex justify-between items-center my-2">
+        <div className="font-bold text-lg text-charcoal">{data.homeTeam}</div>
+        <div className="text-xs font-mono text-charcoal/40">VS</div>
+        <div className="font-bold text-lg text-charcoal">{data.awayTeam}</div>
       </div>
-      
-      <div className="text-center text-[10px] text-neutral-500 font-mono mb-4">
-        SAT, AUG 15 // 7:00 PM EST
+
+      <div className="text-xs text-charcoal/70 border-t border-charcoal/10 pt-3 flex flex-col gap-1 font-mono">
+        <div>{data.date} — {data.time}</div>
+        <div>{data.venue}</div>
       </div>
-      
-      <a 
-        href="#" 
-        className="block w-full text-center bg-transparent border border-red-600 text-red-600 py-2 text-[10px] font-bold tracking-widest hover:bg-red-600 hover:text-white transition-colors"
-      >
-        [ TICKETS ]
-      </a>
+
+      {data.ticketUrl && (
+        <a
+          href={data.ticketUrl}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="mt-2 w-full bg-crimson text-white text-center py-2 text-xs font-mono tracking-wider font-bold hover:bg-charcoal transition-colors"
+        >
+          [ TICKETS ]
+        </a>
+      )}
     </div>
   );
 }
