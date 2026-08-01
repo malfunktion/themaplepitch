@@ -1,0 +1,39 @@
+export type League =
+  | "CPL"
+  | "NSL"
+  | "MLS"
+  | "CanMNT"
+  | "CanWNT"
+  | "Provincial"
+  | "Abroad";
+
+export type WireStory = {
+  id: string;
+  headline: string;
+  summary: string;
+  league: League;
+  sourceName: string;
+  sourceUrl: string;
+  thumbnailUrl: string | null;
+  publishedAt: string; // ISO timestamp
+  isEditorPick: boolean;
+};
+
+export type StandingsRow = {
+  position: number;
+  clubName: string;
+  played: number;
+  points: number;
+  goalDifference: number;
+};
+
+export type LiveTickerItem = {
+  id: string;
+  competition: string;
+  homeTeam: string;
+  awayTeam: string;
+  homeScore: number;
+  awayScore: number;
+  minute: number | null; // null when the match hasn't kicked off / has ended
+  isLive: boolean;
+};

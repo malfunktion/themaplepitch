@@ -1,20 +1,21 @@
-import "./globals.css";
 import type { Metadata } from "next";
+import Header from "@/components/layout/Header";
+import "./globals.css";
 
 export const metadata: Metadata = {
-  title: "The Maple Pitch | Canadian Soccer Intelligence",
-  description: "Aggregator and scouting terminal for Canadian soccer.",
+  title: "The Maple Pitch — Canadian Soccer, Home and Abroad",
+  description:
+    "News, stats, and profiles covering the Canadian soccer pyramid, MLS, and Canadians playing abroad.",
 };
 
 export default function RootLayout({
   children,
-}: {
-  children: React.ReactNode;
-}) {
+}: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="en">
-      <body className="bg-neutral-950 text-neutral-100 font-sans antialiased selection:bg-red-600 selection:text-white">
-        {children}
+      <body>
+        <Header />
+        <main className="mx-auto max-w-7xl px-4 py-6">{children}</main>
       </body>
     </html>
   );

@@ -1,1 +1,41 @@
 @import "tailwindcss";
+
+/*
+  Design system: Scandinavian-minimalist base, crimson reserved
+  strictly for live/active states and conversion CTAs ("Rule of
+  Crimson" — see README). These are approximate placeholder hex
+  values pulled from the logo/crest artwork; nudge --color-crimson
+  to match the exact brand file if it's slightly off.
+*/
+@theme {
+  --color-bg: #f7f7f8;
+  --color-surface: #ffffff;
+  --color-charcoal: #1a1a1d;
+  --color-charcoal-soft: #4b4b52;
+  --color-border: #e4e4e7;
+  --color-crimson: #9e1b32;
+  --color-crimson-dim: #7a1527;
+
+  --font-sans: "Inter", ui-sans-serif, system-ui, sans-serif;
+}
+
+body {
+  background: var(--color-bg);
+  color: var(--color-charcoal);
+  font-family: var(--font-sans);
+}
+
+/* Utility for the small red "LIVE" pulse used on in-progress matches */
+@keyframes live-pulse {
+  0%,
+  100% {
+    opacity: 1;
+  }
+  50% {
+    opacity: 0.4;
+  }
+}
+
+.animate-live-pulse {
+  animation: live-pulse 1.6s ease-in-out infinite;
+}

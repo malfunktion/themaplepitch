@@ -4,7 +4,6 @@ import type { NextRequest } from 'next/server';
 export function middleware(req: NextRequest) {
   const host = req.headers.get('host') || '';
 
-  // Apply basic auth specifically to dev subdomain or dev builds
   if (host.includes('dev.themaplepitch.ca')) {
     const basicAuth = req.headers.get('authorization');
 
@@ -13,7 +12,7 @@ export function middleware(req: NextRequest) {
       const [user, pwd] = atob(authValue).split(':');
 
       const expectedUser = process.env.DEV_USER || 'admin';
-      const expectedPass = process.env.DEV_PASS || 'pitch2026';
+      const expectedPass = process.env.DEV_PASS || 'maplepitch2026!';
 
       if (user === expectedUser && pwd === expectedPass) {
         return NextResponse.next();
