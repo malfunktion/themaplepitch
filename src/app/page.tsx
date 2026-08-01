@@ -45,7 +45,7 @@ const rest: WireStory[] = [];
 
   return (
     <main className="min-h-screen bg-white text-neutral-900 selection:bg-red-600 selection:text-white">
-      <div className="mx-auto max-w-7xl grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
+      <div className="mx-auto max-w-7xl grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3">
         {homeLayout.map(({ id, span }) => (
           <div key={id} className={span}>
             {sections[id]}
