@@ -4,7 +4,7 @@ import ScoutDash from '@/components/home/ScoutDash';
 import { homeLayout } from '@/lib/homeLayout.config';
 import type { WireStory, StandingsRow } from '@/lib/types';
 import type { UpcomingFixture } from '@/lib/data/matches';
-...
+
 const fixture: UpcomingFixture = {
   homeTeam: 'Pacific FC',
   homeCity: 'Vancouver, BC',
