@@ -16,9 +16,19 @@ export default function HomePage() {
     ticketUrl: null,
   };
 
-  const featured: WireStory | undefined = undefined;
-  const rest: WireStory[] = [];
-
+  const featured: WireStory = {
+  id: 'fallback-1',
+  league: 'CPL',
+  headline: 'Canadian Premier League Season Preview: What to Expect',
+  summary: 'A look at tactical setups and roster changes across the country as the new campaign kicks off.',
+  sourceName: 'The Maple Pitch',
+  sourceUrl: '#',
+  thumbnailUrl: null,
+  publishedAt: new Date().toISOString(),
+  isEditorPick: true,
+};
+  
+const rest: WireStory[] = [];
   const standings: StandingsRow[] = [
     { position: 1, clubName: "Forge FC", played: 0, points: 0, goalDifference: 0 },
     { position: 2, clubName: "Pacific FC", played: 0, points: 0, goalDifference: 0 },
