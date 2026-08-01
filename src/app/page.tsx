@@ -1,18 +1,22 @@
 import HeroDossier from '@/components/home/HeroDossier';
 import WireFeedList from '@/components/home/WireFeedList';
 import ScoutDash from '@/components/home/ScoutDash';
+import PlayerDatabaseSpotlights from '@/components/home/PlayerDatabaseSpotlights';
 import { homeLayout } from '@/lib/homeLayout.config';
 import type { WireStory, StandingsRow } from '@/lib/types';
 import type { UpcomingFixture } from '@/lib/data/matches';
 
-const fixture: UpcomingFixture = {
-  homeTeam: 'Pacific FC',
-  homeCity: 'Vancouver, BC',
-  awayTeam: 'Forge FC',
-  awayCity: 'Hamilton, ON',
-  ticketUrl: null,
-};
+export default function HomePage() {
+  // Mock data definitions inside the component
+  const fixture: UpcomingFixture = {
+    homeTeam: 'Pacific FC',
+    homeCity: 'Vancouver, BC',
+    awayTeam: 'Forge FC',
+    awayCity: 'Hamilton, ON',
+    ticketUrl: null,
+  };
 
+  const featured: WireStory | undefined = undefined;
   const rest: WireStory[] = [];
 
   const standings: StandingsRow[] = [
@@ -21,18 +25,21 @@ const fixture: UpcomingFixture = {
     { position: 3, clubName: "Cavalry FC", played: 0, points: 0, goalDifference: 0 },
   ];
 
+  // Map section IDs to components
   const sections: Record<string, React.ReactNode> = {
     hero: featured ? <HeroDossier story={featured} /> : null,
     wire: <WireFeedList stories={rest} />,
     scout: <ScoutDash standings={standings} fixture={fixture} />,
+    'player-database': <PlayerDatabaseSpotlights />,
   };
 
   return (
     <main className="min-h-screen bg-white text-neutral-900 selection:bg-red-600 selection:text-white">
-      <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-
+      <div className="mx-auto max-w-7xl grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-4">
         {homeLayout.map(({ id, span }) => (
-          <div key={id} className={span}>{sections[id]}</div>
+          <div key={id} className={span}>
+            {sections[id]}
+          </div>
         ))}
       </div>
     </main>
