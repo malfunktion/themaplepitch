@@ -17,7 +17,8 @@ export default function UpcomingFixtureWidget({
           <span className="font-normal text-charcoal-soft">vs</span>{" "}
           {fixture.awayTeam}
         </div>
-        <div className="text-xs text-charcoal-soft">{fixture.homeCity}</div>
+       <div className="text-xs text-charcoal-soft">{fixture.venue}</div>
+
       </div>
 
       {fixture.ticketUrl ? (
