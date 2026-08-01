@@ -35,26 +35,12 @@ export default function Home() {
   };
 
   return (
-    <main className="max-w-7xl mx-auto px-2 py-4">
-      {/* Forces 3 columns instantly on all devices, bypassing mobile viewport traps */}
-      <div className="grid grid-cols-3 gap-3 md:gap-6">
-        
-        {/* Left Column: Hero Editorial */}
-        <div className="col-span-1 space-y-4">
-          <HeroDossier story={featured} />
-        </div>
-
-        {/* Center Column: The Wire */}
-        <div className="col-span-1 space-y-4">
-          <WireFeedList stories={rest} />
-        </div>
-
-        {/* Right Column: Scout Dashboard */}
-        <div className="col-span-1 space-y-4">
-          <ScoutDash />
-        </div>
-
-      </div>
-    </main>
+  <main className="min-h-screen bg-white text-black p-4 md:p-8">
+  <div className="max-w-7xl mx-auto grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
+    {featured && <div className="md:col-span-2 lg:col-span-1"><HeroDossier story={featured} /></div>}
+    <div className="md:col-span-2 lg:col-span-1"><WireFeedList stories={rest} /></div>
+    <div className="md:col-span-2 lg:col-span-1"><ScoutDash standings={standings} fixture={fixture} /></div>
+  </div>
+</main>
   );
 }
