@@ -5,5 +5,6 @@ export const homeLayout: HomeLayoutItem[] = [
   { id: 'wire', span: 'md:col-span-1 lg:col-span-1' },
   { id: 'scout', span: 'md:col-span-1 lg:col-span-1' },
   { id: 'player-database', span: 'md:col-span-2 lg:col-span-4' },
-  { id: 'stats-dashboard', span: 'md:col-span-2 lg:col-span-4' }, // <-- NEW
+  { id: 'stats-dashboard', span: 'md:col-span-2 lg:col-span-4' },
+  { id: 'legends-gallery', span: 'md:col-span-2 lg:col-span-4' }, // <-- NEW
 ];
