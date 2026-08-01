@@ -47,4 +47,10 @@ export interface UpcomingFixture {
   time: string;
   venue?: string;
   ticketUrl?: string;
+};
+export type HomeSectionId = 'hero' | 'wire' | 'scout';
+
+export interface HomeLayoutItem {
+  id: HomeSectionId;
+  span: string; // Tailwind col-span classes for this section
 }
