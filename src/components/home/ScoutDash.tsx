@@ -59,7 +59,7 @@ export default function ScoutDash({ standings = [], fixture }: ScoutDashProps) {
 
             {fixture.ticketUrl ? (
               
-                href={fixture.ticketUrl}
+            <a href={fixture.ticketUrl}
                 target="_blank"
                 rel="noopener noreferrer"
                 className="bg-red-600 hover:bg-red-700 text-white text-[10px] font-mono font-bold px-3 py-1.5 transition-colors"
