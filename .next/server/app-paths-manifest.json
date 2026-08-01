@@ -1,0 +1,9 @@
+{
+  "/_not-found/page": "app/_not-found/page.js",
+  "/national-teams/page": "app/national-teams/page.js",
+  "/pro-leagues/page": "app/pro-leagues/page.js",
+  "/page": "app/page.js",
+  "/provincial-leagues/page": "app/provincial-leagues/page.js",
+  "/stats/page": "app/stats/page.js",
+  "/the-wire/page": "app/the-wire/page.js"
+}
