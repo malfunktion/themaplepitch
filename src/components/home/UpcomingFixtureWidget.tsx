@@ -1,4 +1,4 @@
-import type { UpcomingFixture } from "@/lib/data/matches";
+import type { UpcomingFixture } from "@/lib/types"; // Adjusted to match ScoutDash
 
 export default function UpcomingFixtureWidget({
   fixture,
@@ -20,7 +20,7 @@ export default function UpcomingFixtureWidget({
         <div className="text-xs text-charcoal-soft">{fixture.homeCity}</div>
       </div>
 
-            {fixture.ticketUrl ? (
+      {fixture.ticketUrl ? (
         <a
           href={fixture.ticketUrl}
           target="_blank"
@@ -34,6 +34,6 @@ export default function UpcomingFixtureWidget({
           Tickets Coming Soon
         </span>
       )}
->
+    </div>
   );
-      }
+}
