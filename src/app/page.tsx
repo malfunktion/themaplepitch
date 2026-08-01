@@ -2,20 +2,16 @@ import HeroDossier from '@/components/home/HeroDossier';
 import WireFeedList from '@/components/home/WireFeedList';
 import ScoutDash from '@/components/home/ScoutDash';
 import { homeLayout } from '@/lib/homeLayout.config';
-import type { WireStory, StandingsRow, UpcomingFixture } from '@/lib/types';
-
-export default function Home() {
-  const featured: WireStory = {
-    id: '1',
-    headline: "DAVID'S BRACE FUELS LILLE VICTORY; TRANSFER RUMOURS HEAT UP",
-    summary: "Canadian striker Jonathan David delivered another clinical performance in Europe.",
-    league: "Abroad",
-    sourceName: "TSN",
-    sourceUrl: "https://tsn.ca",
-    thumbnailUrl: null,
-    publishedAt: new Date().toISOString(),
-    isEditorPick: true,
-  };
+import type { WireStory, StandingsRow } from '@/lib/types';
+import type { UpcomingFixture } from '@/lib/data/matches';
+...
+const fixture: UpcomingFixture = {
+  homeTeam: 'Pacific FC',
+  homeCity: 'Vancouver, BC',
+  awayTeam: 'Forge FC',
+  awayCity: 'Hamilton, ON',
+  ticketUrl: null,
+};
 
   const rest: WireStory[] = [];
 
