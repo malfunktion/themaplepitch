@@ -3,20 +3,16 @@ import HeroDossier from '@/components/home/HeroDossier';
 import WireFeedList from '@/components/home/WireFeedList';
 import ScoutDash from '@/components/home/ScoutDash';
 import PlayerDatabaseSpotlights from '@/components/home/PlayerDatabaseSpotlights';
-import { homeLayout } from '@/lib/homeLayout.config';
-import type { WireStory, StandingsRow } from '@/lib/types';
-import type { UpcomingFixture } from '@/lib/data/matches';
 import LegendsGallery from '@/components/home/LegendsGallery';
+import { homeLayout } from '@/lib/homeLayout.config';
+import type { WireStory, StandingsRow, UpcomingFixture } from '@/lib/types';
 
 export default function HomePage() {
   const fixture: UpcomingFixture = {
-    id: 'fix-1',
     homeTeam: 'Pacific FC',
+    homeCity: 'Vancouver, BC',
     awayTeam: 'Forge FC',
-    league: 'CPL',
-    date: '2026-08-05',
-    time: '19:00',
-    venue: 'Starlight Stadium',
+    awayCity: 'Hamilton, ON',
     ticketUrl: null,
   };
 
@@ -31,8 +27,9 @@ export default function HomePage() {
     publishedAt: new Date().toISOString(),
     isEditorPick: true,
   };
-  
+
   const rest: WireStory[] = [];
+
   const standings: StandingsRow[] = [
     { position: 1, clubName: "Forge FC", played: 0, points: 0, goalDifference: 0 },
     { position: 2, clubName: "Pacific FC", played: 0, points: 0, goalDifference: 0 },
@@ -49,15 +46,14 @@ export default function HomePage() {
   };
 
   return (
-    <main className="min-h-screen bg-white text-neutral-900 selection:bg-red-600 selection:text-white p-4 md:p-6">
-      {/* Enforces a strict 3-column command center grid on desktop */}
-      <div className="mx-auto max-w-7xl grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 grid-flow-dense">
+    <div className="min-h-screen bg-white text-neutral-900 selection:bg-red-600 selection:text-white">
+      <div className="mx-auto max-w-7xl grid grid-cols-2 gap-6 lg:grid-cols-5 grid-flow-dense px-4 py-6">
         {homeLayout.map(({ id, span }) => (
           <div key={id} className={span}>
             {sections[id]}
           </div>
         ))}
       </div>
-    </main>
+    </div>
   );
 }
