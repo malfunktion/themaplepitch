@@ -1,0 +1,6 @@
+name = "themaplepitch"
+compatibility_date = "2026-08-02"
+main = "./index.html"
+
+[site]
+bucket = "./"
