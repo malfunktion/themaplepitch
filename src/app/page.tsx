@@ -9,12 +9,14 @@ import type { UpcomingFixture } from '@/lib/data/matches';
 import LegendsGallery from '@/components/home/LegendsGallery';
 
 export default function HomePage() {
-  // Mock data definitions inside the component
   const fixture: UpcomingFixture = {
+    id: 'fix-1',
     homeTeam: 'Pacific FC',
-    homeCity: 'Vancouver, BC',
     awayTeam: 'Forge FC',
-    awayCity: 'Hamilton, ON',
+    league: 'CPL',
+    date: '2026-08-05',
+    time: '19:00',
+    venue: 'Starlight Stadium',
     ticketUrl: null,
   };
 
@@ -37,7 +39,6 @@ export default function HomePage() {
     { position: 3, clubName: "Cavalry FC", played: 0, points: 0, goalDifference: 0 },
   ];
 
-  // Map section IDs to components
   const sections: Record<string, React.ReactNode> = {
     hero: featured ? <HeroDossier story={featured} /> : null,
     wire: <WireFeedList stories={rest} />,
@@ -48,9 +49,9 @@ export default function HomePage() {
   };
 
   return (
-    <main className="min-h-screen bg-white text-neutral-900 selection:bg-red-600 selection:text-white">
-      {/* Enforces a strict 4-column grid layout across all views, bypassing mobile browser scaling traps */}
-      <div className="mx-auto max-w-7xl grid grid-cols-2 gap-6 lg:grid-cols-4 grid-flow-dense">
+    <main className="min-h-screen bg-white text-neutral-900 selection:bg-red-600 selection:text-white p-4 md:p-6">
+      {/* Enforces a strict 3-column command center grid on desktop */}
+      <div className="mx-auto max-w-7xl grid grid-cols-1 gap-6 md:grid-cols-2 lg:grid-cols-3 grid-flow-dense">
         {homeLayout.map(({ id, span }) => (
           <div key={id} className={span}>
             {sections[id]}
