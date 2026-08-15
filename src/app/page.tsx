@@ -4,7 +4,6 @@ import Link from 'next/link';
 import StatsDashboard from '@/components/home/StatsDashboard';
 import HeroDossier from '@/components/home/HeroDossier';
 import WireFeedList from '@/components/home/WireFeedList';
-import ScoutDash from '@/components/home/ScoutDash';
 import PlayerDatabaseSpotlights from '@/components/home/PlayerDatabaseSpotlights';
 import ProLeaguesTracker from '@/components/home/ProLeaguesTracker';
 import YouthToProPipeline from '@/components/home/YouthToProPipeline';
@@ -13,6 +12,7 @@ import PlayerAndProvincialSection from '@/components/home/PlayerAndProvincialSec
 import LegendsGallery from '@/components/home/LegendsGallery';
 import ConversionSection from '@/components/home/ConversionSection';
 import LocalClubSpotlight from '@/components/home/LocalClubSpotlight';
+import SidebarStack from '@/components/sidebar/SidebarStack';
 import { homeLayout } from '@/lib/homeLayout.config';
 import type { WireStory, StandingsRow } from '@/lib/types';
 import { client } from '@/lib/sanity';
@@ -100,10 +100,12 @@ export default async function HomePage() {
             </div>
           ))}
         </div>
-        <div className="lg:col-span-1">
-          <ScoutDash standings={standings} nslStandings={nslStandings} />
+        
+        {/* THE FAMOUS 5TH COLUMN */}
+        <div className="lg:col-span-1 flex flex-col gap-4 sticky top-6">
+          <SidebarStack standings={standings} nslStandings={nslStandings} defaultTab="standings" />
         </div>
       </div>
     </div>
   );
-}
+    }
