@@ -88,8 +88,8 @@ export default function Footer() {
             <Link href="/scout-terminal" className="hover:text-white transition-colors">
               Scout Terminal
             </Link>
-            <Link href="/match-center" className="hover:text-white transition-colors">
-              Match Center
+            <Link href="/match-centre" className="hover:text-white transition-colors">
+              Match Centre
             </Link>
           </div>
 
