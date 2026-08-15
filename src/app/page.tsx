@@ -4,6 +4,7 @@ import Link from 'next/link';
 import StatsDashboard from '@/components/home/StatsDashboard';
 import HeroDossier from '@/components/home/HeroDossier';
 import WireFeedList from '@/components/home/WireFeedList';
+import ScoutDash from '@/components/home/ScoutDash';
 import PlayerDatabaseSpotlights from '@/components/home/PlayerDatabaseSpotlights';
 import ProLeaguesTracker from '@/components/home/ProLeaguesTracker';
 import YouthToProPipeline from '@/components/home/YouthToProPipeline';
@@ -12,10 +13,10 @@ import PlayerAndProvincialSection from '@/components/home/PlayerAndProvincialSec
 import LegendsGallery from '@/components/home/LegendsGallery';
 import ConversionSection from '@/components/home/ConversionSection';
 import LocalClubSpotlight from '@/components/home/LocalClubSpotlight';
+import SidebarAdWidget from '@/components/home/SidebarAdWidget';
 import ContractRadarWidget from '@/components/home/ContractRadarWidget';
 import DualNationalRadar from '@/components/home/DualNationalRadar';
 import SidebarRumourMill from '@/components/home/SidebarRumourMill';
-import SidebarAdWidget from '@/components/home/SidebarAdWidget';
 import SidebarAdWidget4 from '@/components/home/SidebarAdWidget4';
 import { homeLayout } from '@/lib/homeLayout.config';
 import type { WireStory, StandingsRow } from '@/lib/types';
@@ -54,6 +55,24 @@ export default async function HomePage() {
     : fallbackFeatured;
   const wireStories = wireFeed.slice(1, 6);
 
+  const standings: StandingsRow[] = [
+    { position: 1, clubName: "Forge FC", played: 0, points: 0, goalDifference: 0 },
+    { position: 2, clubName: "Pacific FC", played: 0, points: 0, goalDifference: 0 },
+    { position: 3, clubName: "Cavalry FC", played: 0, points: 0, goalDifference: 0 },
+    { position: 4, clubName: "Atlético Ottawa", played: 0, points: 0, goalDifference: 0 },
+    { position: 5, clubName: "York United FC", played: 0, points: 0, goalDifference: 0 },
+    { position: 6, clubName: "Valour FC", played: 0, points: 0, goalDifference: 0 },
+    { position: 7, clubName: "Halifax Wanderers FC", played: 0, points: 0, goalDifference: 0 },
+    { position: 8, clubName: "Vancouver FC", played: 0, points: 0, goalDifference: 0 },
+  ];
+
+  const nslStandings: StandingsRow[] = [
+    { position: 1, clubName: "Vancouver Rise", played: 0, points: 0, goalDifference: 0 },
+    { position: 2, clubName: "Calgary Wild", played: 0, points: 0, goalDifference: 0 },
+    { position: 3, clubName: "AFC Toronto", played: 0, points: 0, goalDifference: 0 },
+    { position: 4, clubName: "Halifax Tides", played: 0, points: 0, goalDifference: 0 },
+  ];
+
   const sections: Record<string, ReactNode> = {
     hero: <HeroDossier story={featured} />,
     wire: <WireFeedList stories={wireStories} />,
@@ -86,9 +105,8 @@ export default async function HomePage() {
             </div>
           ))}
         </div>
-        
-        {/* Restored 5th Column Sidebar Intelligence Stack */}
         <div className="lg:col-span-1 flex flex-col gap-4">
+          <ScoutDash standings={standings} nslStandings={nslStandings} />
           <SidebarAdWidget />
           <ContractRadarWidget />
           <DualNationalRadar />
