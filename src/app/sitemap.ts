@@ -31,7 +31,7 @@ const FIXED_PATHS = [
   '/tactical-library',
   '/transfer-wire',
   '/state-of-canadian-soccer',
-  '/match-centre',
+  '/match-center',
   '/fan-hub',
 ];
 
