@@ -1,0 +1,35 @@
+name = "maplepitch-dev"
+main = ".open-next/worker.js"
+compatibility_date = "2024-09-23"
+compatibility_flags = ["nodejs_compat"]
+workers_dev = true
+
+routes = [
+    { pattern = "dev.themaplepitch.ca", custom_domain = true }
+]
+
+[vars]
+# Sanity.io Configuration (Values derived from internal code fallbacks)
+# These are environment variables baked into the Worker at runtime.
+NEXT_PUBLIC_SANITY_PROJECT_ID = "uvf97j3d"
+NEXT_PUBLIC_SANITY_DATASET = "production"
+NEXT_PUBLIC_SANITY_API_VERSION = "2026-08-01"
+
+[assets]
+directory = ".open-next/assets"
+binding = "ASSETS"
+run_worker_first = true
+
+# Cloudflare Workers Rate Limiting binding (GA). Loose, per-PoP limiter —
+# Cloudflare's own docs say it's not built for strict/accurate accounting,
+# just for keeping the open read APIs (/api/players, /api/teams, /api/matches,
+# /api/search, /api/wire) from getting hammered. No extra cost beyond normal
+# Workers request/CPU billing. namespace_id is just a self-chosen unique
+# integer, not something to create in the dashboard first.
+[[ratelimits]]
+name = "API_RATE_LIMITER"
+namespace_id = "1001"
+
+[ratelimits.simple]
+limit = 60
+period = 60

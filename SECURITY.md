@@ -1,0 +1,12 @@
+# Security notes
+
+- The repository is private by default and should remain so while secrets or unreleased work exist.
+- Never commit `.env.local`, service-role keys, Cloudflare API tokens, provider keys or private scouting records.
+- `NEXT_PUBLIC_SUPABASE_*` values are client-visible; Supabase Row Level Security must enforce authorization.
+- Private scouting/prospect data must be server-authorized and role-restricted.
+- The current data layer is demonstration-only and contains no production personal/biometric data.
+- Rate limiting: all API routes (`/api/teams`, `/api/players`, `/api/matches`, `/api/wire`, `/api/search`) call `checkRateLimit()` in `src/lib/rateLimit.ts`, which enforces the Cloudflare Workers Rate Limiting binding (`API_RATE_LIMITER`, keyed by `cf-connecting-ip`; limit/period set in `wrangler.toml`). This check fails open (allows the request) only if the binding itself is absent, e.g. local `next dev` — it cannot fail open in a deployed Worker with the binding configured. Before adding public write endpoints, revisit whether fail-open is still the right default for those routes specifically.
+- Security headers: `next.config.ts` sets CSP, HSTS, X-Frame-Options, X-Content-Type-Options, Referrer-Policy and Permissions-Policy on every route via `headers()`. Update the CSP's `img-src`/`connect-src` allowlists as new image or API hosts (league sites, Supabase project URL, etc.) are added, or they will be silently blocked.
+- Deploy pipeline: `.github/workflows/deploy.yml` runs `npm run check` (lint → typecheck → data validation → build) before `wrangler deploy` on every push to `dev`. A failure at any of those steps blocks the deploy; do not bypass this by pushing straight to `npm run build` or `wrangler deploy` manually.
+- `src/middleware.ts` gates the whole app, including `/api/*`, behind HTTP Basic Auth when `DEV_USER`/`DEV_PASS` are set (staging), and passes everything through when they're unset (production). API routes are covered on purpose: this deployment (`dev.themaplepitch.ca`, per `wrangler.toml`) is the password-gated staging environment, and excluding `/api/*` would let anyone read the same data straight from the API without ever hitting the password prompt. Same-origin client fetches (e.g. `/api/search`) are unaffected — browsers reuse cached Basic Auth credentials on later same-origin requests.
+- Run dependency updates and review lockfile changes in pull requests.

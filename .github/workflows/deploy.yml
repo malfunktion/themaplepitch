@@ -1,0 +1,48 @@
+name: Deploy to Cloudflare Workers
+
+on:
+  push:
+    branches:
+      - dev
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    name: Deploy
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: 'npm'
+
+      - name: Install dependencies
+        run: npm install
+
+      # Runs lint, typecheck, data validation, then the production build, in
+      # that order (see the "check" script in package.json). Any failure
+      # stops the job here, so a broken push to `dev` can no longer reach
+      # the Deploy step below.
+      #
+      # NEXT_PUBLIC_* vars must be set HERE, not just in the Deploy step below.
+      # Next.js inlines NEXT_PUBLIC_* values into the built JS bundle during
+      # `next build` (which runs inside `npm run check`) — it does not read
+      # them at request time. Setting them only on the later wrangler deploy
+      # step (as this workflow previously did) has no effect: by then the
+      # bundle is already built with whatever was (or wasn't) in scope here,
+      # and the fallback in src/lib/sanity.ts silently wins instead.
+      - name: Lint, typecheck, validate data, and build
+        env:
+          NEXT_PUBLIC_SANITY_PROJECT_ID: ${{ secrets.SANITY_PROJECT_ID }}
+          NEXT_PUBLIC_SANITY_DATASET: ${{ secrets.SANITY_DATASET }}
+          NEXT_PUBLIC_SANITY_API_VERSION: '2026-08-01'
+        run: npm run check
+
+      - name: Deploy to Cloudflare
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler deploy

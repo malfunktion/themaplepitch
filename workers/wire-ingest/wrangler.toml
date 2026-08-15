@@ -1,0 +1,18 @@
+name = "maplepitch-wire-ingest"
+main = "src/index.js"
+compatibility_date = "2026-08-01"
+
+# Runs every 6 hours. Cron syntax is UTC. Adjust freely — this just
+# controls how often new RSS items get pulled in as unapproved drafts,
+# not how often the site itself updates.
+[triggers]
+crons = ["0 */6 * * *"]
+
+# Non-secret config. SANITY_WRITE_TOKEN and MANUAL_TRIGGER_KEY are set
+# separately as encrypted secrets (see workers/wire-ingest/README.md) —
+# never put a write token here, this file gets committed to git.
+[vars]
+SANITY_PROJECT_ID = "uvf97j3d"
+SANITY_DATASET = "production"
+SANITY_API_VERSION = "2026-08-01"
+LOOKBACK_DAYS = "30"

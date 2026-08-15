@@ -1,0 +1,42 @@
+name: Deploy Wire Ingest Worker
+
+on:
+  push:
+    branches:
+      - dev
+    paths:
+      - 'workers/wire-ingest/**'
+      - '.github/workflows/deploy-wire-ingest.yml'
+
+jobs:
+  deploy:
+    runs-on: ubuntu-latest
+    name: Deploy
+    defaults:
+      run:
+        working-directory: workers/wire-ingest
+    steps:
+      - name: Checkout repository
+        uses: actions/checkout@v4
+
+      - name: Setup Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+
+      - name: Install dependencies
+        run: npm install
+
+      # Runs through CI (not Termux) deliberately — wrangler's local
+      # runtime (workerd) has no Android-arm64 build, so `wrangler deploy`
+      # doesn't work from a phone. This mirrors how the main site deploys.
+      #
+      # SANITY_WRITE_TOKEN is NOT set here — it's a Worker secret set once
+      # via the Cloudflare dashboard (see workers/wire-ingest/README.md),
+      # and persists across deploys on its own. Re-setting secrets from CI
+      # on every deploy would mean putting the write token in a CI log.
+      - name: Deploy to Cloudflare
+        env:
+          CLOUDFLARE_API_TOKEN: ${{ secrets.CLOUDFLARE_API_TOKEN }}
+          CLOUDFLARE_ACCOUNT_ID: ${{ secrets.CLOUDFLARE_ACCOUNT_ID }}
+        run: npx wrangler deploy
