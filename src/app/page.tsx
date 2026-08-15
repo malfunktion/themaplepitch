@@ -1,7 +1,4 @@
 // src/app/page.tsx
-'use client';
-
-import React, { useState } from 'react';
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import StatsDashboard from '@/components/home/StatsDashboard';
@@ -16,19 +13,35 @@ import PlayerAndProvincialSection from '@/components/home/PlayerAndProvincialSec
 import LegendsGallery from '@/components/home/LegendsGallery';
 import ConversionSection from '@/components/home/ConversionSection';
 import LocalClubSpotlight from '@/components/home/LocalClubSpotlight';
+
+// Re-importing the complete 5th column sidebar stack
 import ProvincialPyramidTracker from '@/components/home/ProvincialPyramidTracker';
 import ContractRadarWidget from '@/components/home/ContractRadarWidget';
 import DualNationalRadar from '@/components/home/DualNationalRadar';
 import SidebarRumourMill from '@/components/home/SidebarRumourMill';
 import SidebarAdWidget from '@/components/home/SidebarAdWidget';
 import SidebarAdWidget4 from '@/components/home/SidebarAdWidget4';
+
 import { homeLayout } from '@/lib/homeLayout.config';
 import type { WireStory, StandingsRow } from '@/lib/types';
+import { client } from '@/lib/sanity';
+import { getWireFeed } from '@/lib/data/newsWire';
 
-export default function HomePage() {
-  const [mobileTab, setMobileTab] = useState<'standings' | 'provincial' | 'radars'>('standings');
+export const dynamic = 'force-dynamic';
 
-  const featured: WireStory = {
+async function getSiteSettings() {
+  const groq = `*[_type == "siteSettings"][0]{ tournamentBannerActive, tournamentBannerText, tournamentBannerUrl }`;
+  try {
+    return await client.fetch(groq, {}, { cache: 'no-store' });
+  } catch (error) {
+    console.error('getSiteSettings fetch failed:', error);
+    return null;
+  }
+}
+
+export default async function HomePage() {
+  const settings = await getSiteSettings();
+  const fallbackFeatured: WireStory = {
     id: 'fallback-1',
     league: 'CPL',
     headline: 'Canadian Premier League Season Preview: What to Expect',
@@ -40,7 +53,11 @@ export default function HomePage() {
     isEditorPick: true,
   };
 
-  const wireStories: WireStory[] = [];
+  const wireFeed = await getWireFeed({ limit: 6 });
+  const featured: WireStory = wireFeed[0]
+    ? { ...wireFeed[0], isEditorPick: true }
+    : fallbackFeatured;
+  const wireStories = wireFeed.slice(1, 6);
 
   const standings: StandingsRow[] = [
     { position: 1, clubName: "Forge FC", played: 0, points: 0, goalDifference: 0 },
@@ -76,8 +93,15 @@ export default function HomePage() {
 
   return (
     <div className="w-full">
+      {settings?.tournamentBannerActive && settings?.tournamentBannerText && (
+        <Link
+          href={settings.tournamentBannerUrl || '#'}
+          className="block bg-crimson text-white text-center text-xs font-mono uppercase tracking-widest py-2 mb-4 hover:bg-crimson-dim transition-colors"
+        >
+          {settings.tournamentBannerText}
+        </Link>
+      )}
       <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-        {/* Main 4-Column Bento Grid */}
         <div className="lg:col-span-4 grid grid-cols-1 md:grid-cols-4 auto-rows-[minmax(140px,auto)] gap-4">
           {homeLayout.map(({ id, span }) => (
             <div key={id} className={`${span} w-full overflow-hidden`}>
@@ -85,53 +109,16 @@ export default function HomePage() {
             </div>
           ))}
         </div>
-
-        {/* 5th Column: Signature Sidebar Stack */}
+        
+        {/* Full 5th Column Sidebar Stack */}
         <div className="lg:col-span-1 flex flex-col gap-4">
-          {/* Mobile Tab Switcher */}
-          <div className="flex lg:hidden bg-card border border-border p-1 rounded-sm">
-            <button
-              onClick={() => setMobileTab('standings')}
-              className={`flex-1 py-1.5 text-[10px] font-mono uppercase font-bold rounded-sm transition-colors ${
-                mobileTab === 'standings' ? 'bg-red-600 text-white' : 'text-neutral-400 hover:text-foreground'
-              }`}
-            >
-              [ STANDINGS ]
-            </button>
-            <button
-              onClick={() => setMobileTab('provincial')}
-              className={`flex-1 py-1.5 text-[10px] font-mono uppercase font-bold rounded-sm transition-colors ${
-                mobileTab === 'provincial' ? 'bg-red-600 text-white' : 'text-neutral-400 hover:text-foreground'
-              }`}
-            >
-              [ PROVINCIAL ]
-            </button>
-            <button
-              onClick={() => setMobileTab('radars')}
-              className={`flex-1 py-1.5 text-[10px] font-mono uppercase font-bold rounded-sm transition-colors ${
-                mobileTab === 'radars' ? 'bg-red-600 text-white' : 'text-neutral-400 hover:text-foreground'
-              }`}
-            >
-              [ RADARS ]
-            </button>
-          </div>
-
-          {/* Sidebar Modules */}
-          <div className={`flex flex-col gap-4 ${mobileTab === 'standings' ? 'flex' : 'hidden lg:flex'}`}>
-            <ScoutDash standings={standings} nslStandings={nslStandings} />
-            <SidebarAdWidget />
-          </div>
-
-          <div className={`flex flex-col gap-4 ${mobileTab === 'provincial' ? 'flex' : 'hidden lg:flex'}`}>
-            <ProvincialPyramidTracker />
-          </div>
-
-          <div className={`flex flex-col gap-4 ${mobileTab === 'radars' ? 'flex' : 'hidden lg:flex'}`}>
-            <ContractRadarWidget />
-            <DualNationalRadar />
-            <SidebarRumourMill />
-            <SidebarAdWidget4 />
-          </div>
+          <ScoutDash standings={standings} nslStandings={nslStandings} />
+          <SidebarAdWidget />
+          <ProvincialPyramidTracker />
+          <ContractRadarWidget />
+          <DualNationalRadar />
+          <SidebarRumourMill />
+          <SidebarAdWidget4 />
         </div>
       </div>
     </div>
