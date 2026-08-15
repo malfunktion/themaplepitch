@@ -17,8 +17,6 @@ import LocalClubSpotlight from '@/components/home/LocalClubSpotlight';
 import SidebarStack from '@/components/sidebar/SidebarStack';
 import SidebarAdWidget from '@/components/home/SidebarAdWidget';
 import ContractRadarWidget from '@/components/home/ContractRadarWidget';
-import MedicalWardWidget from '@/components/home/MedicalWardWidget';
-import UpcomingFixtureWidget from '@/components/home/UpcomingFixtureWidget';
 import DualNationalRadar from '@/components/home/DualNationalRadar';
 import SidebarRumourMill from '@/components/home/SidebarRumourMill';
 import SidebarAdWidget4 from '@/components/home/SidebarAdWidget4';
@@ -123,19 +121,13 @@ export default async function HomePage() {
           {/* 3. Contract Radar // Expiring Deals */}
           <ContractRadarWidget />
           
-          {/* 4. Medical Ward // Sidelined Players */}
-          <MedicalWardWidget />
-          
-          {/* 5. Upcoming Fixture */}
-          <UpcomingFixtureWidget />
-          
-          {/* 6. Eligibility Watch // Dual-Nationals */}
+          {/* 4. Eligibility Watch // Dual-Nationals */}
           <DualNationalRadar />
           
-          {/* 7. Transfer Ticker */}
+          {/* 5. Transfer Ticker */}
           <SidebarRumourMill />
           
-          {/* 8. Bottom Partner Ad */}
+          {/* 6. Bottom Partner Ad */}
           <SidebarAdWidget4 />
           
         </div>
