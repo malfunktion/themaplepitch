@@ -4,7 +4,6 @@ import Link from 'next/link';
 import StatsDashboard from '@/components/home/StatsDashboard';
 import HeroDossier from '@/components/home/HeroDossier';
 import WireFeedList from '@/components/home/WireFeedList';
-import ScoutDash from '@/components/home/ScoutDash';
 import PlayerDatabaseSpotlights from '@/components/home/PlayerDatabaseSpotlights';
 import ProLeaguesTracker from '@/components/home/ProLeaguesTracker';
 import YouthToProPipeline from '@/components/home/YouthToProPipeline';
@@ -13,12 +12,7 @@ import PlayerAndProvincialSection from '@/components/home/PlayerAndProvincialSec
 import LegendsGallery from '@/components/home/LegendsGallery';
 import ConversionSection from '@/components/home/ConversionSection';
 import LocalClubSpotlight from '@/components/home/LocalClubSpotlight';
-import ProvincialPyramidTracker from '@/components/home/ProvincialPyramidTracker';
-import SidebarAdWidget from '@/components/home/SidebarAdWidget';
-import ContractRadarWidget from '@/components/home/ContractRadarWidget';
-import DualNationalRadar from '@/components/home/DualNationalRadar';
-import SidebarRumourMill from '@/components/home/SidebarRumourMill';
-import SidebarAdWidget4 from '@/components/home/SidebarAdWidget4';
+import SidebarStack from '@/components/sidebar/SidebarStack';
 import { homeLayout } from '@/lib/homeLayout.config';
 import type { WireStory, StandingsRow } from '@/lib/types';
 import { client } from '@/lib/sanity';
@@ -106,14 +100,10 @@ export default async function HomePage() {
             </div>
           ))}
         </div>
-        <div className="lg:col-span-1 flex flex-col gap-4">
-          <ProvincialPyramidTracker />
-          <ScoutDash standings={standings} nslStandings={nslStandings} />
-          <SidebarAdWidget />
-          <ContractRadarWidget />
-          <DualNationalRadar />
-          <SidebarRumourMill />
-          <SidebarAdWidget4 />
+        
+        {/* THE FAMOUS 5TH COLUMN */}
+        <div className="lg:col-span-1 flex flex-col gap-4 sticky top-6">
+          <SidebarStack standings={standings} nslStandings={nslStandings} defaultTab="standings" />
         </div>
       </div>
     </div>
