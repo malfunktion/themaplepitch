@@ -1,10 +1,11 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useState, useEffect } from 'react';
 import Link from 'next/link';
 import SidebarStack from '@/components/sidebar/SidebarStack';
 import type { StandingsRow } from '@/lib/types';
 import DataStatus from '@/components/layout/DataStatus';
+import { getCplStandings, getNslStandings } from '@/lib/data/standings';
 
 interface ProspectDossier {
   id: string;
@@ -41,19 +42,14 @@ export default function ScoutTerminalPage() {
   const [selectedTier, setSelectedTier] = useState('ALL');
   const [activeProspect, setActiveProspect] = useState<ProspectDossier | null>(TERMINAL_PROSPECTS[0]);
 
-  // Standings mocks for sidebar ScoutDash
-  const standings: StandingsRow[] = [
-    { position: 1, clubName: "Forge FC", played: 0, points: 0, goalDifference: 0 },
-    { position: 2, clubName: "Pacific FC", played: 0, points: 0, goalDifference: 0 },
-    { position: 3, clubName: "Cavalry FC", played: 0, points: 0, goalDifference: 0 },
-    { position: 4, clubName: "Atlético Ottawa", played: 0, points: 0, goalDifference: 0 },
-  ];
+  // Live standings synchronization
+  const [standings, setStandings] = useState<StandingsRow[]>([]);
+  const [nslStandings, setNslStandings] = useState<StandingsRow[]>([]);
 
-  const nslStandings: StandingsRow[] = [
-    { position: 1, clubName: "AFC Toronto", played: 0, points: 0, goalDifference: 0 },
-    { position: 2, clubName: "Calgary Wild FC", played: 0, points: 0, goalDifference: 0 },
-    { position: 3, clubName: "Halifax Tides FC", played: 0, points: 0, goalDifference: 0 },
-  ];
+  useEffect(() => {
+    getCplStandings().then(setStandings);
+    getNslStandings().then(setNslStandings);
+  }, []);
 
   const filteredProspects = TERMINAL_PROSPECTS.filter(p => {
     const matchesSearch = p.name.toLowerCase().includes(searchQuery.toLowerCase()) || p.club.toLowerCase().includes(searchQuery.toLowerCase());
