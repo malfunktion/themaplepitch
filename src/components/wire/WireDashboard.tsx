@@ -473,3 +473,187 @@ export default function WireDashboard({ initialStories, standings, nslStandings 
                       <span className="text-[10px] font-mono font-bold text-crimson">▲ FUTURES</span>
                     </div>
                     <div className="flex bg-card border border-border rounded-sm p-0.5 gap-1">
+                      <button
+                        onClick={() => setMarketTab('CPL')}
+                        className={`flex-1 py-1 text-[10px] font-mono font-bold rounded-sm transition-colors ${
+                          marketTab === 'CPL' ? 'bg-crimson text-white' : 'text-charcoal-soft hover:text-charcoal'
+                        }`}
+                      >
+                        [ CPL (8) ]
+                      </button>
+                      <button
+                        onClick={() => setMarketTab('NSL')}
+                        className={`flex-1 py-1 text-[10px] font-mono font-bold rounded-sm transition-colors ${
+                          marketTab === 'NSL' ? 'bg-crimson text-white' : 'text-charcoal-soft hover:text-charcoal'
+                        }`}
+                      >
+                        [ NSL (6) ]
+                      </button>
+                    </div>
+                    <div className="space-y-2 text-[10px] font-mono">
+                      {marketTab === 'CPL' ? (
+                        <>
+                          <div className="flex justify-between items-center pb-1.5 border-b border-border/40">
+                            <span className="text-charcoal font-bold">FORGE FC (FORGE)</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-charcoal-soft">2.45</span>
+                              <span className="text-crimson font-bold">▲ +4%</span>
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center pb-1.5 border-b border-border/40">
+                            <span className="text-charcoal font-bold">CAVALRY FC (CAV)</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-charcoal-soft">3.10</span>
+                              <span className="text-crimson font-bold">▲ +2%</span>
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center pb-1.5 border-b border-border/40">
+                            <span className="text-charcoal font-bold">ATLÉTICO OTTAWA (OTT)</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-charcoal-soft">3.50</span>
+                              <span className="text-charcoal-soft font-bold">▼ -2%</span>
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center pb-1.5 border-b border-border/40">
+                            <span className="text-charcoal font-bold">PACIFIC FC (PAC)</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-charcoal-soft">4.80</span>
+                              <span className="text-charcoal-soft font-bold">— 0%</span>
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center pb-1.5 border-b border-border/40">
+                            <span className="text-charcoal font-bold">YORK UNITED (YRK)</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-charcoal-soft">6.50</span>
+                              <span className="text-crimson font-bold">▲ +5%</span>
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center pb-1.5 border-b border-border/40">
+                            <span className="text-charcoal font-bold">HALIFAX WANDERERS (HFX)</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-charcoal-soft">8.00</span>
+                              <span className="text-charcoal-soft font-bold">— -1%</span>
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center pb-1.5 border-b border-border/40">
+                            <span className="text-charcoal font-bold">VALOUR FC (VAL)</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-charcoal-soft">12.00</span>
+                              <span className="text-charcoal-soft font-bold">— 0%</span>
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-charcoal font-bold">VANCOUVER FC (VAN)</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-charcoal-soft">15.00</span>
+                              <span className="text-charcoal-soft font-bold">▼ -3%</span>
+                            </div>
+                          </div>
+                        </>
+                      ) : (
+                        <>
+                          <div className="flex justify-between items-center pb-1.5 border-b border-border/40">
+                            <span className="text-charcoal font-bold">VANCOUVER RISE (VR)</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-charcoal-soft">2.20</span>
+                              <span className="text-crimson font-bold">▲ +6%</span>
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center pb-1.5 border-b border-border/40">
+                            <span className="text-charcoal font-bold">CALGARY WILD (CW)</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-charcoal-soft">2.75</span>
+                              <span className="text-charcoal-soft font-bold">▼ -1%</span>
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center pb-1.5 border-b border-border/40">
+                            <span className="text-charcoal font-bold">AFC TORONTO (AFCT)</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-charcoal-soft">3.40</span>
+                              <span className="text-crimson font-bold">▲ +3%</span>
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center pb-1.5 border-b border-border/40">
+                            <span className="text-charcoal font-bold">HALIFAX TIDES (HT)</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-charcoal-soft">5.00</span>
+                              <span className="text-charcoal-soft font-bold">— 0%</span>
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center pb-1.5 border-b border-border/40">
+                            <span className="text-charcoal font-bold">MONTREAL ROSES (MTL)</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-charcoal-soft">6.20</span>
+                              <span className="text-crimson font-bold">▲ +2%</span>
+                            </div>
+                          </div>
+                          <div className="flex justify-between items-center">
+                            <span className="text-charcoal font-bold">OTTAWA RAPID (OR)</span>
+                            <div className="flex items-center gap-1.5">
+                              <span className="text-charcoal-soft">8.50</span>
+                              <span className="text-charcoal-soft font-bold">▼ -4%</span>
+                            </div>
+                          </div>
+                        </>
+                      )}
+                    </div>
+                  </div>
+
+                  <div className="space-y-3">
+                    <div className="flex items-center justify-between pb-2 border-b border-border">
+                      <div className="flex items-center gap-2">
+                        <span className="text-[11px] font-mono font-bold tracking-wider text-charcoal-soft uppercase">COMBINE RADAR</span>
+                        <span className="text-[9px] font-mono bg-border text-charcoal-soft px-1.5 py-0.5 rounded-sm">
+                          {combinePage}/{totalCombinePages}
+                        </span>
+                      </div>
+                      <div className="flex items-center gap-1">
+                        <button
+                          onClick={() => setCombinePage((prev) => Math.max(prev - 1, 1))}
+                          disabled={combinePage === 1}
+                          className="text-[9px] font-mono font-bold px-1.5 py-0.5 bg-border text-charcoal rounded-sm hover:bg-border disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          [ PREV ]
+                        </button>
+                        <button
+                          onClick={() => setCombinePage((prev) => Math.min(prev + 1, totalCombinePages))}
+                          disabled={combinePage === totalCombinePages}
+                          className="text-[9px] font-mono font-bold px-1.5 py-0.5 bg-border text-charcoal rounded-sm hover:bg-border disabled:opacity-40 disabled:cursor-not-allowed"
+                        >
+                          [ NEXT ]
+                        </button>
+                      </div>
+                    </div>
+                    <div className="space-y-2 text-[10px] font-mono">
+                      {currentCombinePlayers.map((p) => (
+                        <div key={p.id} className="flex flex-col gap-0.5 pb-1.5 border-b border-border/40">
+                          <div className="flex items-center justify-between">
+                            <span className="text-[9px] font-bold bg-border text-charcoal px-1 py-0.5 rounded-sm border border-border">
+                              {p.position} · {p.age}
+                            </span>
+                            <span className="text-crimson font-bold text-[9px]">{p.status}</span>
+                          </div>
+                          <div className="text-charcoal font-bold truncate">
+                            {p.name} • {p.club}
+                          </div>
+                          {p.trialDestination && (
+                            <div className="text-charcoal-soft text-[9px]">DESTINATION: {p.trialDestination}</div>
+                          )}
+                        </div>
+                      ))}
+                      <div className="pt-2 text-center border-t border-border text-[9px] text-charcoal-soft">
+                        SHOWING {currentCombinePlayers.length} OF {COMBINE_PLAYERS.length} TRACKED PROSPECTS
+                      </div>
+                    </div>
+                  </div>
+
+                  <SidebarXFeedWidget />
+                </div>
+              )}
+            </div>
+          </aside>
+        </div>
+      </div>
+    </div>
+  );
+}
