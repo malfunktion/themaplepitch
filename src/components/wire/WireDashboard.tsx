@@ -5,7 +5,6 @@ import React, { useState } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import SidebarStack from '@/components/sidebar/SidebarStack';
-import SidebarAdWidget5 from '@/components/home/SidebarAdWidget5';
 import SidebarXFeedWidget from '@/components/home/SidebarXFeedWidget';
 import FederationLog from '@/components/wire/FederationLog';
 import AcademyPipelineDispatch from '@/components/wire/AcademyPipelineDispatch';
@@ -418,8 +417,6 @@ export default function WireDashboard({ initialStories, standings, nslStandings 
 
             <SidebarStack standings={standings} nslStandings={nslStandings} breakpoint="lg" />
 
-            <SidebarAdWidget5 />
-
             <div className="bg-card border border-border rounded-sm p-3 space-y-2.5">
               <div className="text-[10px] font-mono font-bold tracking-wider text-charcoal-soft uppercase">TERMINAL ACCESS // VIP</div>
               <p className="text-[11px] text-charcoal-soft font-sans leading-snug">
@@ -668,4 +665,4 @@ export default function WireDashboard({ initialStories, standings, nslStandings 
       </div>
     </div>
   );
-                      }
+}
