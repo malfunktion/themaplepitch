@@ -8,6 +8,7 @@ export const homeLayout: HomeLayoutItem[] = [
   { id: 'youth-pipeline', span: 'col-span-4 row-span-3' },
   { id: 'player-provincial', span: 'col-span-4 row-span-3' },
   { id: 'stats-dashboard', span: 'col-span-4 row-span-3' },
+  { id: 'collegiate-watchlist', span: 'col-span-4 row-span-2' },
   { id: 'legends-gallery', span: 'col-span-4 row-span-2' },
   { id: 'fan-hub', span: 'col-span-4 row-span-2' },
   { id: 'conversion-section', span: 'col-span-4 row-span-1' },
