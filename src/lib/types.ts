@@ -84,7 +84,8 @@ export type HomeSectionId =
   | 'stats-dashboard' 
   | 'legends-gallery' 
   | 'local-club-spotlight' 
-  | 'conversion-section';
+  | 'conversion-section'
+| 'collegiate-watchlist';
 
 export interface HomeLayoutItem {
   id: HomeSectionId;
