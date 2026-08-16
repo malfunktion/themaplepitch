@@ -1,13 +1,15 @@
 // src/app/stats/page.tsx
-
 'use client';
 
-import React, { useMemo, useState } from 'react';
+import React, { useMemo, useState, useEffect } from 'react';
 import Link from 'next/link';
+
 import SidebarStack from '@/components/sidebar/SidebarStack';
 import type { StandingsRow } from '@/lib/types';
+import { getCplStandings, getNslStandings } from '@/lib/data/standings';
 
 type Gender = 'MEN' | 'WOMEN';
+
 type ViewMode =
   | 'OVERVIEW'
   | 'PLAYERS'
@@ -23,6 +25,7 @@ type PlayerRow = {
   value: string;
   initials: string;
 };
+
 type ComparePlayer = {
   playerId: string;
   name: string;
@@ -218,6 +221,7 @@ function ComparePanel({
 }) {
   const first = pool.find((p) => p.playerId === a);
   const second = pool.find((p) => p.playerId === b);
+
   return (
     <section className="bg-card border border-border rounded-sm overflow-hidden">
       <div className="p-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
@@ -293,6 +297,7 @@ export default function StatsHubPage() {
   const [provStatsProvince, setProvStatsProvince] = useState<
     'ON' | 'QC' | 'BC' | 'AB'
   >('ON');
+
   const [compareA, setCompareA] = useState('');
   const [compareB, setCompareB] = useState('');
 
@@ -335,6 +340,7 @@ export default function StatsHubPage() {
             }${p.mins ? ` • ${p.mins} MINS` : ''}`.trim(),
           });
       });
+
     [
       currentGoldenBoot,
       currentAssists,
@@ -345,6 +351,7 @@ export default function StatsHubPage() {
       currentTeamOfWeek,
       currentCollegiate,
     ].forEach((source) => add(source, 'CANADA'));
+
     return [...pool.values()].sort((x, y) => x.name.localeCompare(y.name));
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
@@ -359,18 +366,13 @@ export default function StatsHubPage() {
     currentCollegiate,
   ]);
 
-  const standings: StandingsRow[] = [
-    { position: 1, clubName: 'Forge FC', played: 14, points: 28, goalDifference: 12 },
-    { position: 2, clubName: 'Atlético Ottawa', played: 14, points: 26, goalDifference: 8 },
-    { position: 3, clubName: 'Cavalry FC', played: 14, points: 24, goalDifference: 6 },
-    { position: 4, clubName: 'York United FC', played: 14, points: 20, goalDifference: -2 },
-  ];
+  const [standings, setStandings] = useState<StandingsRow[]>([]);
+  const [nslStandings, setNslStandings] = useState<StandingsRow[]>([]);
 
-  const nslStandings: StandingsRow[] = [
-    { position: 1, clubName: 'AFC Toronto', played: 10, points: 22, goalDifference: 9 },
-    { position: 2, clubName: 'Calgary Wild FC', played: 10, points: 19, goalDifference: 5 },
-    { position: 3, clubName: 'Halifax Tides FC', played: 10, points: 15, goalDifference: 1 },
-  ];
+  useEffect(() => {
+    getCplStandings().then(setStandings);
+    getNslStandings().then(setNslStandings);
+  }, []);
 
   const provincialScorers = getProvincialScorers(provStatsProvince);
   const provincialStandings = getProvincialStandings(provStatsProvince);
@@ -410,6 +412,7 @@ export default function StatsHubPage() {
                 </span>
               </div>
             </div>
+
             <div className="p-3 border-b border-border bg-surface/40 flex flex-col sm:flex-row gap-2">
               <div className="flex items-center gap-1 bg-card border border-border p-1 rounded-sm w-full sm:w-auto">
                 {(['MEN', 'WOMEN'] as Gender[]).map((gender) => (
@@ -430,6 +433,7 @@ export default function StatsHubPage() {
                   </button>
                 ))}
               </div>
+
               <select
                 value={season}
                 onChange={(e) => setSeason(e.target.value)}
@@ -439,6 +443,7 @@ export default function StatsHubPage() {
                 <option>2025</option>
                 <option>2024</option>
               </select>
+
               <select
                 value={competition}
                 onChange={(e) => setCompetition(e.target.value)}
@@ -452,6 +457,7 @@ export default function StatsHubPage() {
                 <option>COLLEGIATE (NCAA / U SPORTS)</option>
               </select>
             </div>
+
             <nav
               aria-label="Statistics sections"
               className="overflow-x-auto border-b border-border"
@@ -473,6 +479,7 @@ export default function StatsHubPage() {
               </div>
             </nav>
           </header>
+
           {(showOverview || showPlayers) && (
             <>
               <section className="grid grid-cols-2 xl:grid-cols-4 gap-3">
@@ -498,6 +505,7 @@ export default function StatsHubPage() {
                   detail={`${currentCleanSheets[0].name} // GOALKEEPER`}
                 />
               </section>
+
               <section className="bg-card border border-border rounded-sm overflow-hidden">
                 <div className="grid grid-cols-1 md:grid-cols-5">
                   <div className="md:col-span-2 min-h-[190px] bg-[#101010] relative overflow-hidden flex items-end p-4">
@@ -537,6 +545,7 @@ export default function StatsHubPage() {
                   </div>
                 </div>
               </section>
+
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
                 <Leaderboard
                   title="Golden Boot"
@@ -565,6 +574,7 @@ export default function StatsHubPage() {
               </div>
             </>
           )}
+
           {showPlayers && (
             <>
               <ComparePanel
@@ -574,6 +584,7 @@ export default function StatsHubPage() {
                 setA={setCompareA}
                 setB={setCompareB}
               />
+
               <DataTable
                 title={
                   programGender === 'MEN'
@@ -584,6 +595,7 @@ export default function StatsHubPage() {
               />
             </>
           )}
+
           {showTeams && (
             <>
               <section className="grid grid-cols-2 sm:grid-cols-4 gap-3">
@@ -626,6 +638,7 @@ export default function StatsHubPage() {
               </div>
             </>
           )}
+
           {showAbroad && (
             <>
               <section className="bg-card border border-border rounded-sm p-4">
@@ -657,11 +670,13 @@ export default function StatsHubPage() {
                   <MetricCard label="MARKETS" value="9" detail="COUNTRIES / LEAGUES" />
                 </div>
               </section>
+
               <DataTable
                 title="GLOBAL CANADIAN PERFORMANCE STREAM"
                 players={abroadStreamPlayers}
                 abroad
               />
+
               <section className="bg-card border border-border rounded-sm overflow-hidden">
                 <div className="p-4 border-b border-border">
                   <span className="text-[9px] font-mono tracking-widest text-charcoal-soft">
@@ -706,6 +721,7 @@ export default function StatsHubPage() {
               </section>
             </>
           )}
+
           {showCollegiate && (
             <>
               <section className="bg-card border border-border rounded-sm p-4">
@@ -723,12 +739,14 @@ export default function StatsHubPage() {
                   </Link>
                 </div>
               </section>
+
               <DataTable
                 title={`COLLEGIATE PLAYER STREAM // ${programGender}`}
                 players={currentCollegiate}
               />
             </>
           )}
+
           {showProvincial && (
             <>
               <section className="bg-card border border-border rounded-sm p-3">
@@ -749,6 +767,7 @@ export default function StatsHubPage() {
                   ))}
                 </div>
               </section>
+
               <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
                 <section className="bg-card border border-border rounded-sm p-4">
                   <span className="text-[9px] font-mono tracking-widest text-charcoal-soft">
@@ -773,6 +792,7 @@ export default function StatsHubPage() {
                     ))}
                   </div>
                 </section>
+
                 <section className="bg-card border border-border rounded-sm p-4">
                   <span className="text-[9px] font-mono tracking-widest text-charcoal-soft">
                     GOALSCORING INDEX
@@ -802,6 +822,7 @@ export default function StatsHubPage() {
               </div>
             </>
           )}
+
           {(showOverview || showPlayers) && (
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
               <section className="bg-card border border-border rounded-sm overflow-hidden">
@@ -846,6 +867,7 @@ export default function StatsHubPage() {
                   ))}
                 </div>
               </section>
+
               <section className="bg-card border border-border rounded-sm overflow-hidden">
                 <div className="p-4 border-b border-border">
                   <span className="text-[9px] font-mono tracking-widest text-charcoal-soft">
@@ -876,6 +898,7 @@ export default function StatsHubPage() {
               </section>
             </div>
           )}
+
           {showOverview && (
             <section className="bg-card border border-border rounded-sm overflow-hidden">
               <div className="p-4 border-b border-border flex items-center justify-between">
@@ -915,6 +938,7 @@ export default function StatsHubPage() {
             </section>
           )}
         </main>
+
         <aside className="lg:col-span-4 flex flex-col gap-5">
           <div className="bg-card border border-border rounded-sm p-4">
             <div className="flex items-center justify-between mb-3">
@@ -947,6 +971,7 @@ export default function StatsHubPage() {
               are development fixtures.
             </div>
           </div>
+
           <SidebarStack standings={standings} nslStandings={nslStandings} />
         </aside>
       </div>
@@ -961,6 +986,7 @@ const menGoldenBoot = [
   { rank: 4, name: 'Gabriele Prokop', club: 'York United', value: '9 G', initials: 'G.P' },
   { rank: 5, name: 'Brian Wright', club: 'Atlético Ottawa', value: '8 G', initials: 'B.W' },
 ];
+
 const womenGoldenBoot = [
   { rank: 1, name: 'Jorian Baucom', club: 'AFC Toronto', value: '11 G', initials: 'J.B' },
   { rank: 2, name: 'Evelyne Viens', club: 'Montreal Roses', value: '9 G', initials: 'E.V' },
@@ -968,6 +994,7 @@ const womenGoldenBoot = [
   { rank: 4, name: 'Cloé Lacasse', club: 'Ottawa Rapid', value: '7 G', initials: 'C.L' },
   { rank: 5, name: 'Sarah Stratigakis', club: 'Vancouver Rise', value: '6 G', initials: 'S.S' },
 ];
+
 const menAssists = [
   { rank: 1, name: 'Manny Aparicio', club: 'Pacific FC', value: '8 AST', initials: 'M.A' },
   { rank: 2, name: 'Tristan Borges', club: 'Forge FC', value: '8 AST', initials: 'T.B' },
@@ -975,6 +1002,7 @@ const menAssists = [
   { rank: 4, name: 'Sean Young', club: 'Pacific FC', value: '5 AST', initials: 'S.Y' },
   { rank: 5, name: 'Brian Wright', club: 'Atlético Ottawa', value: '5 AST', initials: 'B.W' },
 ];
+
 const womenAssists = [
   { rank: 1, name: 'Sarah Stratigakis', club: 'Vancouver Rise', value: '6 AST', initials: 'S.S' },
   { rank: 2, name: 'Simi Awujo', club: 'Montreal Roses', value: '5 AST', initials: 'S.A' },
@@ -982,6 +1010,7 @@ const womenAssists = [
   { rank: 4, name: 'Adriana Leon', club: 'Calgary Wild', value: '4 AST', initials: 'A.L' },
   { rank: 5, name: 'Cloé Lacasse', club: 'Ottawa Rapid', value: '3 AST', initials: 'C.L' },
 ];
+
 const menCleanSheets = [
   { rank: 1, name: 'Triston Henry', club: 'Forge FC', value: '7 CS', initials: 'T.H' },
   { rank: 2, name: 'Marco Carducci', club: 'Cavalry FC', value: '6 CS', initials: 'M.C' },
@@ -989,6 +1018,7 @@ const menCleanSheets = [
   { rank: 4, name: 'Callum Irving', club: 'Pacific FC', value: '4 CS', initials: 'C.I' },
   { rank: 5, name: 'Sean Melvin', club: 'Atletico Ottawa', value: '3 CS', initials: 'S.M' },
 ];
+
 const womenCleanSheets = [
   { rank: 1, name: 'Katelyn Rowland', club: 'Calgary Wild', value: '6 CS', initials: 'K.R' },
   { rank: 2, name: 'Rylee Foster', club: 'AFC Toronto', value: '5 CS', initials: 'R.F' },
@@ -996,6 +1026,7 @@ const womenCleanSheets = [
   { rank: 4, name: 'Kailen Sheridan', club: 'San Diego Wave', value: '3 CS', initials: 'K.S' },
   { rank: 5, name: 'Sabrina D’Angelo', club: 'Aston Villa', value: '3 CS', initials: 'S.D' },
 ];
+
 const menAbroad = [
   { rank: 1, name: 'Jonathan David', club: 'Lille OSC // FRA', value: '8.4 RTG', initials: 'J.D' },
   { rank: 2, name: 'Alphonso Davies', club: 'Bayern Munich // GER', value: '8.1 RTG', initials: 'A.D' },
@@ -1003,6 +1034,7 @@ const menAbroad = [
   { rank: 4, name: 'Tajon Buchanan', club: 'Villarreal // ESP', value: '7.8 RTG', initials: 'T.B' },
   { rank: 5, name: 'Ismaël Koné', club: 'Marseille // FRA', value: '7.7 RTG', initials: 'I.K' },
 ];
+
 const womenAbroad = [
   { rank: 1, name: 'Jessie Fleming', club: 'Portland Thorns // USA', value: '8.3 RTG', initials: 'J.F' },
   { rank: 2, name: 'Kadeisha Buchanan', club: 'Chelsea FC // ENG', value: '8.2 RTG', initials: 'K.B' },
@@ -1010,6 +1042,7 @@ const womenAbroad = [
   { rank: 4, name: 'Evelyne Viens', club: 'AS Roma // ITA', value: '7.9 RTG', initials: 'E.V' },
   { rank: 5, name: 'Cloé Lacasse', club: 'Utah Royals // USA', value: '7.8 RTG', initials: 'C.L' },
 ];
+
 // --- Collegiate Streams ---
 const menCollegiateStream = [
   { rank: 1, name: 'J. Smith', club: 'Syracuse Univ. (NCAA D1)', ga: '11 G • 3 A', rtg: '0.85 GPM' },
@@ -1018,6 +1051,7 @@ const menCollegiateStream = [
   { rank: 4, name: 'A. Kone', club: 'Montreal (U SPORTS)', ga: '6 G • 2 A', rtg: '0.55 GPM' },
   { rank: 5, name: 'D. Osorio', club: 'UBC (U SPORTS)', ga: '5 G • 4 A', rtg: '0.50 GPM' },
 ];
+
 const womenCollegiateStream = [
   { rank: 1, name: 'S. Alarie', club: 'Penn State (NCAA D1)', ga: '14 G • 4 A', rtg: '0.92 GPM' },
   { rank: 2, name: 'C. Briand', club: 'Laval (U SPORTS)', ga: '12 G • 2 A', rtg: '0.88 GPM' },
@@ -1025,6 +1059,7 @@ const womenCollegiateStream = [
   { rank: 4, name: 'K. Grewal', club: 'UBC (U SPORTS)', ga: '8 G • 3 A', rtg: '0.60 GPM' },
   { rank: 5, name: 'L. Awujo', club: 'USC (NCAA D1)', ga: '7 G • 2 A', rtg: '0.55 GPM' },
 ];
+
 // --- 10-Player Stream Data Lists ---
 const cplStreamPlayers = [
   { rank: 1, name: 'Terran Campbell', club: 'Forge FC', ga: '14 G • 3 A', rtg: '8.2' },
@@ -1038,6 +1073,7 @@ const cplStreamPlayers = [
   { rank: 9, name: 'Matteo de Brienne', club: 'Atlético Ottawa', ga: '5 G • 2 A', rtg: '7.3' },
   { rank: 10, name: 'Sean Young', club: 'Pacific FC', ga: '4 G • 5 A', rtg: '7.5' },
 ];
+
 const nslStreamPlayers = [
   { rank: 1, name: 'Jorian Baucom', club: 'AFC Toronto', ga: '11 G • 2 A', rtg: '8.3' },
   { rank: 2, name: 'Evelyne Viens', club: 'Montreal Roses', ga: '9 G • 4 A', rtg: '8.1' },
@@ -1050,6 +1086,7 @@ const nslStreamPlayers = [
   { rank: 9, name: 'Vanessa Gilles', club: 'Vancouver Rise', ga: '3 G • 0 A', rtg: '7.5' },
   { rank: 10, name: 'Adriana Leon', club: 'Calgary Wild', ga: '2 G • 4 A', rtg: '7.3' },
 ];
+
 const mlsStreamPlayers = [
   { rank: 1, name: 'Jacen Russell-Rowe', club: 'Columbus Crew', ga: '8 G • 3 A', mins: '1,240' },
   { rank: 2, name: 'Mathieu Choinière', club: 'CF Montréal', ga: '3 G • 7 A', mins: '2,150' },
@@ -1062,6 +1099,7 @@ const mlsStreamPlayers = [
   { rank: 9, name: 'Dayne St. Clair', club: 'Minnesota United', ga: '0 G • 0 A', mins: '2,700' },
   { rank: 10, name: 'Lucas Cavallini', club: 'Vancouver Whitecaps', ga: '6 G • 1 A', mins: '1,310' },
 ];
+
 const abroadStreamPlayers = [
   { rank: 1, name: 'Jonathan David', club: 'Lille OSC (Ligue 1)', ga: '18 G • 4 A', rtg: '8.4' },
   { rank: 2, name: 'Alphonso Davies', club: 'Bayern Munich (Bundesliga)', ga: '2 G • 6 A', rtg: '8.1' },
@@ -1074,6 +1112,7 @@ const abroadStreamPlayers = [
   { rank: 9, name: 'Moïse Bombito', club: 'OGC Nice (Ligue 1)', ga: '1 G • 0 A', rtg: '7.6' },
   { rank: 10, name: 'Derek Cornelius', club: 'Marseille (Ligue 1)', ga: '0 G • 1 A', rtg: '7.5' },
 ];
+
 // --- TEAM OF THE WEEK: ALL-CANADIAN COMPOSITE XI (4-3-3), MIXED LEAGUES ---
 const menTeamOfWeek = [
   { playerId: 'motw-m-01', name: 'Triston Henry', club: 'Forge FC', league: 'CPL', initials: 'T.H', x: 50, y: 92, note: 'Clean sheet' },
@@ -1088,6 +1127,7 @@ const menTeamOfWeek = [
   { playerId: 'motw-m-10', name: 'Jonathan David', club: 'Lille OSC', league: 'ABROAD', initials: 'J.D', x: 50, y: 14, note: 'Brace, Ligue 1' },
   { playerId: 'motw-m-11', name: 'Tajon Buchanan', club: 'Villarreal', league: 'ABROAD', initials: 'T.B', x: 85, y: 22 },
 ];
+
 const womenTeamOfWeek = [
   { playerId: 'motw-w-01', name: 'Katelyn Rowland', club: 'Calgary Wild', league: 'NSL', initials: 'K.R', x: 50, y: 92, note: 'Clean sheet' },
   { playerId: 'motw-w-02', name: 'Jade Rose', club: 'AFC Toronto', league: 'NSL', initials: 'J.R', x: 15, y: 72 },
@@ -1101,6 +1141,7 @@ const womenTeamOfWeek = [
   { playerId: 'motw-w-10', name: 'Jorian Baucom', club: 'AFC Toronto', league: 'NSL', initials: 'J.B', x: 50, y: 14, note: 'Hat-trick' },
   { playerId: 'motw-w-11', name: 'Evelyne Viens', club: 'Montreal Roses', league: 'NSL', initials: 'E.V', x: 85, y: 22 },
 ];
+
 // --- DISCIPLINE TRACKER: CARDED LEADERS ACROSS ALL LEAGUES ---
 const menDisciplineLeaders = [
   { rank: 1, playerId: 'disc-m-01', name: 'Malcolm Shaw', club: 'Cavalry FC', league: 'CPL', yellows: 6, reds: 0 },
@@ -1109,6 +1150,7 @@ const menDisciplineLeaders = [
   { rank: 4, playerId: 'disc-m-04', name: 'Kamal Miller', club: 'Portland Timbers', league: 'MLS', yellows: 4, reds: 0 },
   { rank: 5, playerId: 'disc-m-05', name: 'Sean Young', club: 'Pacific FC', league: 'CPL', yellows: 4, reds: 0 },
 ];
+
 const womenDisciplineLeaders = [
   { rank: 1, playerId: 'disc-w-01', name: 'Vanessa Gilles', club: 'Vancouver Rise', league: 'NSL', yellows: 5, reds: 0 },
   { rank: 2, playerId: 'disc-w-02', name: 'Shelina Zadorsky', club: 'Halifax Tides', league: 'NSL', yellows: 4, reds: 0 },
@@ -1116,14 +1158,17 @@ const womenDisciplineLeaders = [
   { rank: 4, playerId: 'disc-w-04', name: 'Jade Rose', club: 'AFC Toronto', league: 'NSL', yellows: 3, reds: 0 },
   { rank: 5, playerId: 'disc-w-05', name: 'Simi Awujo', club: 'Montreal Roses', league: 'NSL', yellows: 3, reds: 0 },
 ];
+
 const menSuspensionWatch = [
   { playerId: 'susp-m-01', name: 'Kamal Miller', club: 'Portland Timbers', league: 'MLS', yellows: 4 },
   { playerId: 'susp-m-02', name: 'Sean Young', club: 'Pacific FC', league: 'CPL', yellows: 4 },
 ];
+
 const womenSuspensionWatch = [
   { playerId: 'susp-w-01', name: 'Shelina Zadorsky', club: 'Halifax Tides', league: 'NSL', yellows: 4 },
   { playerId: 'susp-w-02', name: 'Kadeisha Buchanan', club: 'Chelsea FC', league: 'ABROAD', yellows: 4 },
 ];
+
 // --- INTERNATIONAL DUTY TRACKER: CANMNT / CANWNT CAPS & GOALS ---
 const menDutyTracker = [
   { rank: 1, playerId: 'duty-m-01', name: 'Richie Laryea', position: 'RB', caps: 45, goals: 2, lastCalled: 'Jun 2026' },
@@ -1135,6 +1180,7 @@ const menDutyTracker = [
   { rank: 7, playerId: 'duty-m-07', name: 'Ismaël Koné', position: 'CM', caps: 22, goals: 3, lastCalled: 'Mar 2026' },
   { rank: 8, playerId: 'duty-m-08', name: 'Moïse Bombito', position: 'CB', caps: 18, goals: 1, lastCalled: 'Jun 2026' },
 ];
+
 const womenDutyTracker = [
   { rank: 1, playerId: 'duty-w-01', name: 'Jessie Fleming', position: 'CM', caps: 130, goals: 30, lastCalled: 'Jun 2026' },
   { rank: 2, playerId: 'duty-w-02', name: 'Kadeisha Buchanan', position: 'CB', caps: 130, goals: 5, lastCalled: 'Jun 2026' },
@@ -1145,6 +1191,7 @@ const womenDutyTracker = [
   { rank: 7, playerId: 'duty-w-07', name: 'Sarah Stratigakis', position: 'CM', caps: 25, goals: 3, lastCalled: 'Mar 2026' },
   { rank: 8, playerId: 'duty-w-08', name: 'Jorian Baucom', position: 'ST', caps: 12, goals: 4, lastCalled: 'Mar 2026' },
 ];
+
 // --- Helper mock data functions for the Provincial Mini Card ---
 function provStatsStatsHeading(prov: 'ON' | 'QC' | 'BC' | 'AB') {
   switch (prov) {
@@ -1154,6 +1201,7 @@ function provStatsStatsHeading(prov: 'ON' | 'QC' | 'BC' | 'AB') {
     case 'AB': return 'LEAGUE1 ALBERTA';
   }
 }
+
 function getProvincialScorers(prov: 'ON' | 'QC' | 'BC' | 'AB') {
   switch (prov) {
     case 'ON': return [
@@ -1186,6 +1234,7 @@ function getProvincialScorers(prov: 'ON' | 'QC' | 'BC' | 'AB') {
     ];
   }
 }
+
 function getProvincialStandings(prov: 'ON' | 'QC' | 'BC' | 'AB') {
   switch (prov) {
     case 'ON': return [
@@ -1218,6 +1267,7 @@ function getProvincialStandings(prov: 'ON' | 'QC' | 'BC' | 'AB') {
     ];
   }
 }
+
 // --- Expanded Records & Milestones ---
 const menRecords = [
   { label: 'Most goals, single CPL season', value: 'Tomasz Skublak — 12 (2021)' },
@@ -1231,6 +1281,7 @@ const menRecords = [
   { label: 'Most consecutive wins', value: 'Cavalry FC — 7 matches (2023)' },
   { label: 'Highest single-match attendance', value: 'Pacific FC vs Cavalry FC — 6,189' },
 ];
+
 const womenRecords = [
   { label: 'Most goals, inaugural NSL season', value: 'Jorian Baucom — 11 (2025)' },
   { label: 'First NSL hat-trick', value: 'Evelyne Viens — Montreal Roses' },
