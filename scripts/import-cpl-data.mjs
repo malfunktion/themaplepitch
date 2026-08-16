@@ -33,7 +33,7 @@ if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
 
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
-const API_BASE = 'https://canadasoccerapi.com/api/';
+const API_BASE = 'https://canadasoccerapi.com/api';
 
 
 function slugify(name) {
