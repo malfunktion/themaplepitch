@@ -18,19 +18,34 @@ type TeamRow = { id: number; name: string };
 type MatchRow = { home_team_id: number; away_team_id: number; home_score: number; away_score: number };
 
 async function computeStandings(competition: string): Promise<StandingsRow[]> {
-  const [{ data: teams, error: teamsError }, { data: matches, error: matchesError }] = await Promise.all([
-    supabase.from('teams').select('id, name').eq('league', competition),
-    supabase
-      .from('matches')
-      .select('home_team_id, away_team_id, home_score, away_score')
-      .eq('competition', competition)
-      .eq('status', 'Finished'),
-  ]);
+  let teams: TeamRow[] | null = null;
+  let matches: MatchRow[] | null = null;
 
-  if (teamsError || matchesError || !teams) {
-    console.error(`computeStandings(${competition}) failed:`, teamsError || matchesError);
+  try {
+    const [teamsRes, matchesRes] = await Promise.all([
+      supabase.from('teams').select('id, name').eq('league', competition),
+      supabase
+        .from('matches')
+        .select('home_team_id, away_team_id, home_score, away_score')
+        .eq('competition', competition)
+        .eq('status', 'Finished'),
+    ]);
+    if (teamsRes.error || matchesRes.error) {
+      console.error(`computeStandings(${competition}) failed:`, teamsRes.error || matchesRes.error);
+      return [];
+    }
+    teams = teamsRes.data;
+    matches = matchesRes.data;
+  } catch (err) {
+    // Defensive: covers a hard network/DNS failure (e.g. Supabase env vars
+    // not configured yet) that surfaces as a thrown error rather than a
+    // { error } result — never let a missing/unreachable Supabase project
+    // break the page, just show empty standings.
+    console.error(`computeStandings(${competition}) threw:`, err);
     return [];
   }
+
+  if (!teams) return [];
 
   const table = new Map<
     number,
