@@ -1,3 +1,4 @@
+// src/app/provincial-leagues/page.tsx
 'use client';
 
 import React, { Suspense, useState, useEffect } from 'react';
@@ -7,6 +8,7 @@ import {
   type ProvinceCode,
   type GenderCode,
 } from '@/lib/data/provincialLeagues';
+
 import SidebarStack from '@/components/sidebar/SidebarStack';
 import ProvincialHeroFold from '@/components/provincial/ProvincialHeroFold';
 import ProvincialStandingsTable from '@/components/provincial/ProvincialStandingsTable';
@@ -20,10 +22,10 @@ import {
   DisciplineLogCard,
 } from '@/components/provincial/ProvincialFixturesAndDiscipline';
 import ProvincialVideoVault from '@/components/provincial/ProvincialVideoVault';
-import { standings, nslStandings } from '@/lib/data/proLeagues/proLeaguesDemo';
+import { getCplStandings, getNslStandings } from '@/lib/data/standings';
+import type { StandingsRow } from '@/lib/types';
 
 type HubProvinceSelection = 'ALL' | ProvinceCode;
-
 const PROVINCE_ORDER: ProvinceCode[] = ['ON', 'PRAIRIES', 'AB', 'BC', 'QC'];
 const PROVINCE_LABELS: Record<ProvinceCode, string> = {
   ON: '• ONTARIO',
@@ -42,6 +44,14 @@ function ProvincialLeaguesContent() {
     useState<HubProvinceSelection>('ALL');
   const [gender, setGender] = useState<GenderCode>('MEN');
   const [tier, setTier] = useState<string>('Premier');
+
+  const [standings, setStandings] = useState<StandingsRow[]>([]);
+  const [nslStandings, setNslStandings] = useState<StandingsRow[]>([]);
+
+  useEffect(() => {
+    getCplStandings().then(setStandings);
+    getNslStandings().then(setNslStandings);
+  }, []);
 
   // Sync with URL query parameters if coming from footer links
   useEffect(() => {
@@ -71,6 +81,7 @@ function ProvincialLeaguesContent() {
   const activeStandings =
     currentProvData.standings[tier]?.[gender] ||
     currentProvData.standings[currentProvData.tiers[0]][gender];
+
   const activeGoldenBoot = currentProvData.goldenBoot[gender];
   const activeAvgGoals = currentProvData.avgGoals[gender];
   const activeAssists = currentProvData.assists[gender];
@@ -93,7 +104,6 @@ function ProvincialLeaguesContent() {
             </button>
           </div>
         )}
-
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* =========================================================
               MAIN CONTENT COLUMN
@@ -111,7 +121,6 @@ function ProvincialLeaguesContent() {
                     : `${currentProvData.name} Pro-Am Intelligence Terminal`}
                 </p>
               </div>
-
               {/* Global Gender Toggle */}
               <div className="flex items-center gap-1 bg-neutral-900 border border-neutral-800 p-1 rounded-sm">
                 {(['MEN', 'WOMEN'] as GenderCode[]).map((g) => (
@@ -152,7 +161,6 @@ function ProvincialLeaguesContent() {
                 >
                   [ ALL PROVINCES ]
                 </button>
-
                 {/* Individual Province Pills */}
                 {PROVINCE_ORDER.map((pCode) => {
                   const isActive = selectedJurisdiction === pCode;
@@ -271,8 +279,8 @@ function ProvincialLeaguesContent() {
                                  <span className="text-neutral-400">{row.pros} PROS</span>
                                  <span className="text-white font-bold">{row.rating}</span>
                                  <span className={`w-12 text-center rounded-sm py-0.5 ${
-                                   row.tier === 'ELITE' ? 'bg-red-600/20 text-red-500' :
-                                    row.tier === 'HIGH' ? 'bg-neutral-800 text-neutral-300' : 'bg-neutral-900 text-neutral-500'
+                                   row.tier === 'ELITE' ? 'bg-red-600/20 text-red-500' : 
+                                   row.tier === 'HIGH' ? 'bg-neutral-800 text-neutral-300' : 'bg-neutral-900 text-neutral-500'
                                  }`}>
                                     [{row.tier}]
                                  </span>
@@ -290,6 +298,7 @@ function ProvincialLeaguesContent() {
                     const topTier = pData.tiers[0];
                     const provStandings =
                       pData.standings[topTier]?.[gender] || [];
+
                     return (
                       <div
                         key={provKey}
@@ -314,6 +323,7 @@ function ProvincialLeaguesContent() {
                               [ VIEW FULL DOSSIER ➔ ]
                             </button>
                           </div>
+
                           <ProvincialStandingsTable
                             leagueName={pData.name}
                             standings={provStandings.slice(0, 5)}
@@ -350,7 +360,7 @@ function ProvincialLeaguesContent() {
                            </span>
                         </div>
                         <div className="text-3xl font-extrabold text-white">42</div>
-                        <div className="text-[10px] text-red-500 font-mono font-bold mt-1">ACTIVE CPL/NSL PROSPECTS</div>
+                        <div className="text-[10px] text-red-500 font-mono font-bold mt-1">ACTIVE CPL/NSL PROSPEcripts</div>
                      </div>
                   </div>
                 </div>
