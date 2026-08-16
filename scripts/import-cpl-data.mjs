@@ -33,7 +33,7 @@ if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
 
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
-const API_BASE = 'https://canadasoccerapi.com/api';
+const API_BASE = 'https://canadasoccerapi.com';
 
 function slugify(name) {
   return name
@@ -50,11 +50,11 @@ async function importTeams() {
   if (!res.ok) throw new Error(`/api/teams failed: ${res.status}`);
   const { teams } = await res.json();
 
-  // Deduplicate teams by external_id to prevent Postgres ON CONFLICT batch collision errors
-  const teamMap = new Map();
+  // Step 1: Format rows dynamically
+  const initialRows = [];
   for (const t of teams) {
     const extId = slugify(t.name);
-    teamMap.set(extId, {
+    initialRows.push({
       name: t.name,
       short_name: null,
       league: 'CPL',
@@ -66,8 +66,13 @@ async function importTeams() {
       external_id: extId,
     });
   }
-  const rows = Array.from(teamMap.values());
-  const uniqueRows = Array.from(new Map(rows.map((r) => [r.external_id, r])).values());
+
+  // Step 2: Strict final deduplication by external_id to guarantee unique batch keys
+  const finalDeduper = new Map();
+  for (const row of initialRows) {
+    finalDeduper.set(row.external_id, row);
+  }
+  const uniqueRows = Array.from(finalDeduper.values());
 
   const { error } = await supabase.from('teams').upsert(uniqueRows, { onConflict: 'external_id' });
   if (error) throw new Error(`teams upsert failed: ${error.message}`);
@@ -81,14 +86,13 @@ async function getTeamIdMap() {
 }
 
 async function importMatches(teamIdMap) {
-  console.log('Fetching CPL match history (2019-2025)...');
+  console.log('Fetching CPL match history (2019-2026)...');
   const res = await fetch(`${API_BASE}/matches?limit=500`);
   if (!res.ok) throw new Error(`/api/matches failed: ${res.status}`);
   const { matches, total } = await res.json();
   console.log(`API reports ${total} total matches, fetched ${matches.length}.`);
 
-  // Deduplicate matches by external_id to prevent Postgres ON CONFLICT batch collision errors
-  const matchMap = new Map();
+  const initialRows = [];
   let skipped = 0;
   for (const m of matches) {
     const homeId = teamIdMap.get(slugify(m.home_team));
@@ -98,7 +102,7 @@ async function importMatches(teamIdMap) {
       continue; // team name didn't match anything we just imported — skip rather than guess
     }
     const extId = slugify(`${m.date}-${m.home_team}-${m.away_team}`);
-    matchMap.set(extId, {
+    initialRows.push({
       home_team_id: homeId,
       away_team_id: awayId,
       match_date: m.date,
@@ -112,12 +116,17 @@ async function importMatches(teamIdMap) {
       external_id: extId,
     });
   }
-  const rows = Array.from(matchMap.values());
-  const uniqueRows = Array.from(new Map(rows.map((r) => [r.external_id, r])).values());
+
+  // Strict final deduplication by external_id to guarantee unique match keys
+  const finalDeduper = new Map();
+  for (const row of initialRows) {
+    finalDeduper.set(row.external_id, row);
+  }
+  const uniqueRows = Array.from(finalDeduper.values());
 
   const { error } = await supabase.from('matches').upsert(uniqueRows, { onConflict: 'external_id' });
   if (error) throw new Error(`matches upsert failed: ${error.message}`);
-  console.log(`Upserted ${uniqueRows.length} unique matches. Skipped ${skipped} (team name didn't match — check the log above for anything unexpected).`);
+  console.log(`Upserted ${uniqueRows.length} unique matches. Skipped ${skipped} (team name didn't match).`);
 }
 
 async function main() {
