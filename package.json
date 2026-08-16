@@ -12,6 +12,7 @@
     "cf:deploy": "npm run cf:build && wrangler deploy",
     "typecheck": "tsc --noEmit",
     "test:data": "node scripts/validate-data.mjs",
+    "import:cpl": "node scripts/import-cpl-data.mjs",
     "check": "rm -rf .open-next .next && npm run lint && npm run typecheck && npm run test:data && npm run build"
   },
   "dependencies": {
