@@ -8,8 +8,6 @@ import type { StandingsRow } from '@/lib/types';
 // filtering/pagination/expand-collapse interactivity client-side.
 export const dynamic = 'force-dynamic';
 
-// Still static — nothing in this app queries Supabase yet, standings are
-// unrelated to the wire-feed migration. Same numbers the page already had.
 const standings: StandingsRow[] = [
   { position: 1, clubName: 'Forge FC', played: 0, points: 0, goalDifference: 0 },
   { position: 2, clubName: 'Pacific FC', played: 0, points: 0, goalDifference: 0 },
