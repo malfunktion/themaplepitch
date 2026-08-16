@@ -15,11 +15,14 @@ import React, { useState, useEffect, Suspense } from 'react';
 import Link from 'next/link';
 import Image from 'next/image';
 import { useSearchParams } from 'next/navigation';
+
 import SidebarStack from '@/components/sidebar/SidebarStack';
 import ProLeaguesTracker from '@/components/home/ProLeaguesTracker';
 import CplTalentMap from '@/components/home/CplTalentMap';
 import type { StandingsRow } from '@/lib/types';
 import DataStatus from '@/components/layout/DataStatus';
+import { getCplStandings, getNslStandings } from '@/lib/data/standings';
+
 import {
   PLAYERS_LEADERBOARD,
   XG_DATA,
@@ -28,8 +31,6 @@ import {
   UPCOMING_FIXTURES,
   CPL_FIXTURES_2026,
   NSL_FIXTURES_2026,
-  standings,
-  nslStandings,
   recentStories,
 } from '@/lib/data/proLeagues/proLeaguesDemo';
 
@@ -39,9 +40,18 @@ function ProLeaguesContent() {
 
   const [sortMetric, setSortMetric] = useState<'goals' | 'assists' | 'rating'>('goals');
   const [scoringView, setScoringView] = useState<'overview' | 'xg'>('overview');
+
   const [leagueTab, setLeagueTab] = useState<'CPL' | 'NSL'>(
     urlLeague === 'NSL' ? 'NSL' : 'CPL'
   );
+
+  const [standings, setStandings] = useState<StandingsRow[]>([]);
+  const [nslStandings, setNslStandings] = useState<StandingsRow[]>([]);
+
+  useEffect(() => {
+    getCplStandings().then(setStandings);
+    getNslStandings().then(setNslStandings);
+  }, []);
 
   // Sync state if the URL search param changes (e.g. footer link clicked while
   // already on this page — same pattern as provincial-leagues and national-teams).
@@ -51,12 +61,11 @@ function ProLeaguesContent() {
     }
   }, [urlLeague]);
 
-
   // Calendar State
   const [calendarDate, setCalendarDate] = useState(new Date(2026, 7, 1));
-
   const handlePrevMonth = () => setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() - 1, 1));
   const handleNextMonth = () => setCalendarDate(new Date(calendarDate.getFullYear(), calendarDate.getMonth() + 1, 1));
+
   const calYear = calendarDate.getFullYear();
   const calMonth = calendarDate.getMonth();
   const daysInMonth = new Date(calYear, calMonth + 1, 0).getDate();
@@ -76,7 +85,6 @@ function ProLeaguesContent() {
   const activeTOTW = leagueTab === 'CPL' ? TOTW_DATA.CPL : TOTW_DATA.NSL;
   const activeResults = leagueTab === 'CPL' ? RECENT_RESULTS.CPL : RECENT_RESULTS.NSL;
   const activeUpcoming = leagueTab === 'CPL' ? UPCOMING_FIXTURES.CPL : UPCOMING_FIXTURES.NSL;
-
 
   return (
     <div className="min-h-[100dvh] p-2 sm:p-4 md:p-6 pb-[env(safe-area-inset-bottom)] bg-surface text-charcoal">
@@ -118,7 +126,6 @@ function ProLeaguesContent() {
                 </div>
               </Link>
             </div>
-
             <div className="lg:col-span-7 bg-card border border-border rounded-sm p-4 flex flex-col justify-between">
               <div className="font-mono text-xs font-bold text-charcoal-soft mb-3 tracking-widest uppercase">
                 LATEST PRO LEAGUES DISPATCHES
@@ -177,7 +184,6 @@ function ProLeaguesContent() {
                {leagueTab} MATCHDAY CENTER
              </div>
              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-
                {/* Recent Results */}
                <div>
                  <div className="text-[10px] font-mono font-bold text-charcoal-soft uppercase tracking-wider mb-2 flex items-center gap-1.5">
@@ -198,7 +204,6 @@ function ProLeaguesContent() {
                    ))}
                  </div>
                </div>
-
                {/* Next Up */}
                <div>
                  <div className="text-[10px] font-mono font-bold text-charcoal-soft uppercase tracking-wider mb-2 flex items-center gap-1.5">
@@ -224,7 +229,6 @@ function ProLeaguesContent() {
                    [ FULL CALENDAR ↓ ]
                  </a>
                </div>
-
              </div>
           </div>
 
@@ -259,6 +263,7 @@ function ProLeaguesContent() {
                     </button>
                   </div>
                 </div>
+
                 {scoringView === 'overview' ? (
                   <div className="flex gap-1">
                     {(['goals', 'assists', 'rating'] as const).map(metric => (
@@ -373,6 +378,7 @@ function ProLeaguesContent() {
                     else if (player.pos === 'DEF') badgeClass = "bg-neutral-400 dark:bg-neutral-600 text-white";
                     else if (player.pos === 'MID') badgeClass = "bg-neutral-500 dark:bg-neutral-500 text-white";
                     else if (player.pos === 'FWD') badgeClass = "bg-crimson text-white";
+
                     return (
                       <div key={idx} className="flex justify-between items-center py-[5px] border-b border-border dark:border-border/50 last:border-0 hover:bg-neutral-50 dark:hover:bg-neutral-800/30 transition-colors px-2">
                         <div className="flex items-center gap-3">
@@ -391,9 +397,7 @@ function ProLeaguesContent() {
              </div>
           </div>
 
-          {/* TALENT ORIGIN MAP — CplTalentMap owns its full card + header now that
-              it's correctly wired to leagueTab; no need to wrap it in a second,
-              duplicate card with a stale header that was always stuck on CPL. */}
+          {/* TALENT ORIGIN MAP */}
           <CplTalentMap league={leagueTab} />
 
           {/* INTERACTIVE CALENDAR FIXTURE TRACKER */}
@@ -411,20 +415,24 @@ function ProLeaguesContent() {
                    </button>
                 </div>
              </div>
+             
              <div className="grid grid-cols-7 gap-1 md:gap-2 text-center font-mono text-xs">
                 {['SUN', 'MON', 'TUE', 'WED', 'THU', 'FRI', 'SAT'].map(day => (
                   <div key={day} className="py-2 font-bold text-[9px] tracking-widest text-charcoal-soft uppercase">
                     {day}
                   </div>
                 ))}
+                
                 {Array.from({ length: firstDay }).map((_, i) => (
                   <div key={`blank-${i}`} className="bg-surface/50 dark:bg-black/20 rounded-sm min-h-[60px]" />
                 ))}
+                
                 {Array.from({ length: daysInMonth }).map((_, i) => {
                   const dateNum = i + 1;
                   const dateStr = `${calYear}-${String(calMonth + 1).padStart(2, '0')}-${String(dateNum).padStart(2, '0')}`;
                   const fixtureStr = activeFixtures[dateStr];
                   const isToday = (calYear === today.getFullYear() && calMonth === today.getMonth() && dateNum === today.getDate());
+                  
                   let bgClass = "bg-surface border border-border dark:border-border/50";
                   let textClass = "text-charcoal-soft";
                   
@@ -435,6 +443,7 @@ function ProLeaguesContent() {
                     bgClass = "bg-crimson border-crimson-dim cursor-pointer hover:bg-crimson hover:scale-[1.02] transition-all";
                     textClass = "text-charcoal font-bold shadow-sm";
                   }
+
                   return (
                     <div key={dateNum} className={`relative p-1 md:p-2 min-h-[60px] md:min-h-[80px] flex flex-col items-center justify-start rounded-sm overflow-hidden ${bgClass} ${textClass}`}>
                       <span className="text-sm md:text-base mt-1">{dateNum}</span>
@@ -451,14 +460,12 @@ function ProLeaguesContent() {
                 })}
              </div>
           </div>
-
         </div>
 
         {/* 5TH COLUMN SIDEBAR */}
         <div className="lg:col-span-4 flex flex-col gap-4 sticky top-6">
           <SidebarStack standings={standings} nslStandings={nslStandings} defaultTab="radars" />
         </div>
-
       </div>
     </div>
   );
