@@ -1,9 +1,16 @@
 // src/lib/wireData.ts
-//
-// Everything that used to live here (WIRE_STORIES mock data, the
-// WireStoryItem shape, the old wire-vocabulary CATEGORIES list) is gone —
-// /the-wire and the homepage both read live data from Sanity now via
-// lib/data/newsWire.ts's getWireFeed(). This file is down to the one
-// export that's still real content, not mock data: the provincial
-// sub-league codes used by the Wire's Provincial filter sub-tabs.
+
 export const PROVINCIAL_SUBS = ['L1O', 'L1BC', 'L1QC', 'L1A'];
+
+export const CATEGORIES = [
+  { name: 'ALL DISPATCHES', count: 0 },
+  { name: 'CPL INTEL', count: 0 },
+  { name: 'NSL INTEL', count: 0 },
+  { name: 'MLS', count: 0 },
+  { name: 'ABROAD', count: 0 },
+  { name: 'TRANSFERS', count: 0 },
+  { name: 'CANMNT', count: 0 },
+  { name: 'CANWNT', count: 0 },
+  { name: 'PROVINCIAL', count: 0 },
+  { name: 'COLLEGIATE INTEL', count: 0 }, // Newly added pipeline category
+];
