@@ -67,10 +67,11 @@ async function importTeams() {
     });
   }
   const rows = Array.from(teamMap.values());
+  const uniqueRows = Array.from(new Map(rows.map((r) => [r.external_id, r])).values());
 
-  const { error } = await supabase.from('teams').upsert(rows, { onConflict: 'external_id' });
+  const { error } = await supabase.from('teams').upsert(uniqueRows, { onConflict: 'external_id' });
   if (error) throw new Error(`teams upsert failed: ${error.message}`);
-  console.log(`Upserted ${rows.length} unique teams (${teams.filter((t) => t.status === 'active').length} active, ${teams.filter((t) => t.status !== 'active').length} inactive).`);
+  console.log(`Upserted ${uniqueRows.length} unique teams (${teams.filter((t) => t.status === 'active').length} active, ${teams.filter((t) => t.status !== 'active').length} inactive).`);
 }
 
 async function getTeamIdMap() {
@@ -112,10 +113,11 @@ async function importMatches(teamIdMap) {
     });
   }
   const rows = Array.from(matchMap.values());
+  const uniqueRows = Array.from(new Map(rows.map((r) => [r.external_id, r])).values());
 
-  const { error } = await supabase.from('matches').upsert(rows, { onConflict: 'external_id' });
+  const { error } = await supabase.from('matches').upsert(uniqueRows, { onConflict: 'external_id' });
   if (error) throw new Error(`matches upsert failed: ${error.message}`);
-  console.log(`Upserted ${rows.length} unique matches. Skipped ${skipped} (team name didn't match — check the log above for anything unexpected).`);
+  console.log(`Upserted ${uniqueRows.length} unique matches. Skipped ${skipped} (team name didn't match — check the log above for anything unexpected).`);
 }
 
 async function main() {
