@@ -3,11 +3,14 @@
 import Link from 'next/link';
 import HubHeader from '@/components/entity/HubHeader';
 import SourceStamp from '@/components/entity/SourceStamp';
+import SidebarStack from '@/components/sidebar/SidebarStack';
 import { teams } from '@/lib/data/demo';
+import { standings, nslStandings } from '@/lib/data/proLeagues/proLeaguesDemo';
 
 export default function TeamsPage() {
   return (
-    <>
+    <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
+      <div className="lg:col-span-8">
       <HubHeader
         eyebrow="Entity index // Teams"
         title="TEAM INDEX"
@@ -59,6 +62,10 @@ export default function TeamsPage() {
       <div className="mt-6">
         <SourceStamp />
       </div>
-    </>
+      </div>
+      <div className="lg:col-span-4 sticky top-6">
+        <SidebarStack standings={standings} nslStandings={nslStandings} defaultTab="standings" />
+      </div>
+    </div>
   );
 }
