@@ -20,6 +20,7 @@ import {
   DisciplineLogCard,
 } from '@/components/provincial/ProvincialFixturesAndDiscipline';
 import ProvincialVideoVault from '@/components/provincial/ProvincialVideoVault';
+import { standings, nslStandings } from '@/lib/data/proLeagues/proLeaguesDemo';
 
 type HubProvinceSelection = 'ALL' | ProvinceCode;
 
@@ -93,11 +94,11 @@ function ProvincialLeaguesContent() {
           </div>
         )}
 
-        <div className="grid grid-cols-1 lg:grid-cols-5 gap-6">
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
           {/* =========================================================
-              MAIN CONTENT COLUMN (Cols 1-4)
+              MAIN CONTENT COLUMN
               ========================================================= */}
-          <div className="lg:col-span-4 space-y-6">
+          <div className="lg:col-span-8 space-y-6">
             {/* Header & Title */}
             <div className="border-b border-neutral-800 pb-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
               <div>
@@ -447,8 +448,8 @@ function ProvincialLeaguesContent() {
           {/* =========================================================
             SIDEBAR COLUMN (Col 5)
             ========================================================= */}
-          <div className="lg:col-span-1">
-            <SidebarStack />
+          <div className="lg:col-span-4">
+            <SidebarStack standings={standings} nslStandings={nslStandings} />
           </div>
         </div>
       </div>
