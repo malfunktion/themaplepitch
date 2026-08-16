@@ -50,21 +50,27 @@ async function importTeams() {
   if (!res.ok) throw new Error(`/api/teams failed: ${res.status}`);
   const { teams } = await res.json();
 
-  const rows = teams.map((t) => ({
-    name: t.name,
-    short_name: null,
-    league: 'CPL',
-    gender: 'men',
-    division_level: 'Professional',
-    logo_url: null,
-    youtube_search_tag: null,
-    slug: slugify(t.name),
-    external_id: slugify(t.name),
-  }));
+  // Deduplicate teams by external_id to prevent Postgres ON CONFLICT batch collision errors
+  const teamMap = new Map();
+  for (const t of teams) {
+    const extId = slugify(t.name);
+    teamMap.set(extId, {
+      name: t.name,
+      short_name: null,
+      league: 'CPL',
+      gender: 'men',
+      division_level: 'Professional',
+      logo_url: null,
+      youtube_search_tag: null,
+      slug: extId,
+      external_id: extId,
+    });
+  }
+  const rows = Array.from(teamMap.values());
 
   const { error } = await supabase.from('teams').upsert(rows, { onConflict: 'external_id' });
   if (error) throw new Error(`teams upsert failed: ${error.message}`);
-  console.log(`Upserted ${rows.length} teams (${teams.filter((t) => t.status === 'active').length} active, ${teams.filter((t) => t.status !== 'active').length} inactive).`);
+  console.log(`Upserted ${rows.length} unique teams (${teams.filter((t) => t.status === 'active').length} active, ${teams.filter((t) => t.status !== 'active').length} inactive).`);
 }
 
 async function getTeamIdMap() {
@@ -80,7 +86,8 @@ async function importMatches(teamIdMap) {
   const { matches, total } = await res.json();
   console.log(`API reports ${total} total matches, fetched ${matches.length}.`);
 
-  const rows = [];
+  // Deduplicate matches by external_id to prevent Postgres ON CONFLICT batch collision errors
+  const matchMap = new Map();
   let skipped = 0;
   for (const m of matches) {
     const homeId = teamIdMap.get(slugify(m.home_team));
@@ -89,7 +96,8 @@ async function importMatches(teamIdMap) {
       skipped += 1;
       continue; // team name didn't match anything we just imported — skip rather than guess
     }
-    rows.push({
+    const extId = slugify(`${m.date}-${m.home_team}-${m.away_team}`);
+    matchMap.set(extId, {
       home_team_id: homeId,
       away_team_id: awayId,
       match_date: m.date,
@@ -100,13 +108,14 @@ async function importMatches(teamIdMap) {
       gender: 'men',
       affiliate_ticket_link: null,
       broadcast_network: null,
-      external_id: slugify(`${m.date}-${m.home_team}-${m.away_team}`),
+      external_id: extId,
     });
   }
+  const rows = Array.from(matchMap.values());
 
   const { error } = await supabase.from('matches').upsert(rows, { onConflict: 'external_id' });
   if (error) throw new Error(`matches upsert failed: ${error.message}`);
-  console.log(`Upserted ${rows.length} matches. Skipped ${skipped} (team name didn't match — check the log above for anything unexpected).`);
+  console.log(`Upserted ${rows.length} unique matches. Skipped ${skipped} (team name didn't match — check the log above for anything unexpected).`);
 }
 
 async function main() {
