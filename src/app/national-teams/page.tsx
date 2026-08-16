@@ -3,6 +3,7 @@
 
 import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
+
 import SidebarStack from '@/components/sidebar/SidebarStack';
 import TacticalBlueprint from '@/components/national-teams/TacticalBlueprint';
 import TicketPortal from '@/components/national-teams/TicketPortal';
@@ -17,6 +18,7 @@ import FanCommunityHub from '@/components/national-teams/FanCommunityHub';
 import PressRoomTranscripts from '@/components/national-teams/PressRoomTranscripts';
 import type { StandingsRow } from '@/lib/types';
 import DataStatus from '@/components/layout/DataStatus';
+import { getCplStandings, getNslStandings } from '@/lib/data/standings';
 
 interface SquadPlayer {
   number: number;
@@ -38,9 +40,18 @@ function NationalTeamsContent() {
   const [activeGender, setActiveGender] = useState<'MEN' | 'WOMEN'>(
     urlGender === 'WOMEN' ? 'WOMEN' : 'MEN'
   );
+
   const [activeAge, setActiveAge] = useState<
     'SENIOR' | 'U-23' | 'U-20' | 'U-17'
   >('SENIOR');
+
+  const [standings, setStandings] = useState<StandingsRow[]>([]);
+  const [nslStandings, setNslStandings] = useState<StandingsRow[]>([]);
+
+  useEffect(() => {
+    getCplStandings().then(setStandings);
+    getNslStandings().then(setNslStandings);
+  }, []);
 
   // Sync state if URL search param changes
   useEffect(() => {
@@ -531,67 +542,11 @@ function NationalTeamsContent() {
 
   const currentStats = nationalStatsData[activeGender];
 
-  const standings: StandingsRow[] = [
-    {
-      position: 1,
-      clubName: 'Forge FC',
-      played: 0,
-      points: 0,
-      goalDifference: 0,
-    },
-    {
-      position: 2,
-      clubName: 'Pacific FC',
-      played: 0,
-      points: 0,
-      goalDifference: 0,
-    },
-    {
-      position: 3,
-      clubName: 'Cavalry FC',
-      played: 0,
-      points: 0,
-      goalDifference: 0,
-    },
-    {
-      position: 4,
-      clubName: 'Atlético Ottawa',
-      played: 0,
-      points: 0,
-      goalDifference: 0,
-    },
-  ];
-
-  const nslStandings: StandingsRow[] = [
-    {
-      position: 1,
-      clubName: 'AFC Toronto',
-      played: 0,
-      points: 0,
-      goalDifference: 0,
-    },
-    {
-      position: 2,
-      clubName: 'Calgary Wild FC',
-      played: 0,
-      points: 0,
-      goalDifference: 0,
-    },
-    {
-      position: 3,
-      clubName: 'Halifax Tides FC',
-      played: 0,
-      points: 0,
-      goalDifference: 0,
-    },
-  ];
-
   return (
     <div className="min-h-[100dvh] p-2 sm:p-4 md:p-6 pb-[env(safe-area-inset-bottom)] bg-surface text-charcoal">
       <div className="mb-4 border-b border-border pb-3">
         <DataStatus />
       </div>
-
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
         {/* Main Content Area (8 Columns) */}
         <div className="lg:col-span-8 flex flex-col gap-6">
@@ -657,7 +612,6 @@ function NationalTeamsContent() {
                 />
                 <div className="absolute inset-0 bg-gradient-to-t from-black/90 via-black/50 to-transparent" />
               </div>
-
               <div className="relative z-10 flex justify-between items-start">
                 <h1 className="text-[9px] font-mono font-bold bg-crimson text-white px-2 py-0.5 rounded-sm inline-block">
                   [ {activeGender} {'//'} {activeAge} COMMAND CENTER ]
@@ -666,7 +620,6 @@ function NationalTeamsContent() {
                   FIFA RANK: {currentFed.fifaRank}
                 </span>
               </div>
-
               <div className="relative z-10 flex flex-col gap-2">
                 <span className="text-[10px] font-mono text-crimson tracking-widest">
                   INTERNATIONAL WINDOW ACTIVE
@@ -707,7 +660,6 @@ function NationalTeamsContent() {
                     FRI, OCT 10 • 7:00 PM EDT
                   </span>
                 </div>
-
                 <div className="flex flex-col items-end gap-1.5 w-full sm:w-auto">
                   <span className="text-[9px] font-mono text-charcoal-soft uppercase">
                     LEGAL BROADCAST STREAM
@@ -769,7 +721,6 @@ function NationalTeamsContent() {
                     [ LIVE RANKING TELEMETRY ]
                   </span>
                 </div>
-
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                   {/* FIFA World Ranking Block */}
                   <div className="bg-card border border-border rounded-sm p-3 flex flex-col justify-between gap-2">
@@ -796,7 +747,6 @@ function NationalTeamsContent() {
                       </strong>
                     </span>
                   </div>
-
                   {/* CONCACAF Regional Rank & Coefficient */}
                   <div className="bg-card border border-border rounded-sm p-3 flex flex-col justify-between gap-2">
                     <div className="flex justify-between items-center">
@@ -822,7 +772,6 @@ function NationalTeamsContent() {
                       </strong>
                     </span>
                   </div>
-
                   {/* Tournament Seeding & Efficiency */}
                   <div className="bg-card border border-border rounded-sm p-3 flex flex-col justify-between gap-2">
                     <div className="flex justify-between items-center">
@@ -863,7 +812,6 @@ function NationalTeamsContent() {
                 CONCACAF QUALIFYING CYCLE
               </span>
             </div>
-
             <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
               {[
                 {
@@ -917,7 +865,6 @@ function NationalTeamsContent() {
                 {squadPool.length} REGISTERED ASSETS
               </span>
             </div>
-
             <div className="overflow-x-auto">
               <table className="w-full text-left border-collapse">
                 <thead>
@@ -982,7 +929,6 @@ function NationalTeamsContent() {
                 [ LIVE POOL STATS ]
               </span>
             </div>
-
             <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
               {/* Module A: Golden Boot / Top Scorers */}
               <div className="bg-card border border-border rounded-sm p-3.5 flex flex-col gap-3">
