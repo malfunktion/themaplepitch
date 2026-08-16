@@ -35,6 +35,7 @@ const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
 const API_BASE = 'https://canadasoccerapi.com';
 
+
 function slugify(name) {
   return name
     .toLowerCase()
