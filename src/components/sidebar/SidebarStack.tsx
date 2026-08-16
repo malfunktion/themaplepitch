@@ -8,6 +8,7 @@ import DualNationalRadar from '@/components/home/DualNationalRadar';
 import SidebarRumourMill from '@/components/home/SidebarRumourMill';
 import SidebarAdWidget from '@/components/home/SidebarAdWidget';
 import SidebarAdWidget4 from '@/components/home/SidebarAdWidget4';
+import SidebarAdWidget5 from '@/components/home/SidebarAdWidget5';
 import type { StandingsRow } from '@/lib/types';
 
 interface SidebarStackProps {
@@ -88,6 +89,10 @@ export default function SidebarStack({ standings = [], nslStandings = [], defaul
           </div>
         )}
       </div>
+      {/* Was previously only added by the-wire as a separate element outside
+          this component (src/components/wire/WireDashboard.tsx) — now part
+          of the standard column on every page that uses SidebarStack. */}
+      <SidebarAdWidget5 />
     </div>
   );
 }
