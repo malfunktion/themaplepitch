@@ -7,7 +7,6 @@ import WireFeedList from '@/components/home/WireFeedList';
 import PlayerDatabaseSpotlights from '@/components/home/PlayerDatabaseSpotlights';
 import ProLeaguesTracker from '@/components/home/ProLeaguesTracker';
 import YouthToProPipeline from '@/components/home/YouthToProPipeline';
-import CollegiateWatchlist from '@/components/home/CollegiateWatchlist';
 import FanHubSection from '@/components/home/FanHubSection';
 import PlayerAndProvincialSection from '@/components/home/PlayerAndProvincialSection';
 import LegendsGallery from '@/components/home/LegendsGallery';
@@ -75,7 +74,6 @@ export default async function HomePage() {
     'player-database': <PlayerDatabaseSpotlights />,
     'pro-leagues-tracker': <ProLeaguesTracker />,
     'youth-pipeline': <YouthToProPipeline />,
-    'collegiate-watchlist': <CollegiateWatchlist />,
     'fan-hub': <FanHubSection />,
     'player-provincial': <PlayerAndProvincialSection />,
     'stats-dashboard': <StatsDashboard />,
@@ -94,8 +92,8 @@ export default async function HomePage() {
           {settings.tournamentBannerText}
         </Link>
       )}
-      <div className="grid grid-cols-1 lg:grid-cols-5 gap-4">
-        <div className="lg:col-span-4 grid grid-cols-1 md:grid-cols-4 auto-rows-[minmax(140px,auto)] gap-4">
+      <div className="grid grid-cols-1 lg:grid-cols-12 gap-4">
+        <div className="lg:col-span-8 grid grid-cols-1 md:grid-cols-4 auto-rows-[minmax(140px,auto)] gap-4">
           {homeLayout.map(({ id, span }) => (
             <div key={id} className={`${span} w-full overflow-hidden`}>
               {sections[id] || null}
@@ -104,10 +102,10 @@ export default async function HomePage() {
         </div>
         
         {/* THE FAMOUS 5TH COLUMN */}
-        <div className="lg:col-span-1 flex flex-col gap-4 sticky top-6">
+        <div className="lg:col-span-4 flex flex-col gap-4 sticky top-6">
           <SidebarStack standings={standings} nslStandings={nslStandings} defaultTab="standings" />
         </div>
       </div>
     </div>
   );
-}
+    }
