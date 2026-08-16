@@ -3,9 +3,11 @@ import HubHeader from '@/components/entity/HubHeader';
 import SourceStamp from '@/components/entity/SourceStamp';
 import SidebarStack from '@/components/sidebar/SidebarStack';
 import { matches } from '@/lib/data/demo';
-import { standings, nslStandings } from '@/lib/data/proLeagues/proLeaguesDemo';
+import { getCplStandings, getNslStandings } from '@/lib/data/standings';
 
-export default function MatchesPage() {
+export default async function MatchesPage() {
+  const [standings, nslStandings] = await Promise.all([getCplStandings(), getNslStandings()]);
+
   return (
     <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-start">
       <div className="lg:col-span-8">
