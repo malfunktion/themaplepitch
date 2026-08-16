@@ -73,8 +73,8 @@ export default function WireDashboard({ initialStories, standings, nslStandings 
   const [currentPage, setCurrentPage] = useState(1);
 
   const heroStory = initialStories.find((s) => s.isHero) || initialStories[0];
-  const largeDispatches = initialStories.filter((s) => !s.isHero && !s.isDataDrop).slice(0, 2);
-  const compactDispatches = initialStories.filter((s) => !s.isHero && !s.isDataDrop).slice(2, 6);
+  const largeDispatches = initialStories.filter((s) => s.id !== heroStory?.id && !s.isDataDrop).slice(0, 2);
+  const compactDispatches = initialStories.filter((s) => s.id !== heroStory?.id && !s.isDataDrop).slice(2, 6);
 
   // Collect IDs of stories already shown in the top hero/featured/compact grids
   // so they don't duplicate inside the main intelligence stream below.
@@ -676,4 +676,4 @@ export default function WireDashboard({ initialStories, standings, nslStandings 
       </div>
     </div>
   );
-                                              }
+}
