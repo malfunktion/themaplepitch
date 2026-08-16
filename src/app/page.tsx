@@ -15,9 +15,10 @@ import ConversionSection from '@/components/home/ConversionSection';
 import LocalClubSpotlight from '@/components/home/LocalClubSpotlight';
 import SidebarStack from '@/components/sidebar/SidebarStack';
 import { homeLayout } from '@/lib/homeLayout.config';
-import type { WireStory, StandingsRow } from '@/lib/types';
+import type { WireStory } from '@/lib/types';
 import { client } from '@/lib/sanity';
 import { getWireFeed } from '@/lib/data/newsWire';
+import { getCplStandings, getNslStandings } from '@/lib/data/standings';
 
 export const dynamic = 'force-dynamic';
 
@@ -51,23 +52,7 @@ export default async function HomePage() {
     : fallbackFeatured;
   const wireStories = wireFeed.slice(1, 6);
 
-  const standings: StandingsRow[] = [
-    { position: 1, clubName: "Forge FC", played: 0, points: 0, goalDifference: 0 },
-    { position: 2, clubName: "Pacific FC", played: 0, points: 0, goalDifference: 0 },
-    { position: 3, clubName: "Cavalry FC", played: 0, points: 0, goalDifference: 0 },
-    { position: 4, clubName: "Atlético Ottawa", played: 0, points: 0, goalDifference: 0 },
-    { position: 5, clubName: "York United FC", played: 0, points: 0, goalDifference: 0 },
-    { position: 6, clubName: "Valour FC", played: 0, points: 0, goalDifference: 0 },
-    { position: 7, clubName: "Halifax Wanderers FC", played: 0, points: 0, goalDifference: 0 },
-    { position: 8, clubName: "Vancouver FC", played: 0, points: 0, goalDifference: 0 },
-  ];
-
-  const nslStandings: StandingsRow[] = [
-    { position: 1, clubName: "Vancouver Rise", played: 0, points: 0, goalDifference: 0 },
-    { position: 2, clubName: "Calgary Wild", played: 0, points: 0, goalDifference: 0 },
-    { position: 3, clubName: "AFC Toronto", played: 0, points: 0, goalDifference: 0 },
-    { position: 4, clubName: "Halifax Tides", played: 0, points: 0, goalDifference: 0 },
-  ];
+  const [standings, nslStandings] = await Promise.all([getCplStandings(), getNslStandings()]);
 
   const sections: Record<string, ReactNode> = {
     hero: <HeroDossier story={featured} />,
