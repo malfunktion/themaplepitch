@@ -7,6 +7,7 @@ import WireFeedList from '@/components/home/WireFeedList';
 import PlayerDatabaseSpotlights from '@/components/home/PlayerDatabaseSpotlights';
 import ProLeaguesTracker from '@/components/home/ProLeaguesTracker';
 import YouthToProPipeline from '@/components/home/YouthToProPipeline';
+import CollegiateWatchlist from '@/components/home/CollegiateWatchlist';
 import FanHubSection from '@/components/home/FanHubSection';
 import PlayerAndProvincialSection from '@/components/home/PlayerAndProvincialSection';
 import LegendsGallery from '@/components/home/LegendsGallery';
@@ -74,6 +75,7 @@ export default async function HomePage() {
     'player-database': <PlayerDatabaseSpotlights />,
     'pro-leagues-tracker': <ProLeaguesTracker />,
     'youth-pipeline': <YouthToProPipeline />,
+    'collegiate-watchlist': <CollegiateWatchlist />,
     'fan-hub': <FanHubSection />,
     'player-provincial': <PlayerAndProvincialSection />,
     'stats-dashboard': <StatsDashboard />,
@@ -108,4 +110,4 @@ export default async function HomePage() {
       </div>
     </div>
   );
-    }
+}
