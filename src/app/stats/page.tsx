@@ -13,7 +13,9 @@ type ViewMode =
   | 'PLAYERS'
   | 'TEAMS'
   | 'CANADIANS ABROAD'
-  | 'PROVINCIAL';
+  | 'PROVINCIAL'
+  | 'COLLEGIATE';
+
 type PlayerRow = {
   rank: number;
   name: string;
@@ -35,6 +37,7 @@ const tabs: { id: ViewMode; label: string }[] = [
   { id: 'TEAMS', label: 'TEAM STREAMS' },
   { id: 'CANADIANS ABROAD', label: 'CANADIANS ABROAD' },
   { id: 'PROVINCIAL', label: 'PROVINCIAL' },
+  { id: 'COLLEGIATE', label: 'COLLEGIATE (NCAA/U SPORTS)' },
 ];
 
 function MetricCard({
@@ -105,7 +108,7 @@ function Leaderboard({
       <div className="p-2 sm:p-3 font-mono">
         <div className="grid grid-cols-12 px-2 py-1.5 text-[8px] tracking-widest text-charcoal-soft border-b border-border uppercase">
           <span className="col-span-1">#</span>
-          <span className="col-span-7">PLAYER {'// CLUB'}</span>
+          <span className="col-span-7">PLAYER {'// SCHOOL'}</span>
           <span className="col-span-4 text-right">{valueLabel}</span>
         </div>
         {rows.map((row) => (
@@ -169,11 +172,9 @@ function DataTable({
             <tr>
               <th className="px-4 py-2">Rank</th>
               <th className="px-4 py-2">Player</th>
-              <th className="px-4 py-2">Club {'// League'}</th>
-              <th className="px-4 py-2 text-right">G / A</th>
-              <th className="px-4 py-2 text-right">
-                {abroad ? 'Rating' : 'Minutes / Rating'}
-              </th>
+              <th className="px-4 py-2">School {'// League'}</th>
+              <th className="px-4 py-2 text-right">Goals / Assists</th>
+              <th className="px-4 py-2 text-right">GPM / Status</th>
             </tr>
           </thead>
           <tbody className="text-[10px]">
@@ -191,7 +192,7 @@ function DataTable({
                   {p.ga}
                 </td>
                 <td className="px-4 py-2.5 text-right text-charcoal">
-                  {abroad ? p.rtg : p.rtg ?? p.mins}
+                  {p.rtg ?? p.mins}
                 </td>
               </tr>
             ))}
@@ -310,6 +311,7 @@ export default function StatsHubPage() {
   const currentDutyTracker =
     programGender === 'MEN' ? menDutyTracker : womenDutyTracker;
   const currentRecords = programGender === 'MEN' ? menRecords : womenRecords;
+  const currentCollegiate = programGender === 'MEN' ? menCollegiateStream : womenCollegiateStream;
 
   const streamPlayers =
     programGender === 'MEN' ? cplStreamPlayers : nslStreamPlayers;
@@ -341,9 +343,9 @@ export default function StatsHubPage() {
       streamPlayers,
       secondaryStream,
       currentTeamOfWeek,
+      currentCollegiate,
     ].forEach((source) => add(source, 'CANADA'));
     return [...pool.values()].sort((x, y) => x.name.localeCompare(y.name));
-    // Fixed: ESLint thinks programGender is an unnecessary dependency but currentAbroad depends on it. Supressed.
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [
     programGender,
@@ -354,61 +356,20 @@ export default function StatsHubPage() {
     streamPlayers,
     secondaryStream,
     currentTeamOfWeek,
+    currentCollegiate,
   ]);
 
   const standings: StandingsRow[] = [
-    {
-      position: 1,
-      clubName: 'Forge FC',
-      played: 14,
-      points: 28,
-      goalDifference: 12,
-    },
-    {
-      position: 2,
-      clubName: 'Atlético Ottawa',
-      played: 14,
-      points: 26,
-      goalDifference: 8,
-    },
-    {
-      position: 3,
-      clubName: 'Cavalry FC',
-      played: 14,
-      points: 24,
-      goalDifference: 6,
-    },
-    {
-      position: 4,
-      clubName: 'York United FC',
-      played: 14,
-      points: 20,
-      goalDifference: -2,
-    },
+    { position: 1, clubName: 'Forge FC', played: 14, points: 28, goalDifference: 12 },
+    { position: 2, clubName: 'Atlético Ottawa', played: 14, points: 26, goalDifference: 8 },
+    { position: 3, clubName: 'Cavalry FC', played: 14, points: 24, goalDifference: 6 },
+    { position: 4, clubName: 'York United FC', played: 14, points: 20, goalDifference: -2 },
   ];
 
   const nslStandings: StandingsRow[] = [
-    {
-      position: 1,
-      clubName: 'AFC Toronto',
-      played: 10,
-      points: 22,
-      goalDifference: 9,
-    },
-    {
-      position: 2,
-      clubName: 'Calgary Wild FC',
-      played: 10,
-      points: 19,
-      goalDifference: 5,
-    },
-    {
-      position: 3,
-      clubName: 'Halifax Tides FC',
-      played: 10,
-      points: 15,
-      goalDifference: 1,
-    },
+    { position: 1, clubName: 'AFC Toronto', played: 10, points: 22, goalDifference: 9 },
+    { position: 2, clubName: 'Calgary Wild FC', played: 10, points: 19, goalDifference: 5 },
+    { position: 3, clubName: 'Halifax Tides FC', played: 10, points: 15, goalDifference: 1 },
   ];
 
   const provincialScorers = getProvincialScorers(provStatsProvince);
@@ -419,6 +380,7 @@ export default function StatsHubPage() {
   const showTeams = view === 'TEAMS';
   const showAbroad = view === 'CANADIANS ABROAD';
   const showProvincial = view === 'PROVINCIAL';
+  const showCollegiate = view === 'COLLEGIATE';
 
   return (
     <div className="min-h-[100dvh] p-2 sm:p-4 md:p-6 pb-[env(safe-area-inset-bottom)] bg-surface text-charcoal">
@@ -436,8 +398,7 @@ export default function StatsHubPage() {
                 </h1>
                 <p className="text-[10px] sm:text-xs font-mono text-charcoal-soft max-w-2xl mt-2 leading-relaxed">
                   A single analytical surface for Canadian player performance,
-                  league leaders, national-team duty, provincial pathways and
-                  Canadians competing abroad.
+                  league leaders, national-team duty, provincial pathways, collegiate pipelines and Canadians competing abroad.
                 </p>
               </div>
               <div className="flex items-center gap-2 font-mono text-[8px] shrink-0">
@@ -488,6 +449,7 @@ export default function StatsHubPage() {
                 <option>NSL</option>
                 <option>MLS // CANADIANS</option>
                 <option>ABROAD</option>
+                <option>COLLEGIATE (NCAA / U SPORTS)</option>
               </select>
             </div>
             <nav
@@ -742,6 +704,29 @@ export default function StatsHubPage() {
                   </table>
                 </div>
               </section>
+            </>
+          )}
+          {showCollegiate && (
+            <>
+              <section className="bg-card border border-border rounded-sm p-4">
+                <div className="flex items-start justify-between gap-4">
+                  <div>
+                    <span className="text-[9px] font-mono tracking-[0.18em] text-charcoal-soft">
+                      NCAA D1 & U SPORTS // PIPELINE DATASET
+                    </span>
+                    <h2 className="text-lg font-mono font-black text-charcoal mt-1">
+                      COLLEGIATE FOOTBALL INTELLIGENCE
+                    </h2>
+                  </div>
+                  <Link href="/collegiate-pipeline" className="text-[9px] font-mono text-crimson hover:underline">
+                    [ OPEN COLLEGIATE PIPELINE TERMINAL → ]
+                  </Link>
+                </div>
+              </section>
+              <DataTable
+                title={`COLLEGIATE PLAYER STREAM // ${programGender}`}
+                players={currentCollegiate}
+              />
             </>
           )}
           {showProvincial && (
@@ -1025,6 +1010,21 @@ const womenAbroad = [
   { rank: 4, name: 'Evelyne Viens', club: 'AS Roma // ITA', value: '7.9 RTG', initials: 'E.V' },
   { rank: 5, name: 'Cloé Lacasse', club: 'Utah Royals // USA', value: '7.8 RTG', initials: 'C.L' },
 ];
+// --- Collegiate Streams ---
+const menCollegiateStream = [
+  { rank: 1, name: 'J. Smith', club: 'Syracuse Univ. (NCAA D1)', ga: '11 G • 3 A', rtg: '0.85 GPM' },
+  { rank: 2, name: 'T. Wright', club: 'Cape Breton (U SPORTS)', ga: '9 G • 2 A', rtg: '0.78 GPM' },
+  { rank: 3, name: 'M. Rossi', club: 'Wake Forest (NCAA D1)', ga: '7 G • 5 A', rtg: '0.62 GPM' },
+  { rank: 4, name: 'A. Kone', club: 'Montreal (U SPORTS)', ga: '6 G • 2 A', rtg: '0.55 GPM' },
+  { rank: 5, name: 'D. Osorio', club: 'UBC (U SPORTS)', ga: '5 G • 4 A', rtg: '0.50 GPM' },
+];
+const womenCollegiateStream = [
+  { rank: 1, name: 'S. Alarie', club: 'Penn State (NCAA D1)', ga: '14 G • 4 A', rtg: '0.92 GPM' },
+  { rank: 2, name: 'C. Briand', club: 'Laval (U SPORTS)', ga: '12 G • 2 A', rtg: '0.88 GPM' },
+  { rank: 3, name: 'M. Leon', club: 'Florida State (NCAA D1)', ga: '10 G • 3 A', rtg: '0.75 GPM' },
+  { rank: 4, name: 'K. Grewal', club: 'UBC (U SPORTS)', ga: '8 G • 3 A', rtg: '0.60 GPM' },
+  { rank: 5, name: 'L. Awujo', club: 'USC (NCAA D1)', ga: '7 G • 2 A', rtg: '0.55 GPM' },
+];
 // --- 10-Player Stream Data Lists ---
 const cplStreamPlayers = [
   { rank: 1, name: 'Terran Campbell', club: 'Forge FC', ga: '14 G • 3 A', rtg: '8.2' },
@@ -1236,8 +1236,7 @@ const womenRecords = [
   { label: 'First NSL hat-trick', value: 'Evelyne Viens — Montreal Roses' },
   { label: 'Longest clean-sheet streak', value: 'Katelyn Rowland — 4 straight' },
   { label: 'Highest single-match attendance', value: 'AFC Toronto — 12,410' },
-  // Fixed unescaped entities below
-  { label: 'Fastest goal from kickoff', value: 'Simi Awujo — 48 &apos;&apos;' }, 
+  { label: 'Fastest goal from kickoff', value: "Simi Awujo — 48 ''" }, 
   { label: 'Most assists, inaugural NSL season', value: 'Sarah Stratigakis — 6' },
   { label: 'Longest home unbeaten streak', value: 'AFC Toronto — 7 matches' },
   { label: 'Most saves in a single match', value: 'Rylee Foster — 11 saves' },
