@@ -33,12 +33,14 @@ jobs:
       # them at request time. Setting them only on the later wrangler deploy
       # step (as this workflow previously did) has no effect: by then the
       # bundle is already built with whatever was (or wasn't) in scope here,
-      # and the fallback in src/lib/sanity.ts silently wins instead.
+      # and the fallback in src/lib/supabase/client.ts silently wins instead.
       - name: Lint, typecheck, validate data, and build
         env:
           NEXT_PUBLIC_SANITY_PROJECT_ID: ${{ secrets.SANITY_PROJECT_ID }}
           NEXT_PUBLIC_SANITY_DATASET: ${{ secrets.SANITY_DATASET }}
           NEXT_PUBLIC_SANITY_API_VERSION: '2026-08-01'
+          NEXT_PUBLIC_SUPABASE_URL: ${{ secrets.NEXT_PUBLIC_SUPABASE_URL }}
+          NEXT_PUBLIC_SUPABASE_ANON_KEY: ${{ secrets.NEXT_PUBLIC_SUPABASE_ANON_KEY }}
         run: npm run check
 
       - name: Deploy to Cloudflare
