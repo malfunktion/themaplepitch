@@ -184,15 +184,16 @@ async function importFixtures(teamMap) {
     return;
   }
 
+  // Deduplicate matches based on external_id and match constraints before upserting
   const finalDeduper = new Map();
   for (const row of initialRows) {
-    finalDeduper.set(`${row.match_date}::${row.home_team_id}::${row.away_team_id}`, row);
+    finalDeduper.set(row.external_id, row);
   }
   const uniqueRows = Array.from(finalDeduper.values());
 
-  const { error } = await supabase.from('matches').upsert(uniqueRows, { onConflict: 'match_date,home_team_id,away_team_id' });
+  const { error } = await supabase.from('matches').upsert(uniqueRows, { onConflict: 'external_id' });
   if (error) throw new Error(`Matches upsert failed: ${error.message}`);
-  console.log(`Upserted ${uniqueRows.length} clean Canadian matches for 2026.`);
+  console.log(`Upserted ${uniqueRows.length} clean Canadian matches.`);
 }
 
 async function importPlayers() {
