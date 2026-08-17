@@ -285,7 +285,7 @@ export default function StatsHubPage() {
         .split(' ')
         .map((n: string) => n[0])
         .join('.'),
-      slug: p.slug,
+      slug: p.slug || slugify(p.name),
     }));
   }, [filteredPlayers, activePlayers]);
 
@@ -300,7 +300,7 @@ export default function StatsHubPage() {
         .split(' ')
         .map((n: string) => n[0])
         .join('.'),
-      slug: p.slug,
+      slug: p.slug || slugify(p.name),
     }));
   }, [filteredPlayers, activePlayers]);
 
