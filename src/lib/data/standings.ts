@@ -1,5 +1,10 @@
-import { supabase } from '@/lib/supabase/client';
+import { createClient } from '@supabase/supabase-js';
 import type { StandingsRow, LiveTickerItem } from '@/lib/types';
+
+const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL || process.env.SUPABASE_URL || '';
+const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || process.env.SERVICE_ROLE_KEY || '';
+
+const supabase = createClient(supabaseUrl, supabaseAnonKey);
 
 async function computeStandings(competition: string): Promise<StandingsRow[]> {
   try {
@@ -16,7 +21,7 @@ async function computeStandings(competition: string): Promise<StandingsRow[]> {
       return [];
     }
 
-    if (!standings) return [];
+    if (!standings || standings.length === 0) return [];
 
     return standings.map((row, i) => ({
       position: i + 1,
