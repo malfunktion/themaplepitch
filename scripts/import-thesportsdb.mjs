@@ -25,7 +25,7 @@ const CPL_TEAMS = [
   'Valour FC',
   'Vancouver FC',
   'York United FC',
-  'York9' // Historical fallback
+  'York9'
 ];
 
 const NSL_TEAMS = [
@@ -118,18 +118,17 @@ async function importFixtures(teamMap) {
     console.log(`Fetching seasons for ${leagueConfig.code} (League ID: ${leagueConfig.id})...`);
     try {
       const seasonsData = await fetchTheSportsDB(`/search_all_seasons.php?id=${leagueConfig.id}`);
-      const seasons = seasonsData.seasons || [];
+      let seasons = seasonsData.seasons || [];
 
       if (seasons.length === 0) {
         console.warn(`No seasons found for ${leagueConfig.code}`);
         continue;
       }
 
-      let targetSeasonObj = seasons.find(s => s.strSeason === '2026' || s.strSeason?.includes('2026'));
-      if (!targetSeasonObj) {
-        targetSeasonObj = seasons[seasons.length - 1];
-      }
+      // Sort descending so newest seasons come first
+      seasons.sort((a, b) => b.strSeason.localeCompare(a.strSeason));
 
+      let targetSeasonObj = seasons.find(s => s.strSeason === '2026' || s.strSeason?.includes('2026')) || seasons[0];
       const seasonStr = targetSeasonObj.strSeason;
       console.log(`Fetching fixtures for ${leagueConfig.code} (Season: ${seasonStr})...`);
 
@@ -146,7 +145,6 @@ async function importFixtures(teamMap) {
           continue;
         }
 
-        // Only process fixtures if both teams are in our official whitelist
         if (!leagueConfig.whitelistedTeams.includes(homeName) && homeName !== 'York9') continue;
         if (!leagueConfig.whitelistedTeams.includes(awayName) && awayName !== 'York9') continue;
 
@@ -194,7 +192,7 @@ async function importFixtures(teamMap) {
 
   const { error } = await supabase.from('matches').upsert(uniqueRows, { onConflict: 'external_id' });
   if (error) throw new Error(`Matches upsert failed: ${error.message}`);
-  console.log(`Upserted ${uniqueRows.length} clean Canadian matches.`);
+  console.log(`Upserted ${uniqueRows.length} clean Canadian matches for 2026.`);
 }
 
 async function main() {
