@@ -1,12 +1,10 @@
 // scripts/import-apifootball.mjs
-// Pulls team and match history from API-Football and upserts into Supabase.
-// Run from Termux:
-// SUPABASE_URL="https://xxxx.supabase.co" SUPABASE_SERVICE_ROLE_KEY="..." APIF_KEY="5c5b3e3c9a98dd5a09969018da39aa37" node scripts/import-apifootball.mjs
+// Pulls team and match history from API-Football for CPL and NSL and upserts into Supabase.
 
 import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
-const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SERVICE_ROLE_KEY;
 const APIF_KEY = process.env.APIF_KEY;
 
 if (!SUPABASE_URL || !SERVICE_ROLE_KEY || !APIF_KEY) {
@@ -17,10 +15,14 @@ if (!SUPABASE_URL || !SERVICE_ROLE_KEY || !APIF_KEY) {
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 const API_BASE = 'https://v3.football.api-sports.io';
 
-// Example League IDs for Canadian competitions in API-Football (Adjust if needed via /leagues search)
-// Canadian Premier League (CPL) / Canadian Championship
-const TARGET_LEAGUE_ID = 258; // Replace or expand with your target league ID
-const SEASON = 2026;
+// Target Leagues: CPL and Northern Super League (NSL)
+const TARGET_LEAGUES = [
+  { id: 659, code: 'CPL', gender: 'men' },
+  { id: 8150, code: 'NSL', gender: 'women' }
+];
+
+// Free plans restrict current/future years; use 2024 (or 2023) for free tier testing
+const SEASON = 2024; 
 
 function slugify(name) {
   return name
@@ -52,24 +54,36 @@ async function fetchApiFootball(endpoint) {
 }
 
 async function importTeams() {
-  console.log(`Fetching teams for league ID ${TARGET_LEAGUE_ID} (Season: ${SEASON})...`);
-  const teamsData = await fetchApiFootball(`/teams?league=${TARGET_LEAGUE_ID}&season=${SEASON}`);
-  
   const initialRows = [];
-  for (const item of teamsData) {
-    const t = item.team;
-    const extId = slugify(t.name);
-    initialRows.push({
-      name: t.name,
-      short_name: t.code || null,
-      league: 'CPL',
-      gender: 'men',
-      division_level: 'Professional',
-      logo_url: t.logo || null,
-      youtube_search_tag: null,
-      slug: extId,
-      external_id: extId,
-    });
+
+  for (const leagueConfig of TARGET_LEAGUES) {
+    console.log(`Fetching teams for ${leagueConfig.code} (League ID: ${leagueConfig.id}, Season: ${SEASON})...`);
+    try {
+      const teamsData = await fetchApiFootball(`/teams?league=${leagueConfig.id}&season=${SEASON}`);
+      
+      for (const item of teamsData) {
+        const t = item.team;
+        const extId = slugify(`${leagueConfig.code}-${t.name}`);
+        initialRows.push({
+          name: t.name,
+          short_name: t.code || null,
+          league: leagueConfig.code,
+          gender: leagueConfig.gender,
+          division_level: 'Professional',
+          logo_url: t.logo || null,
+          youtube_search_tag: null,
+          slug: slugify(t.name),
+          external_id: extId,
+        });
+      }
+    } catch (err) {
+      console.warn(`Warning: Could not fetch teams for ${leagueConfig.code}: ${err.message}`);
+    }
+  }
+
+  if (initialRows.length === 0) {
+    console.log('No teams fetched from any league.');
+    return;
   }
 
   const finalDeduper = new Map();
@@ -90,38 +104,52 @@ async function getTeamIdMap() {
 }
 
 async function importFixtures(teamIdMap) {
-  console.log(`Fetching fixtures for league ID ${TARGET_LEAGUE_ID} (${SEASON})...`);
-  const fixturesData = await fetchApiFootball(`/fixtures?league=${TARGET_LEAGUE_ID}&season=${SEASON}`);
-
   const initialRows = [];
   let skipped = 0;
 
-  for (const f of fixturesData) {
-    const homeName = f.teams.home.name;
-    const awayName = f.teams.away.name;
+  for (const leagueConfig of TARGET_LEAGUES) {
+    console.log(`Fetching fixtures for ${leagueConfig.code} (League ID: ${leagueConfig.id}, Season: ${SEASON})...`);
+    try {
+      const fixturesData = await fetchApiFootball(`/fixtures?league=${leagueConfig.id}&season=${SEASON}`);
 
-    const homeId = teamIdMap.get(slugify(homeName));
-    const awayId = teamIdMap.get(slugify(awayName));
+      for (const f of fixturesData) {
+        const homeName = f.teams.home.name;
+        const awayName = f.teams.away.name;
 
-    if (!homeId || !awayId) {
-      skipped += 1;
-      continue;
+        const homeExtId = slugify(`${leagueConfig.code}-${homeName}`);
+        const awayExtId = slugify(`${leagueConfig.code}-${awayName}`);
+
+        const homeId = teamIdMap.get(homeExtId);
+        const awayId = teamIdMap.get(awayExtId);
+
+        if (!homeId || !awayId) {
+          skipped += 1;
+          continue;
+        }
+
+        const matchDate = f.fixture.date;
+        const extId = slugify(`${matchDate}-${homeName}-${awayName}`);
+
+        initialRows.push({
+          home_team_id: homeId,
+          away_team_id: awayId,
+          match_date: matchDate,
+          status: f.fixture.status.short === 'FT' ? 'Finished' : 'Scheduled',
+          home_score: f.goals.home ?? 0,
+          away_score: f.goals.away ?? 0,
+          competition: leagueConfig.code,
+          gender: leagueConfig.gender,
+          external_id: extId,
+        });
+      }
+    } catch (err) {
+      console.warn(`Warning: Could not fetch fixtures for ${leagueConfig.code}: ${err.message}`);
     }
+  }
 
-    const matchDate = f.fixture.date;
-    const extId = slugify(`${matchDate}-${homeName}-${awayName}`);
-
-    initialRows.push({
-      home_team_id: homeId,
-      away_team_id: awayId,
-      match_date: matchDate,
-      status: f.fixture.status.short === 'FT' ? 'Finished' : 'Scheduled',
-      home_score: f.goals.home ?? 0,
-      away_score: f.goals.away ?? 0,
-      competition: 'CPL',
-      gender: 'men',
-      external_id: extId,
-    });
+  if (initialRows.length === 0) {
+    console.log('No matches to upsert.');
+    return;
   }
 
   const finalDeduper = new Map();
