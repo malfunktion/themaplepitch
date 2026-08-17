@@ -45,11 +45,11 @@ const CANADIAN_MLS_TEAMS = [
 
 // Master Target Competitions Map
 const TARGET_LEAGUES = [
-  { id: 4820, code: 'CPL', competitionType: 'league', gender: 'men', whitelistedTeams: CPL_TEAMS },
-  { id: 5602, code: 'NSL', competitionType: 'league', gender: 'women', whitelistedTeams: NSL_TEAMS },
-  { id: 5922, code: 'Canadian Championship', competitionType: 'cup', gender: 'men', whitelistedTeams: [...CPL_TEAMS, ...CANADIAN_MLS_TEAMS] },
-  { id: 4346, code: 'MLS', competitionType: 'league', gender: 'men', whitelistedTeams: CANADIAN_MLS_TEAMS, filterCanadianExpats: true },
-  { id: 4521, code: 'NWSL', competitionType: 'league', gender: 'women', whitelistedTeams: [], filterCanadianExpats: true }
+  { id: 4820, code: 'CPL', gender: 'men', whitelistedTeams: CPL_TEAMS },
+  { id: 5602, code: 'NSL', gender: 'women', whitelistedTeams: NSL_TEAMS },
+  { id: 5922, code: 'Canadian Championship', gender: 'men', whitelistedTeams: [...CPL_TEAMS, ...CANADIAN_MLS_TEAMS] },
+  { id: 4346, code: 'MLS', gender: 'men', whitelistedTeams: CANADIAN_MLS_TEAMS, filterCanadianExpats: true },
+  { id: 4521, code: 'NWSL', gender: 'women', whitelistedTeams: [], filterCanadianExpats: true }
 ];
 
 function slugify(name) {
@@ -80,7 +80,6 @@ async function importTeams() {
   for (const leagueConfig of TARGET_LEAGUES) {
     console.log(`Importing teams for ${leagueConfig.code}...`);
     
-    // For MLS/NWSL, if we are pulling rosters for Canadian expats, ensure teams are registered or tagged accordingly
     const teamsToProcess = leagueConfig.whitelistedTeams.length > 0 
       ? leagueConfig.whitelistedTeams 
       : [];
@@ -92,7 +91,6 @@ async function importTeams() {
         short_name: null,
         league: leagueConfig.code,
         gender: leagueConfig.gender,
-        competition_type: leagueConfig.competitionType || 'league',
         division_level: 'Professional',
         logo_url: null,
         youtube_search_tag: null,
@@ -132,7 +130,6 @@ async function importFixtures(teamMap) {
   const initialRows = [];
   let skipped = 0;
 
-  // Focus fixture importing on domestic leagues & Canadian Championship
   const fixtureLeagues = TARGET_LEAGUES.filter(l => l.code === 'CPL' || l.code === 'NSL' || l.code === 'Canadian Championship' || l.code === 'MLS');
 
   for (const leagueConfig of fixtureLeagues) {
@@ -164,7 +161,6 @@ async function importFixtures(teamMap) {
           continue;
         }
 
-        // For MLS, only ingest matches involving Canadian teams (TFC, CF Montréal, Vancouver Whitecaps)
         if (leagueConfig.code === 'MLS' && !CANADIAN_MLS_TEAMS.includes(homeName) && !CANADIAN_MLS_TEAMS.includes(awayName)) {
           continue;
         }
