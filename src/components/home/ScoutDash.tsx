@@ -1,6 +1,5 @@
 // src/components/home/ScoutDash.tsx
 'use client';
-
 import React, { useState } from 'react';
 import type { StandingsRow } from '@/lib/types';
 import { Target } from 'lucide-react';
@@ -50,14 +49,22 @@ export default function ScoutDash({ standings = [], nslStandings = [] }: ScoutDa
 
       <div className="space-y-2">
         <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest">
-          {leagueTab} Top Table Signal
+          {leagueTab} Standings
         </div>
-        {activeStandings.slice(0, 3).map((row, idx) => (
-          <div key={idx} className="flex justify-between items-center text-xs font-mono py-1 border-b border-border/40 dark:border-neutral-800/40">
-            <span className="text-foreground font-bold">{row.position ?? idx + 1}. {row.clubName}</span>
-            <span className="text-neutral-400">{row.points} PTS</span>
-          </div>
-        ))}
+        <div className="max-h-[160px] overflow-y-auto space-y-1 pr-1">
+          {activeStandings && activeStandings.length > 0 ? (
+            activeStandings.map((row, idx) => (
+              <div key={idx} className="flex justify-between items-center text-xs font-mono py-1 border-b border-border/40 dark:border-neutral-800/40">
+                <span className="text-foreground font-bold">{row.position ?? idx + 1}. {row.clubName}</span>
+                <span className="text-neutral-400">{row.points} PTS</span>
+              </div>
+            ))
+          ) : (
+            <div className="py-2 text-center text-xs text-neutral-500 font-mono italic">
+              No standings data available for {leagueTab}.
+            </div>
+          )}
+        </div>
       </div>
 
       <div className="space-y-2 mt-2">
