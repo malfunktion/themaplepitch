@@ -225,7 +225,7 @@ function DataTable({
                       </Link>
                     </td>
                     <td className="px-4 py-2.5 text-charcoal-soft">
-                      {p.league || 'Pro'} {'//'} {p.position || 'GEN'}
+                      {p.league || p.competitionName || 'Pro'} {'//'} {p.position || 'GEN'}
                     </td>
                     <td className="px-4 py-2.5 text-right text-crimson font-bold">
                       {p.ga || p.goals || 'Active'}
@@ -261,14 +261,15 @@ export default function StatsHubPage() {
   const [compareA, setCompareA] = useState('');
   const [compareB, setCompareB] = useState('');
 
-  // Use localized verified entity dataset to guarantee working links and correct team structures
   const activePlayers = demoPlayers;
   const activeTeams = demoTeams;
 
   const filteredPlayers = useMemo(() => {
-    return activePlayers.filter(
-      (p) => !p.gender || p.gender.toLowerCase() === programGender.toLowerCase()
-    );
+    return activePlayers.filter((p) => {
+      const isFemaleTeam = p.clubName.includes('Wild') || p.clubName.includes('Toronto') || p.clubName.includes('Roses') || p.clubName.includes('Rise');
+      if (programGender === 'WOMEN') return isFemaleTeam;
+      return !isFemaleTeam;
+    });
   }, [activePlayers, programGender]);
 
   const computedGoldenBoot = useMemo<PlayerRow[]>(() => {
@@ -307,8 +308,6 @@ export default function StatsHubPage() {
   const currentDiscipline = programGender === 'MEN' ? menDisciplineLeaders : womenDisciplineLeaders;
   const currentRecords = programGender === 'MEN' ? menRecords : womenRecords;
   const currentCollegiate = programGender === 'MEN' ? menCollegiateStream : womenCollegiateStream;
-
-  const streamPlayers = programGender === 'MEN' ? cplStreamPlayers : nslStreamPlayers;
 
   const comparePool = useMemo<ComparePlayer[]>(() => {
     const pool = new Map<string, ComparePlayer>();
@@ -714,7 +713,7 @@ export default function StatsHubPage() {
   );
 }
 
-// Supplemental Data Sets
+// Supplemental Data Sets (Men & Women)
 const menCleanSheets = [
   { rank: 1, name: 'Triston Henry', club: 'Forge FC', value: '7 CS', initials: 'T.H' },
   { rank: 2, name: 'Marco Carducci', club: 'Cavalry FC', value: '6 CS', initials: 'M.C' },
@@ -753,14 +752,10 @@ const menCollegiateStream = [
   { rank: 3, name: 'M. Rossi', club: 'Wake Forest (NCAA D1)', ga: '7 G • 5 A', rtg: '0.62 GPM' },
 ];
 
-const cplStreamPlayers = [
-  { rank: 1, name: 'Terran Campbell', club: 'Forge FC', ga: '14 G • 3 A', rtg: '8.2' },
-  { rank: 2, name: 'Moses Dyer', club: 'Vancouver FC', ga: '11 G • 2 A', rtg: '7.9' },
-];
-
-const nslStreamPlayers = [
-  { rank: 1, name: 'Jorian Baucom', club: 'AFC Toronto', ga: '11 G • 2 A', rtg: '8.3' },
-  { rank: 2, name: 'Evelyne Viens', club: 'Montreal Roses', ga: '9 G • 4 A', rtg: '8.1' },
+const womenCollegiateStream = [
+  { rank: 1, name: 'S. Alarie', club: 'Penn State (NCAA D1)', ga: '14 G • 4 A', rtg: '0.92 GPM' },
+  { rank: 2, name: 'C. Briand', club: 'Laval (U SPORTS)', ga: '12 G • 2 A', rtg: '0.88 GPM' },
+  { rank: 3, name: 'M. Leon', club: 'Florida State (NCAA D1)', ga: '10 G • 3 A', rtg: '0.75 GPM' },
 ];
 
 const abroadStreamPlayers = [
@@ -777,14 +772,32 @@ const menTeamOfWeek = [
   { playerId: 'motw-m-06', name: 'Ali Musse', club: 'Cavalry FC', league: 'CPL', initials: 'A.M' },
 ];
 
+const womenTeamOfWeek = [
+  { playerId: 'motw-w-01', name: 'Katelyn Rowland', club: 'Calgary Wild', league: 'NSL', initials: 'K.R' },
+  { playerId: 'motw-w-02', name: 'Jade Rose', club: 'AFC Toronto', league: 'NSL', initials: 'J.R' },
+  { playerId: 'motw-w-03', name: 'Kadeisha Buchanan', club: 'Chelsea FC', league: 'ABROAD', initials: 'K.B' },
+  { playerId: 'motw-w-04', name: 'Vanessa Gilles', club: 'Vancouver Rise', league: 'NSL', initials: 'V.G' },
+  { playerId: 'motw-w-05', name: 'Shelina Zadorsky', club: 'Halifax Tides', league: 'NSL', initials: 'S.Z' },
+  { playerId: 'motw-w-06', name: 'Sarah Stratigakis', club: 'Vancouver Rise', league: 'NSL', initials: 'S.S' },
+];
+
 const menDisciplineLeaders = [
   { rank: 1, playerId: 'disc-m-01', name: 'Malcolm Shaw', club: 'Cavalry FC', yellows: 6, reds: 0 },
   { rank: 2, playerId: 'disc-m-02', name: 'Jonathan Osorio', club: 'Toronto FC', yellows: 5, reds: 0 },
 ];
 
+const womenDisciplineLeaders = [
+  { rank: 1, playerId: 'disc-w-01', name: 'Vanessa Gilles', club: 'Vancouver Rise', yellows: 5, reds: 0 },
+  { rank: 2, playerId: 'disc-w-02', name: 'Shelina Zadorsky', club: 'Halifax Tides', yellows: 4, reds: 0 },
+];
+
 const menRecords = [
   { label: 'Most goals, single CPL season', value: 'Tomasz Skublak — 12 (2021)' },
   { label: 'Most CPL appearances', value: 'Karifa Yao — 130' },
+];
+
+const womenRecords = [
+  { label: 'Most goals, inaugural NSL season', value: 'Jorian Baucom — 11 (2025)' },
 ];
 
 function provStatsStatsHeading(prov: 'ON' | 'QC' | 'BC' | 'AB') {
