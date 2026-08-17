@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SERVICE_ROLE_KEY;
-const TSDB_KEY = process.env.THESPORTSDB_KEY || process.env.THESPORTSDB_KEY || process.env.APIF_KEY || '123';
+const TSDB_KEY = process.env.THESPORTSDB_KEY || process.env.APIF_KEY || '123';
 
 if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
   console.error('Missing required environment variables (SUPABASE_URL or SERVICE_ROLE_KEY).');
@@ -43,13 +43,13 @@ const CANADIAN_MLS_TEAMS = [
   'Vancouver Whitecaps'
 ];
 
-// Master Target Competitions Map
+// Master Target Competitions Map (Using standard multi-year string format for safety with TheSportsDB API)
 const TARGET_LEAGUES = [
-  { id: 4820, code: 'CPL', gender: 'men', whitelistedTeams: CPL_TEAMS },
-  { id: 5602, code: 'NSL', gender: 'women', whitelistedTeams: NSL_TEAMS },
-  { id: 5922, code: 'Canadian Championship', gender: 'men', whitelistedTeams: [...CPL_TEAMS, ...CANADIAN_MLS_TEAMS] },
-  { id: 4346, code: 'MLS', gender: 'men', whitelistedTeams: CANADIAN_MLS_TEAMS, filterCanadianExpats: true },
-  { id: 4521, code: 'NWSL', gender: 'women', whitelistedTeams: [], filterCanadianExpats: true }
+  { id: 4820, code: 'CPL', gender: 'men', whitelistedTeams: CPL_TEAMS, season: '2025-2026' },
+  { id: 5602, code: 'NSL', gender: 'women', whitelistedTeams: NSL_TEAMS, season: '2025-2026' },
+  { id: 5922, code: 'Canadian Championship', gender: 'men', whitelistedTeams: [...CPL_TEAMS, ...CANADIAN_MLS_TEAMS], season: '2026' },
+  { id: 4346, code: 'MLS', gender: 'men', whitelistedTeams: CANADIAN_MLS_TEAMS, filterCanadianExpats: true, season: '2026' },
+  { id: 4521, code: 'NWSL', gender: 'women', whitelistedTeams: [], filterCanadianExpats: true, season: '2026' }
 ];
 
 function slugify(name) {
@@ -133,7 +133,7 @@ async function importFixtures(teamMap) {
   for (const leagueConfig of fixtureLeagues) {
     console.log(`Fetching fixtures for ${leagueConfig.code} (League ID: ${leagueConfig.id})...`);
     try {
-      const data = await fetchTheSportsDB(`/eventsseason.php?id=${leagueConfig.id}&s=2026`);
+      const data = await fetchTheSportsDB(`/eventsseason.php?id=${leagueConfig.id}&s=${leagueConfig.season}`);
       const fixturesData = data.events || [];
       console.log(`Found ${fixturesData.length} events for ${leagueConfig.code}`);
 
@@ -220,6 +220,7 @@ async function importPlayers() {
   ];
 
   const initialPlayers = corePlayers.map(p => ({
+    name: p.name,
     full_name: p.name,
     position: p.position
   }));
