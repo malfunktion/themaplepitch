@@ -62,7 +62,7 @@ async function importTeams() {
           division_level: 'Professional',
           logo_url: t.strBadge || null,
           youtube_search_tag: null,
-          slug: slugify(t.strTeam),
+          slug: extId, // Scoped slug to prevent uniqueness violations
           external_id: extId,
         });
       }
@@ -124,7 +124,7 @@ async function importFixtures(teamIdMap) {
         }
 
         const matchDate = f.dateEvent ? `${f.dateEvent}T${f.strTime || '00:00:00'}` : new Date().toISOString();
-        const extId = slugify(`${f.dateEvent || 'date'}-${homeName}-${awayName}`);
+        const extId = slugify(`${f.dateEvent || 'date'}-${leagueConfig.code}-${homeName}-${awayName}`);
 
         initialRows.push({
           home_team_id: homeId,
