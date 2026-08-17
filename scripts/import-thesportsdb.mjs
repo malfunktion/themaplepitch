@@ -30,6 +30,15 @@ function slugify(name) {
     .replace(/(^-|-$)/g, '');
 }
 
+function normalizeName(name) {
+  return name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/\b(fc|sc|united)\b/g, '')
+    .replace(/[^a-z0-9]/g, '');
+}
+
 async function fetchTheSportsDB(endpoint) {
   const url = `${API_BASE}${endpoint}`;
   console.log(`Fetching: ${url}`);
@@ -53,9 +62,10 @@ async function importTeams() {
       const teamsData = data.teams || [];
       
       for (const t of teamsData) {
-        const extId = slugify(`${leagueConfig.code}-${t.strTeam}`);
+        const teamName = t.strTeam;
+        const extId = slugify(`${leagueConfig.code}-${teamName}`);
         initialRows.push({
-          name: t.strTeam,
+          name: teamName,
           short_name: t.strTeamShort || null,
           league: leagueConfig.code,
           gender: leagueConfig.gender,
@@ -91,19 +101,53 @@ async function getTeamMaps() {
   const { data, error } = await supabase.from('teams').select('id, external_id, name, league');
   if (error) throw new Error(`Teams lookup failed: ${error.message}`);
   
-  const exactMap = new Map();
-  const looseMap = new Map();
-
+  const map = new Map();
   for (const t of data) {
-    exactMap.set(t.external_id, t.id);
-    looseMap.set(`${t.league}-${slugify(t.name)}`, t.id);
-    looseMap.set(slugify(t.name), t.id);
+    map.set(t.external_id, t.id);
+    map.set(slugify(t.name), t.id);
+    map.set(`${t.league}-${slugify(t.name)}`, t.id);
+    map.set(normalizeName(t.name), t.id);
+    map.set(`${t.league}-${normalizeName(t.name)}`, t.id);
   }
-  return { exactMap, looseMap };
+  return map;
 }
 
-async function importFixtures(teamMaps) {
-  const { exactMap, looseMap } = teamMaps;
+async function getOrCreateTeamId(teamName, leagueCode, gender, teamMap) {
+  const normKey = normalizeName(teamName);
+  const leagueNormKey = `${leagueCode}-${normKey}`;
+  const extId = slugify(`${leagueCode}-${teamName}`);
+
+  if (teamMap.has(leagueNormKey)) return teamMap.get(leagueNormKey);
+  if (teamMap.has(normKey)) return teamMap.get(normKey);
+  if (teamMap.has(extId)) return teamMap.get(extId);
+
+  console.log(`Dynamically creating missing team: "${teamName}" for ${leagueCode}`);
+  const newTeam = {
+    name: teamName,
+    short_name: null,
+    league: leagueCode,
+    gender: gender,
+    division_level: 'Professional',
+    logo_url: null,
+    youtube_search_tag: null,
+    slug: extId,
+    external_id: extId,
+  };
+
+  const { data, error } = await supabase.from('teams').upsert(newTeam, { onConflict: 'external_id' }).select('id').single();
+  if (error) {
+    console.error(`Failed to insert team ${teamName}: ${error.message}`);
+    return null;
+  }
+
+  const newId = data.id;
+  teamMap.set(leagueNormKey, newId);
+  teamMap.set(normKey, newId);
+  teamMap.set(extId, newId);
+  return newId;
+}
+
+async function importFixtures(teamMap) {
   const initialRows = [];
   let skipped = 0;
 
@@ -139,14 +183,10 @@ async function importFixtures(teamMaps) {
           continue;
         }
 
-        const homeExtId = slugify(`${leagueConfig.code}-${homeName}`);
-        const awayExtId = slugify(`${leagueConfig.code}-${awayName}`);
-
-        const homeId = exactMap.get(homeExtId) || looseMap.get(`${leagueConfig.code}-${slugify(homeName)}`) || looseMap.get(slugify(homeName));
-        const awayId = exactMap.get(awayExtId) || looseMap.get(`${leagueConfig.code}-${slugify(awayName)}`) || looseMap.get(slugify(awayName));
+        const homeId = await getOrCreateTeamId(homeName, leagueConfig.code, leagueConfig.gender, teamMap);
+        const awayId = await getOrCreateTeamId(awayName, leagueConfig.code, leagueConfig.gender, teamMap);
 
         if (!homeId || !awayId) {
-          console.warn(`Skipping fixture: Unmatched teams ("${homeName}" vs "${awayName}")`);
           skipped += 1;
           continue;
         }
@@ -189,8 +229,8 @@ async function importFixtures(teamMaps) {
 
 async function main() {
   await importTeams();
-  const teamMaps = await getTeamMaps();
-  await importFixtures(teamMaps);
+  const teamMap = await getTeamMaps();
+  await importFixtures(teamMap);
   console.log('TheSportsDB import complete!');
 }
 
