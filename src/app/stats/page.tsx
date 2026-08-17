@@ -1,15 +1,13 @@
-// src/app/stats/page.tsx
 'use client';
 
 import React, { useMemo, useState, useEffect } from 'react';
 import Link from 'next/link';
-
 import SidebarStack from '@/components/sidebar/SidebarStack';
+import ComparePanel from '@/components/stats/ComparePanel';
 import type { StandingsRow } from '@/lib/types';
 import { getCplStandings, getNslStandings } from '@/lib/data/standings';
 
 type Gender = 'MEN' | 'WOMEN';
-
 type ViewMode =
   | 'OVERVIEW'
   | 'PLAYERS'
@@ -167,9 +165,11 @@ function Leaderboard({
 function DataTable({
   title,
   players,
+  onAddToCompare,
 }: {
   title: string;
   players: any[];
+  onAddToCompare?: (player: ComparePlayer) => void;
 }) {
   return (
     <section className="bg-card border border-border rounded-sm overflow-hidden">
@@ -207,6 +207,11 @@ function DataTable({
             ) : (
               players.map((p: any, idx: number) => {
                 const entitySlug = p.slug || slugify(p.name || p.full_name || 'player');
+                const playerName = p.full_name || p.name || 'Player';
+                const playerClub = p.clubName || p.club || 'Pro Club';
+                const playerLeague = p.competitionName || p.competition || p.league || 'Pro';
+                const statSummary = p.goals ? `${p.goals} G` : p.ga || 'Active';
+
                 return (
                   <tr
                     key={`${title}-${idx}`}
@@ -220,16 +225,32 @@ function DataTable({
                         href={`/players/${entitySlug}`}
                         className="text-charcoal font-bold hover:text-crimson"
                       >
-                        {p.full_name || p.name}
+                        {playerName}
                       </Link>
                     </td>
                     <td className="px-4 py-2.5 text-charcoal-soft">
-                      {p.competitionName || p.competition || p.league || 'Pro'} {'//'} {p.position || 'GEN'}
+                      {playerLeague} {'//'} {p.position || 'GEN'}
                     </td>
                     <td className="px-4 py-2.5 text-right text-crimson font-bold">
-                      {p.goals ? `${p.goals} G` : p.ga || 'Active'}
+                      {statSummary}
                     </td>
-                    <td className="px-4 py-2.5 text-right">
+                    <td className="px-4 py-2.5 text-right space-x-2">
+                      {onAddToCompare && (
+                        <button
+                          onClick={() =>
+                            onAddToCompare({
+                              playerId: p.id || entitySlug,
+                              name: playerName,
+                              club: playerClub,
+                              league: playerLeague,
+                              statSummary,
+                            })
+                          }
+                          className="text-[8px] font-mono border border-border px-2 py-1 text-charcoal hover:border-crimson hover:text-crimson transition-colors"
+                        >
+                          [ + COMPARE ]
+                        </button>
+                      )}
                       <Link
                         href={`/players/${entitySlug}`}
                         className="text-[9px] font-mono text-crimson hover:underline"
@@ -256,12 +277,24 @@ export default function StatsHubPage() {
   const [provStatsProvince, setProvStatsProvince] = useState<
     'ON' | 'QC' | 'BC' | 'AB'
   >('ON');
-
   const [dbPlayers, setDbPlayers] = useState<any[]>([]);
   const [dbTeams, setDbTeams] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Fetch directly from live database API route
+  // Compare tool state
+  const [comparePlayerA, setComparePlayerA] = useState<ComparePlayer | null>(null);
+  const [comparePlayerB, setComparePlayerB] = useState<ComparePlayer | null>(null);
+
+  const handleAddToCompare = (player: ComparePlayer) => {
+    if (!comparePlayerA || comparePlayerA.playerId === player.playerId) {
+      setComparePlayerA(player);
+    } else if (!comparePlayerB || comparePlayerB.playerId === player.playerId) {
+      setComparePlayerB(player);
+    } else {
+      setComparePlayerA(player); // Rotate if both full
+    }
+  };
+
   useEffect(() => {
     async function fetchDatabaseData() {
       try {
@@ -356,6 +389,7 @@ export default function StatsHubPage() {
   return (
     <div className="min-h-[100dvh] p-2 sm:p-4 md:p-6 pb-[env(safe-area-inset-bottom)] bg-surface text-charcoal">
       <div className="max-w-7xl mx-auto grid grid-cols-1 lg:grid-cols-12 gap-6">
+        {/* MAIN CONTENT AREA */}
         <main className="lg:col-span-8 flex flex-col gap-5">
           <header className="bg-card border border-border rounded-sm overflow-hidden">
             <div className="px-4 sm:px-5 py-4 border-b border-border flex flex-col xl:flex-row xl:items-end justify-between gap-4">
@@ -399,7 +433,6 @@ export default function StatsHubPage() {
                   </button>
                 ))}
               </div>
-
               <select
                 value={season}
                 onChange={(e) => setSeason(e.target.value)}
@@ -408,7 +441,6 @@ export default function StatsHubPage() {
                 <option>2026</option>
                 <option>2025</option>
               </select>
-
               <select
                 value={competition}
                 onChange={(e) => setCompetition(e.target.value)}
@@ -442,6 +474,16 @@ export default function StatsHubPage() {
               </div>
             </nav>
           </header>
+
+          {/* Player Comparison Tool Panel */}
+          <ComparePanel
+            playerA={comparePlayerA}
+            playerB={comparePlayerB}
+            onClear={() => {
+              setComparePlayerA(null);
+              setComparePlayerB(null);
+            }}
+          />
 
           {(showOverview || showPlayers) && (
             <>
@@ -502,6 +544,7 @@ export default function StatsHubPage() {
             <DataTable
               title={programGender === 'MEN' ? 'CPL & MEN DATABASE LEADERS' : 'NSL & WOMEN DATABASE LEADERS'}
               players={filteredPlayers}
+              onAddToCompare={handleAddToCompare}
             />
           )}
 
@@ -522,6 +565,7 @@ export default function StatsHubPage() {
             <DataTable
               title="GLOBAL CANADIAN PERFORMANCE STREAM"
               players={abroadStreamPlayers}
+              onAddToCompare={handleAddToCompare}
             />
           )}
 
@@ -529,6 +573,7 @@ export default function StatsHubPage() {
             <DataTable
               title={`COLLEGIATE PLAYER STREAM // ${programGender}`}
               players={currentCollegiate}
+              onAddToCompare={handleAddToCompare}
             />
           )}
 
@@ -557,7 +602,6 @@ export default function StatsHubPage() {
                   ))}
                 </div>
               </section>
-
               <section className="bg-card border border-border rounded-sm p-4">
                 <span className="text-[9px] font-mono tracking-widest text-charcoal-soft">
                   GOALSCORING INDEX
@@ -620,7 +664,6 @@ export default function StatsHubPage() {
                   ))}
                 </div>
               </section>
-
               <section className="bg-card border border-border rounded-sm overflow-hidden">
                 <div className="p-4 border-b border-border">
                   <span className="text-[9px] font-mono tracking-widest text-charcoal-soft">
@@ -686,6 +729,7 @@ export default function StatsHubPage() {
           )}
         </main>
 
+        {/* 5TH COLUMN SIDEBAR STACK */}
         <aside className="lg:col-span-4 flex flex-col gap-5">
           <div className="bg-card border border-border rounded-sm p-4">
             <div className="flex items-center justify-between mb-3">
@@ -715,7 +759,6 @@ export default function StatsHubPage() {
               </div>
             </div>
           </div>
-
           <SidebarStack standings={standings} nslStandings={nslStandings} />
         </aside>
       </div>
