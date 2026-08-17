@@ -30,6 +30,18 @@ function slugify(name) {
     .replace(/(^-|-$)/g, '');
 }
 
+// Same franchise-rename normalization as import-cpl-data.mjs — keeps
+// team identity correct regardless of what an upstream source calls it.
+const TEAM_NAME_OVERRIDES = {
+  'york united': 'Inter Toronto FC',
+  'york united fc': 'Inter Toronto FC',
+  'york9': 'Inter Toronto FC',
+  'york9 fc': 'Inter Toronto FC',
+};
+function normalizeTeamName(name) {
+  return TEAM_NAME_OVERRIDES[name.trim().toLowerCase()] || name;
+}
+
 async function fetchApiFootball(endpoint) {
   const url = `${API_BASE}${endpoint}`;
   console.log(`Fetching: ${url}`);
@@ -60,16 +72,17 @@ async function importTeams() {
       
       for (const item of teamsData) {
         const t = item.team;
-        const extId = slugify(`${leagueConfig.code}-${t.name}`);
+        const displayName = normalizeTeamName(t.name);
+        const extId = slugify(`${leagueConfig.code}-${displayName}`);
         initialRows.push({
-          name: t.name,
+          name: displayName,
           short_name: t.code || null,
           league: leagueConfig.code,
           gender: leagueConfig.gender,
           division_level: 'Professional',
           logo_url: t.logo || null,
           youtube_search_tag: null,
-          slug: slugify(t.name),
+          slug: slugify(displayName),
           external_id: extId,
         });
       }

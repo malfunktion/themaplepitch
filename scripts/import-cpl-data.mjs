@@ -45,6 +45,23 @@ function slugify(name) {
     .replace(/(^-|-$)/g, '');
 }
 
+// canadasoccerapi.com's team list is a historical snapshot, not
+// live-updated for the current season — it still returns pre-rebrand /
+// dissolved names. Normalize known franchise renames here so the CURRENT
+// team identity is always correct on import, regardless of what the
+// upstream source calls it. Historical match data under the old name
+// still links correctly since this maps to the SAME row (same slug),
+// it just corrects the display name.
+const TEAM_NAME_OVERRIDES = {
+  'york united': 'Inter Toronto FC',
+  'york united fc': 'Inter Toronto FC',
+  'york9': 'Inter Toronto FC',
+  'york9 fc': 'Inter Toronto FC',
+};
+function normalizeTeamName(name) {
+  return TEAM_NAME_OVERRIDES[name.trim().toLowerCase()] || name;
+}
+
 async function importTeams() {
   console.log('Fetching CPL teams (including inactive — historical matches reference them)...');
   const res = await fetch(`${API_BASE}/teams`);
@@ -54,9 +71,10 @@ async function importTeams() {
   // Step 1: Format rows dynamically
   const initialRows = [];
   for (const t of teams) {
-    const extId = slugify(t.name);
+    const displayName = normalizeTeamName(t.name);
+    const extId = slugify(displayName);
     initialRows.push({
-      name: t.name,
+      name: displayName,
       short_name: null,
       league: 'CPL',
       gender: 'men',

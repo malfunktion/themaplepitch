@@ -61,6 +61,18 @@ function slugify(name) {
     .replace(/(^-|-$)/g, '');
 }
 
+// Same franchise-rename normalization as import-cpl-data.mjs — keeps
+// team identity correct regardless of what an upstream source calls it.
+const TEAM_NAME_OVERRIDES = {
+  'york united': 'Inter Toronto FC',
+  'york united fc': 'Inter Toronto FC',
+  'york9': 'Inter Toronto FC',
+  'york9 fc': 'Inter Toronto FC',
+};
+function normalizeTeamName(name) {
+  return TEAM_NAME_OVERRIDES[name.trim().toLowerCase()] || name;
+}
+
 async function fetchTheSportsDB(endpoint) {
   const url = `${API_BASE}${endpoint}`;
   console.log(`Fetching: ${url}`);
@@ -85,9 +97,10 @@ async function importTeams() {
       : [];
 
     for (const teamName of teamsToProcess) {
-      const extId = slugify(`${leagueConfig.code}-${teamName}`);
+      const displayName = normalizeTeamName(teamName);
+      const extId = slugify(`${leagueConfig.code}-${displayName}`);
       initialRows.push({
-        name: teamName,
+        name: displayName,
         short_name: null,
         league: leagueConfig.code,
         gender: leagueConfig.gender,
@@ -191,11 +204,11 @@ async function importFixtures(teamMap) {
 
   const finalDeduper = new Map();
   for (const row of initialRows) {
-    finalDeduper.set(row.external_id, row);
+    finalDeduper.set(`${row.match_date}::${row.home_team_id}::${row.away_team_id}`, row);
   }
   const uniqueRows = Array.from(finalDeduper.values());
 
-  const { error } = await supabase.from('matches').upsert(uniqueRows, { onConflict: 'external_id' });
+  const { error } = await supabase.from('matches').upsert(uniqueRows, { onConflict: 'match_date,home_team_id,away_team_id' });
   if (error) throw new Error(`Matches upsert failed: ${error.message}`);
   console.log(`Upserted ${uniqueRows.length} clean Canadian fixtures & matches.`);
 }
@@ -203,31 +216,41 @@ async function importFixtures(teamMap) {
 async function importPlayers() {
   console.log('Importing core Canadian player profiles...');
 
+  // Small, hand-verified starter roster — not a bulk scrape. Real full
+  // rosters need a proper source, which we don't have yet (see chat
+  // notes). This just seeds a handful of real, well-known Canadian
+  // internationals so /players isn't completely empty.
   const corePlayers = [
-    { name: 'Jonathan David', league: 'Abroad', gender: 'men', position: 'ST' },
-    { name: 'Alphonso Davies', league: 'Abroad', gender: 'men', position: 'LB' },
-    { name: 'Stephen Eustáquio', league: 'Abroad', gender: 'men', position: 'CM' },
-    { name: 'Tajon Buchanan', league: 'Abroad', gender: 'men', position: 'RW' },
-    { name: 'Ismaël Koné', league: 'Abroad', gender: 'men', position: 'CM' },
-    { name: 'Alistair Johnston', league: 'Abroad', gender: 'men', position: 'RB' },
-    { name: 'Jonathan Osorio', league: 'MLS', gender: 'men', position: 'CM' },
-    { name: 'Kamal Miller', league: 'MLS', gender: 'men', position: 'CB' },
-    { name: 'Jessie Fleming', league: 'Abroad', gender: 'women', position: 'CM' },
-    { name: 'Simi Awujo', league: 'Abroad', gender: 'women', position: 'CDM' },
-    { name: 'Shelina Zadorsky', league: 'Abroad', gender: 'women', position: 'CB' },
-    { name: 'Evelyne Viens', league: 'NSL', gender: 'women', position: 'ST' },
-    { name: 'Jorian Baucom', league: 'NSL', gender: 'women', position: 'ST' },
-    { name: 'Terran Campbell', league: 'CPL', gender: 'men', position: 'ST' },
-    { name: 'Moses Dyer', league: 'CPL', gender: 'men', position: 'ST' }
+    { first: 'Jonathan', last: 'David', position: 'ST' },
+    { first: 'Alphonso', last: 'Davies', position: 'LB' },
+    { first: 'Stephen', last: 'Eustáquio', position: 'CM' },
+    { first: 'Tajon', last: 'Buchanan', position: 'RW' },
+    { first: 'Ismaël', last: 'Koné', position: 'CM' },
+    { first: 'Alistair', last: 'Johnston', position: 'RB' },
+    { first: 'Jonathan', last: 'Osorio', position: 'CM' },
+    { first: 'Kamal', last: 'Miller', position: 'CB' },
+    { first: 'Jessie', last: 'Fleming', position: 'CM' },
+    { first: 'Simi', last: 'Awujo', position: 'CDM' },
+    { first: 'Shelina', last: 'Zadorsky', position: 'CB' },
+    { first: 'Evelyne', last: 'Viens', position: 'ST' },
+    { first: 'Jorian', last: 'Baucom', position: 'ST' },
+    { first: 'Terran', last: 'Campbell', position: 'ST' },
+    { first: 'Moses', last: 'Dyer', position: 'ST' },
   ];
 
-  const initialPlayers = corePlayers.map(p => ({
-    name: p.name,
-    full_name: p.name,
-    position: p.position
-  }));
+  const initialPlayers = corePlayers.map((p) => {
+    const extId = slugify(`${p.first}-${p.last}`);
+    return {
+      first_name: p.first,
+      last_name: p.last,
+      position: p.position,
+      nationality: 'Canada',
+      slug: extId,
+      external_id: extId,
+    };
+  });
 
-  const { error } = await supabase.from('players').upsert(initialPlayers, { onConflict: 'name' });
+  const { error } = await supabase.from('players').upsert(initialPlayers, { onConflict: 'external_id' });
   if (error) {
     console.error(`Player stats upsert failed: ${error.message}`);
   } else {
