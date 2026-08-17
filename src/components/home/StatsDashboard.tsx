@@ -1,15 +1,16 @@
+// src/components/home/StatsDashboard.tsx
 'use client';
 
 import React, { useState } from 'react';
 import type { StandingsRow } from '@/lib/types';
-import { Trophy, Shield } from 'lucide-react';
+import { Trophy } from 'lucide-react';
 
-interface ScoutDashProps {
+interface StatsDashboardProps {
   standings?: StandingsRow[];
   nslStandings?: StandingsRow[];
 }
 
-export default function ScoutDash({ standings = [], nslStandings = [] }: ScoutDashProps) {
+export default function StatsDashboard({ standings = [], nslStandings = [] }: StatsDashboardProps) {
   const [leagueTab, setLeagueTab] = useState<'CPL' | 'NSL'>('CPL');
 
   const currentStandings = leagueTab === 'CPL' ? standings : nslStandings;
@@ -84,3 +85,4 @@ export default function ScoutDash({ standings = [], nslStandings = [] }: ScoutDa
     </div>
   );
 }
+
