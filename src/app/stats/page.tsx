@@ -832,7 +832,7 @@ function getProvincialStandings(prov: 'ON' | 'QC' | 'BC' | 'AB') {
       { pos: 4, club: 'St. Albert Impact', pts: 21, gd: '-2' },
       { pos: 5, club: 'Calgary Wild Pro-Am', pts: 18, gd: '-5' },
       { pos: 6, club: 'Edmonton BTB', pts: 14, gd: '-8' },
-      { pos: 7, club: 'Cavalry U21 B', pts: 10, gd: '-12' },
+      { pos: 7, club: 'Cavalry U21 B', items: 10, pts: 10, gd: '-12' },
     ];
   }
 }
