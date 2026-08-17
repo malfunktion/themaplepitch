@@ -220,12 +220,11 @@ async function importPlayers() {
   ];
 
   const initialPlayers = corePlayers.map(p => ({
-    name: p.name,
+    full_name: p.name,
     position: p.position
   }));
 
-  // Using 'name' as conflict target since players table uses name uniqueness
-  const { error } = await supabase.from('players').upsert(initialPlayers, { onConflict: 'name' });
+  const { error } = await supabase.from('players').upsert(initialPlayers, { onConflict: 'full_name' });
   if (error) {
     console.error(`Player stats upsert failed: ${error.message}`);
   } else {
