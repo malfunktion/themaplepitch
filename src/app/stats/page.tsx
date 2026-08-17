@@ -228,7 +228,7 @@ function DataTable({
                       {p.competitionName || p.league || 'Pro'} {'//'} {p.position || 'GEN'}
                     </td>
                     <td className="px-4 py-2.5 text-right text-crimson font-bold">
-                      {p.ga || p.goals || 'Active'}
+                      {p.ga || p.goals ? `${p.goals || 0} G` : 'Active'}
                     </td>
                     <td className="px-4 py-2.5 text-right">
                       <Link
@@ -265,44 +265,37 @@ export default function StatsHubPage() {
   const activeTeams = demoTeams;
 
   const filteredPlayers = useMemo(() => {
-    return activePlayers.filter(
-      (p: any) =>
-        !p.gender ||
-        String(p.gender).toLowerCase() === programGender.toLowerCase() ||
-        (programGender === 'MEN' && (p.competitionName?.includes('CPL') || p.clubName?.includes('Forge'))) ||
-        (programGender === 'WOMEN' && p.competitionName?.includes('NSL'))
-    );
+    return activePlayers.filter((p: any) => {
+      const isWomen = p.competitionName?.includes('NSL') || p.gender === 'WOMEN';
+      return programGender === 'WOMEN' ? isWomen : !isWomen;
+    });
   }, [activePlayers, programGender]);
 
+  const sourceGoldenBoot = filteredPlayers.length > 0 ? filteredPlayers : activePlayers;
+
   const computedGoldenBoot = useMemo<PlayerRow[]>(() => {
-    const source = filteredPlayers.length > 0 ? filteredPlayers : activePlayers;
-    return source.slice(0, 5).map((p: any, idx: number) => ({
+    const pool = programGender === 'MEN' ? menGoldenBootFallback : womenGoldenBootFallback;
+    return pool.map((p, idx) => ({
       rank: idx + 1,
       name: p.name,
-      club: p.clubName,
-      value: `${p.goals} G`,
-      initials: p.name
-        .split(' ')
-        .map((n: string) => n[0])
-        .join('.'),
-      slug: p.slug || slugify(p.name),
+      club: p.club,
+      value: p.value,
+      initials: p.initials,
+      slug: p.slug,
     }));
-  }, [filteredPlayers, activePlayers]);
+  }, [programGender]);
 
   const computedAssists = useMemo<PlayerRow[]>(() => {
-    const source = filteredPlayers.length > 0 ? filteredPlayers : activePlayers;
-    return source.slice(5, 10).map((p: any, idx: number) => ({
+    const pool = programGender === 'MEN' ? menAssistsFallback : womenAssistsFallback;
+    return pool.map((p, idx) => ({
       rank: idx + 1,
       name: p.name,
-      club: p.clubName,
-      value: `${p.assists} AST`,
-      initials: p.name
-        .split(' ')
-        .map((n: string) => n[0])
-        .join('.'),
-      slug: p.slug || slugify(p.name),
+      club: p.club,
+      value: p.value,
+      initials: p.initials,
+      slug: p.slug,
     }));
-  }, [filteredPlayers, activePlayers]);
+  }, [programGender]);
 
   const currentCleanSheets = programGender === 'MEN' ? menCleanSheets : womenCleanSheets;
   const currentAbroad = programGender === 'MEN' ? menAbroad : womenAbroad;
@@ -715,7 +708,39 @@ export default function StatsHubPage() {
   );
 }
 
-// Supplemental Data Sets
+// Full Fallback Leaderboard Arrays
+const menGoldenBootFallback = [
+  { name: 'Terran Campbell', club: 'Forge FC', value: '14 G', initials: 'T.C', slug: 'terran-campbell' },
+  { name: 'Moses Dyer', club: 'Vancouver FC', value: '11 G', initials: 'M.D', slug: 'moses-dyer' },
+  { name: 'Alejandro Díaz', club: 'Pacific FC', value: '10 G', initials: 'A.D', slug: 'alejandro-diaz' },
+  { name: 'Gabriele Prokop', club: 'York United', value: '9 G', initials: 'G.P', slug: 'gabriele-prokop' },
+  { name: 'Brian Wright', club: 'Atlético Ottawa', value: '8 G', initials: 'B.W', slug: 'brian-wright' },
+];
+
+const womenGoldenBootFallback = [
+  { name: 'Jorian Baucom', club: 'AFC Toronto', value: '11 G', initials: 'J.B', slug: 'jorian-baucom' },
+  { name: 'Evelyne Viens', club: 'Montreal Roses', value: '9 G', initials: 'E.V', slug: 'evelyne-viens' },
+  { name: 'Melissa Tancredi', club: 'Calgary Wild', value: '8 G', initials: 'M.T', slug: 'melissa-tancredi' },
+  { name: 'Cloé Lacasse', club: 'Ottawa Rapid', value: '7 G', initials: 'C.L', slug: 'cloe-lacasse' },
+  { name: 'Sarah Stratigakis', club: 'Vancouver Rise', value: '6 G', initials: 'S.S', slug: 'sarah-stratigakis' },
+];
+
+const menAssistsFallback = [
+  { name: 'Manny Aparicio', club: 'Pacific FC', value: '8 AST', initials: 'M.A', slug: 'manny-aparicio' },
+  { name: 'Tristan Borges', club: 'Forge FC', value: '8 AST', initials: 'T.B', slug: 'tristan-borges' },
+  { name: 'Ali Musse', club: 'Cavalry FC', value: '7 AST', initials: 'A.M', slug: 'ali-musse' },
+  { name: 'Sean Young', club: 'Pacific FC', value: '5 AST', initials: 'S.Y', slug: 'sean-young' },
+  { name: 'Brian Wright', club: 'Atlético Ottawa', value: '5 AST', initials: 'B.W', slug: 'brian-wright' },
+];
+
+const womenAssistsFallback = [
+  { name: 'Sarah Stratigakis', club: 'Vancouver Rise', value: '6 AST', initials: 'S.S', slug: 'sarah-stratigakis' },
+  { name: 'Simi Awujo', club: 'Montreal Roses', value: '5 AST', initials: 'S.A', slug: 'simi-awujo' },
+  { name: 'Evelyne Viens', club: 'Montreal Roses', value: '4 AST', initials: 'E.V', slug: 'evelyne-viens' },
+  { name: 'Adriana Leon', club: 'Calgary Wild', value: '4 AST', initials: 'A.L', slug: 'adriana-leon' },
+  { name: 'Cloé Lacasse', club: 'Ottawa Rapid', value: '3 AST', initials: 'C.L', slug: 'cloe-lacasse' },
+];
+
 const menCleanSheets = [
   { rank: 1, name: 'Triston Henry', club: 'Forge FC', value: '7 CS', initials: 'T.H', slug: 'triston-henry' },
   { rank: 2, name: 'Marco Carducci', club: 'Cavalry FC', value: '6 CS', initials: 'M.C', slug: 'marco-carducci' },
