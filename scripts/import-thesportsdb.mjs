@@ -1,5 +1,5 @@
 // scripts/import-thesportsdb.mjs
-// Pulls team telemetry and core Canadian player records into Supabase.
+// Pulls team, match history, and player telemetry from TheSportsDB for CPL, NSL, Canadian Championship, MLS, and NWSL.
 
 import { createClient } from '@supabase/supabase-js';
 
@@ -13,6 +13,7 @@ if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
 }
 
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+const API_BASE = `https://www.thesportsdb.com/api/v1/json/${TSDB_KEY}`;
 
 // Strict Whitelists & Core Canadian Teams
 const CPL_TEAMS = [
@@ -42,12 +43,13 @@ const CANADIAN_MLS_TEAMS = [
   'Vancouver Whitecaps'
 ];
 
+// Master Target Competitions Map
 const TARGET_LEAGUES = [
-  { code: 'CPL', gender: 'men', whitelistedTeams: CPL_TEAMS },
-  { code: 'NSL', gender: 'women', whitelistedTeams: NSL_TEAMS },
-  { code: 'Canadian Championship', gender: 'men', whitelistedTeams: [...CPL_TEAMS, ...CANADIAN_MLS_TEAMS] },
-  { code: 'MLS', gender: 'men', whitelistedTeams: CANADIAN_MLS_TEAMS },
-  { code: 'NWSL', gender: 'women', whitelistedTeams: [] }
+  { id: 4820, code: 'CPL', gender: 'men', whitelistedTeams: CPL_TEAMS },
+  { id: 5602, code: 'NSL', gender: 'women', whitelistedTeams: NSL_TEAMS },
+  { id: 5922, code: 'Canadian Championship', gender: 'men', whitelistedTeams: [...CPL_TEAMS, ...CANADIAN_MLS_TEAMS] },
+  { id: 4346, code: 'MLS', gender: 'men', whitelistedTeams: CANADIAN_MLS_TEAMS, filterCanadianExpats: true },
+  { id: 4521, code: 'NWSL', gender: 'women', whitelistedTeams: [], filterCanadianExpats: true }
 ];
 
 function slugify(name) {
@@ -59,13 +61,30 @@ function slugify(name) {
     .replace(/(^-|-$)/g, '');
 }
 
+async function fetchTheSportsDB(endpoint) {
+  const url = `${API_BASE}${endpoint}`;
+  console.log(`Fetching: ${url}`);
+  const res = await fetch(url);
+
+  if (!res.ok) {
+    throw new Error(`TheSportsDB request failed (${res.status}): ${res.statusText}`);
+  }
+
+  const data = await res.json();
+  return data;
+}
+
 async function importTeams() {
   const initialRows = [];
 
   for (const leagueConfig of TARGET_LEAGUES) {
     console.log(`Importing teams for ${leagueConfig.code}...`);
     
-    for (const teamName of leagueConfig.whitelistedTeams) {
+    const teamsToProcess = leagueConfig.whitelistedTeams.length > 0 
+      ? leagueConfig.whitelistedTeams 
+      : [];
+
+    for (const teamName of teamsToProcess) {
       const extId = slugify(`${leagueConfig.code}-${teamName}`);
       initialRows.push({
         name: teamName,
@@ -98,31 +117,30 @@ async function importPlayers() {
   console.log('Importing core Canadian player telemetry...');
 
   const corePlayers = [
-    { name: 'Jonathan David', league: 'Abroad', gender: 'men', position: 'ST' },
-    { name: 'Alphonso Davies', league: 'Abroad', gender: 'men', position: 'LB' },
-    { name: 'Stephen Eustáquio', league: 'Abroad', gender: 'men', position: 'CM' },
-    { name: 'Tajon Buchanan', league: 'Abroad', gender: 'men', position: 'RW' },
-    { name: 'Ismaël Koné', league: 'Abroad', gender: 'men', position: 'CM' },
-    { name: 'Alistair Johnston', league: 'Abroad', gender: 'men', position: 'RB' },
-    { name: 'Jonathan Osorio', league: 'MLS', gender: 'men', position: 'CM' },
-    { name: 'Kamal Miller', league: 'MLS', gender: 'men', position: 'CB' },
-    { name: 'Jessie Fleming', league: 'Abroad', gender: 'women', position: 'CM' },
-    { name: 'Simi Awujo', league: 'Abroad', gender: 'women', position: 'CDM' },
-    { name: 'Shelina Zadorsky', league: 'Abroad', gender: 'women', position: 'CB' },
-    { name: 'Evelyne Viens', league: 'NSL', gender: 'women', position: 'ST' },
-    { name: 'Jorian Baucom', league: 'NSL', gender: 'women', position: 'ST' },
-    { name: 'Terran Campbell', league: 'CPL', gender: 'men', position: 'ST' },
-    { name: 'Moses Dyer', league: 'CPL', gender: 'men', position: 'ST' }
+    { name: 'Jonathan David', position: 'ST' },
+    { name: 'Alphonso Davies', position: 'LB' },
+    { name: 'Stephen Eustáquio', position: 'CM' },
+    { name: 'Tajon Buchanan', position: 'RW' },
+    { name: 'Ismaël Koné', position: 'CM' },
+    { name: 'Alistair Johnston', position: 'RB' },
+    { name: 'Jonathan Osorio', position: 'CM' },
+    { name: 'Kamal Miller', position: 'CB' },
+    { name: 'Jessie Fleming', position: 'CM' },
+    { name: 'Simi Awujo', position: 'CDM' },
+    { name: 'Shelina Zadorsky', position: 'CB' },
+    { name: 'Evelyne Viens', position: 'ST' },
+    { name: 'Jorian Baucom', position: 'ST' },
+    { name: 'Terran Campbell', position: 'ST' },
+    { name: 'Moses Dyer', position: 'ST' }
   ];
 
   const initialPlayers = corePlayers.map(p => ({
+    external_id: slugify(p.name),
     name: p.name,
-    league: p.league,
-    gender: p.gender,
     position: p.position
   }));
 
-  const { error } = await supabase.from('players').upsert(initialPlayers, { onConflict: 'name' });
+  const { error } = await supabase.from('players').upsert(initialPlayers, { onConflict: 'external_id' });
   if (error) {
     console.error(`Player stats upsert failed: ${error.message}`);
   } else {
