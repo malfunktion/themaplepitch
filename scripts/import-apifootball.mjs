@@ -15,14 +15,11 @@ if (!SUPABASE_URL || !SERVICE_ROLE_KEY || !APIF_KEY) {
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 const API_BASE = 'https://v3.football.api-sports.io';
 
-// Target Leagues: CPL and Northern Super League (NSL)
+// Target Leagues with individual seasons (Note: Free tier restricts data to 2022-2024)
 const TARGET_LEAGUES = [
-  { id: 659, code: 'CPL', gender: 'men' },
-  { id: 8150, code: 'NSL', gender: 'women' }
+  { id: 659, code: 'CPL', gender: 'men', season: 2024 },
+  { id: 12606, code: 'NSL', gender: 'women', season: 2024 } // Change to 2025/2026 if using a paid tier where NSL is active
 ];
-
-// Free plans restrict current/future years; use 2024 (or 2023) for free tier testing
-const SEASON = 2024; 
 
 function slugify(name) {
   return name
@@ -57,9 +54,9 @@ async function importTeams() {
   const initialRows = [];
 
   for (const leagueConfig of TARGET_LEAGUES) {
-    console.log(`Fetching teams for ${leagueConfig.code} (League ID: ${leagueConfig.id}, Season: ${SEASON})...`);
+    console.log(`Fetching teams for ${leagueConfig.code} (League ID: ${leagueConfig.id}, Season: ${leagueConfig.season})...`);
     try {
-      const teamsData = await fetchApiFootball(`/teams?league=${leagueConfig.id}&season=${SEASON}`);
+      const teamsData = await fetchApiFootball(`/teams?league=${leagueConfig.id}&season=${leagueConfig.season}`);
       
       for (const item of teamsData) {
         const t = item.team;
@@ -108,9 +105,9 @@ async function importFixtures(teamIdMap) {
   let skipped = 0;
 
   for (const leagueConfig of TARGET_LEAGUES) {
-    console.log(`Fetching fixtures for ${leagueConfig.code} (League ID: ${leagueConfig.id}, Season: ${SEASON})...`);
+    console.log(`Fetching fixtures for ${leagueConfig.code} (League ID: ${leagueConfig.id}, Season: ${leagueConfig.season})...`);
     try {
-      const fixturesData = await fetchApiFootball(`/fixtures?league=${leagueConfig.id}&season=${SEASON}`);
+      const fixturesData = await fetchApiFootball(`/fixtures?league=${leagueConfig.id}&season=${leagueConfig.season}`);
 
       for (const f of fixturesData) {
         const homeName = f.teams.home.name;
