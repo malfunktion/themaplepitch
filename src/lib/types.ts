@@ -1,7 +1,6 @@
 // src/lib/types.ts
-import type { Key } from 'react';
 
-export type League = 
+export type League =
   | "CPL"
   | "NSL"
   | "MLS"
@@ -11,42 +10,31 @@ export type League =
   | "Abroad"
   | "Transfers";
 
-const VALID_LEAGUES: League[] = ["CPL", "NSL", "MLS", "CanMNT", "CanWNT", "Provincial", "Abroad", "Transfers"];
-
-export function mapNewsWireCategoryToLeague(category: string | null | undefined): League {
-  if (category && (VALID_LEAGUES as string[]).includes(category)) {
-    return category as League;
-  }
-  return "CPL";
-}
-
-export interface WireStory {
-  id: Key;
+export type WireStory = {
+  id: string;
   headline: string;
   summary: string;
-  league: League | string;
+  league: League;
   sourceName: string;
   sourceUrl: string;
   thumbnailUrl: string | null;
   publishedAt: string;
-  gender?: string;
-  isApproved?: boolean;
-  isHero?: boolean;
-  isDataDrop?: boolean;
-  category?: string;
-  subCategory?: string;
-  storyType?: string;
-  isEditorPick?: boolean;
-  relatedPlayers?: string[];
-  timestamp?: string;
-}
+  isEditorPick: boolean;
+};
 
 export type StandingsRow = {
+  id?: number;
   position: number;
   clubName: string;
+  name?: string;
   played: number;
   points: number;
   goalDifference: number;
+  won?: number;
+  drawn?: number;
+  lost?: number;
+  goalsFor?: number;
+  goalsAgainst?: number;
 };
 
 export type LiveTickerItem = {
@@ -73,19 +61,20 @@ export interface UpcomingFixture {
   ticketUrl: string | null;
 }
 
-export type HomeSectionId = 
-  | 'hero' 
-  | 'wire' 
-  | 'pro-leagues-tracker' 
-  | 'youth-pipeline' 
-  | 'player-database' 
-  | 'fan-hub' 
-  | 'player-provincial' 
-  | 'stats-dashboard' 
-  | 'legends-gallery' 
-  | 'local-club-spotlight' 
+export type HomeSectionId =
+  | 'hero'
+  | 'wire'
+  | 'pro-leagues-tracker'
+  | 'youth-pipeline'
+  | 'player-database'
+  | 'player-provincial'
+  | 'stats-dashboard'
+  | 'legends-gallery'
+  | 'fan-hub'
+  | 'provincial-pyramid'
   | 'conversion-section'
-| 'collegiate-watchlist';
+  | 'local-club-spotlight'
+  | 'collegiate-watchlist';
 
 export interface HomeLayoutItem {
   id: HomeSectionId;
