@@ -1,4 +1,5 @@
 // src/lib/data/standings.ts
+
 import { createClient } from '@/lib/supabase/client';
 import type { StandingsRow, LiveTickerItem } from '@/lib/types';
 
@@ -140,4 +141,4 @@ export async function getLiveTicker(): Promise<LiveTickerItem[]> {
       { id: 't1', competition: 'CPL', homeTeam: 'Forge FC', awayTeam: 'Cavalry FC', homeScore: 2, awayScore: 1, minute: 88, isLive: true },
     ];
   }
-          }
+}
