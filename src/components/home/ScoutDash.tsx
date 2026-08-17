@@ -12,7 +12,7 @@ interface ScoutDashProps {
 export default function ScoutDash({ standings = [], nslStandings = [] }: ScoutDashProps) {
   const [leagueTab, setLeagueTab] = useState<'CPL' | 'NSL'>('CPL');
 
-  const contractRadar = Array.from({ length: 8 }).map((_, i) => ({
+  const contractRadar = Array.from({ length: 6 }).map((_, i) => ({
     name: `Player Profile ${i + 1}`,
     club: i % 2 === 0 ? 'Lille OSC' : 'FC Porto',
     exp: `${Math.floor(Math.random() * 50) + 14} DAYS`,
@@ -48,20 +48,23 @@ export default function ScoutDash({ standings = [], nslStandings = [] }: ScoutDa
       </div>
 
       <div className="space-y-2">
-        <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest flex justify-between items-center">
-          <span>{leagueTab} Standings</span>
-          <span className="text-[9px] text-neutral-500">{activeStandings.length} CLUBS</span>
+        <div className="flex justify-between items-center text-[10px] font-mono text-neutral-400 uppercase tracking-widest border-b border-border/60 pb-1">
+          <span>{leagueTab} Club</span>
+          <span>Pts</span>
         </div>
-        <div className="max-h-[190px] overflow-y-auto space-y-1 pr-1">
+        <div className="max-h-[240px] overflow-y-auto space-y-1 pr-1">
           {activeStandings && activeStandings.length > 0 ? (
             activeStandings.map((row, idx) => (
-              <div key={idx} className="flex justify-between items-center text-xs font-mono py-1 border-b border-border/40 dark:border-neutral-800/40">
-                <span className="text-foreground font-bold">{row.position ?? idx + 1}. {row.clubName}</span>
-                <span className="text-neutral-400 font-bold">{row.points} PTS</span>
+              <div key={idx} className="flex justify-between items-center text-xs font-mono py-1.5 px-1 border-b border-border/40 dark:border-neutral-800/40 hover:bg-neutral-900/20 rounded-sm">
+                <span className="text-foreground font-bold flex items-center gap-2">
+                  <span className="text-neutral-400 w-4 text-right">{row.position ?? idx + 1}.</span>
+                  <span className="truncate max-w-[150px]">{row.clubName}</span>
+                </span>
+                <span className="text-crimson font-bold">{row.points} PTS</span>
               </div>
             ))
           ) : (
-            <div className="py-2 text-center text-xs text-neutral-500 font-mono italic">
+            <div className="py-4 text-center text-xs text-neutral-500 font-mono italic">
               No standings data available for {leagueTab}.
             </div>
           )}
@@ -69,7 +72,7 @@ export default function ScoutDash({ standings = [], nslStandings = [] }: ScoutDa
       </div>
 
       <div className="space-y-2 mt-2">
-        <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest">
+        <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest border-b border-border/60 pb-1">
           Contract Radar (Expiring)
         </div>
         <div className="max-h-[160px] overflow-y-auto space-y-1.5 pr-1">
