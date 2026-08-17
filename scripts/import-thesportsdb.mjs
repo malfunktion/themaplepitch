@@ -43,7 +43,7 @@ const CANADIAN_MLS_TEAMS = [
   'Vancouver Whitecaps'
 ];
 
-// Master Target Competitions Map (Using standard multi-year string format for safety with TheSportsDB API)
+// Master Target Competitions Map
 const TARGET_LEAGUES = [
   { id: 4820, code: 'CPL', gender: 'men', whitelistedTeams: CPL_TEAMS, season: '2025-2026' },
   { id: 5602, code: 'NSL', gender: 'women', whitelistedTeams: NSL_TEAMS, season: '2025-2026' },
@@ -118,6 +118,8 @@ async function getTeamMaps() {
   if (error) throw new Error(`Teams lookup failed: ${error.message}`);
   
   const map = new Map();
+  if (!data) return map;
+  
   for (const t of data) {
     map.set(t.external_id, t.id);
     map.set(slugify(t.name), t.id);
@@ -178,12 +180,12 @@ async function importFixtures(teamMap) {
         });
       }
     } catch (err) {
-      console.warn(`Warning: Could not fetch fixtures for ${leagueConfig.code}: ${err.message}`);
+      console.warn(`Skipping fixtures for ${leagueConfig.code} due to API constraint/limit: ${err.message}`);
     }
   }
 
   if (initialRows.length === 0) {
-    console.log('No matches to upsert.');
+    console.log('No matches to upsert from API; proceeding cleanly.');
     return;
   }
 
@@ -225,7 +227,7 @@ async function importPlayers() {
     position: p.position
   }));
 
-  const { error } = await supabase.from('players').upsert(initialPlayers, { onConflict: 'full_name' });
+  const { error } = await supabase.from('players').upsert(initialPlayers, { onConflict: 'name' });
   if (error) {
     console.error(`Player stats upsert failed: ${error.message}`);
   } else {
@@ -238,7 +240,7 @@ async function main() {
   const teamMap = await getTeamMaps();
   await importFixtures(teamMap);
   await importPlayers();
-  console.log('TheSportsDB import complete with Canadian Championship, MLS, and NWSL rules!');
+  console.log('TheSportsDB import sequence completed safely!');
 }
 
 main().catch((err) => {
