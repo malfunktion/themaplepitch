@@ -17,9 +17,19 @@ import type { StandingsRow, LiveTickerItem } from '@/lib/types';
 type TeamRow = { id: number; name: string };
 type MatchRow = { home_team_id: number; away_team_id: number; home_score: number; away_score: number };
 
+// Single knob for "what season is current." Update this each January —
+// everything else in this file derives from it.
+const CURRENT_SEASON = 2026;
+
 async function computeStandings(competition: string): Promise<StandingsRow[]> {
   let teams: TeamRow[] | null = null;
   let matches: MatchRow[] | null = null;
+
+  // Current-season only. Without this, a dissolved club (e.g. Valour FC,
+  // which ceased operations in Nov 2025) would show up in "current"
+  // standings forever, since its historical matches never stop counting.
+  const seasonStart = `${CURRENT_SEASON}-01-01`;
+  const seasonEnd = `${CURRENT_SEASON + 1}-01-01`;
 
   try {
     const [teamsRes, matchesRes] = await Promise.all([
@@ -28,7 +38,9 @@ async function computeStandings(competition: string): Promise<StandingsRow[]> {
         .from('matches')
         .select('home_team_id, away_team_id, home_score, away_score')
         .eq('competition', competition)
-        .eq('status', 'Finished'),
+        .eq('status', 'Finished')
+        .gte('match_date', seasonStart)
+        .lt('match_date', seasonEnd),
     ]);
     if (teamsRes.error || matchesRes.error) {
       console.error(`computeStandings(${competition}) failed:`, teamsRes.error || matchesRes.error);
