@@ -15,10 +15,10 @@ if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 const API_BASE = `https://www.thesportsdb.com/api/v1/json/${TSDB_KEY}`;
 
-// Target Leagues: CPL (4820) and NSL (5602) for season 2026
+// Target Leagues: CPL (4820) and NSL (5602)
 const TARGET_LEAGUES = [
-  { id: 4820, code: 'CPL', gender: 'men', season: '2026' },
-  { id: 5602, code: 'NSL', gender: 'women', season: '2026' }
+  { id: 4820, code: 'CPL', gender: 'men' },
+  { id: 5602, code: 'NSL', gender: 'women' }
 ];
 
 function slugify(name) {
@@ -47,7 +47,7 @@ async function importTeams() {
   const initialRows = [];
 
   for (const leagueConfig of TARGET_LEAGUES) {
-    console.log(`Fetching teams for ${leagueConfig.code} (League ID: ${leagueConfig.id}, Season: ${leagueConfig.season})...`);
+    console.log(`Fetching teams for ${leagueConfig.code} (League ID: ${leagueConfig.id})...`);
     try {
       const data = await fetchTheSportsDB(`/lookup_all_teams.php?id=${leagueConfig.id}`);
       const teamsData = data.teams || [];
@@ -62,7 +62,7 @@ async function importTeams() {
           division_level: 'Professional',
           logo_url: t.strBadge || null,
           youtube_search_tag: null,
-          slug: extId, // Scoped slug to prevent uniqueness violations
+          slug: extId,
           external_id: extId,
         });
       }
@@ -98,10 +98,28 @@ async function importFixtures(teamIdMap) {
   let skipped = 0;
 
   for (const leagueConfig of TARGET_LEAGUES) {
-    console.log(`Fetching fixtures for ${leagueConfig.code} (League ID: ${leagueConfig.id}, Season: ${leagueConfig.season})...`);
+    console.log(`Fetching seasons for ${leagueConfig.code} (League ID: ${leagueConfig.id})...`);
     try {
-      const data = await fetchTheSportsDB(`/eventsseason.php?id=${leagueConfig.id}&s=${leagueConfig.season}`);
+      const seasonsData = await fetchTheSportsDB(`/search_all_seasons.php?id=${leagueConfig.id}`);
+      const seasons = seasonsData.seasons || [];
+
+      if (seasons.length === 0) {
+        console.warn(`No seasons found for ${leagueConfig.code}`);
+        continue;
+      }
+
+      // Find the 2026 season or fallback to the latest available season
+      let targetSeasonObj = seasons.find(s => s.strSeason === '2026' || s.strSeason?.includes('2026'));
+      if (!targetSeasonObj) {
+        targetSeasonObj = seasons[seasons.length - 1];
+      }
+
+      const seasonStr = targetSeasonObj.strSeason;
+      console.log(`Fetching fixtures for ${leagueConfig.code} (Season: ${seasonStr})...`);
+
+      const data = await fetchTheSportsDB(`/eventsseason.php?id=${leagueConfig.id}&s=${seasonStr}`);
       const fixturesData = data.events || [];
+      console.log(`Found ${fixturesData.length} events for ${leagueConfig.code}`);
 
       for (const f of fixturesData) {
         const homeName = f.strHomeTeam;
