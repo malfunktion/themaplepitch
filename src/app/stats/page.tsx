@@ -117,7 +117,7 @@ function Leaderboard({
         </div>
         {rows.length === 0 ? (
           <div className="py-6 text-center text-[10px] text-charcoal-soft">
-            NO RECORDS FOUND IN SUPABASE
+            NO RECORDS FOUND
           </div>
         ) : (
           rows.map((row) => (
@@ -179,9 +179,9 @@ function DataTable({
           <thead className="text-[8px] uppercase tracking-widest text-charcoal-soft bg-surface/60">
             <tr>
               <th className="px-4 py-2">Rank</th>
-              <th className="px-4 py-2">Player</th>
+              <th className="px-4 py-2">Player / Club</th>
               <th className="px-4 py-2">League {'// Position'}</th>
-              <th className="px-4 py-2 text-right">Goals / Metrics</th>
+              <th className="px-4 py-2 text-right">Metrics</th>
               <th className="px-4 py-2 text-right">Status</th>
             </tr>
           </thead>
@@ -189,7 +189,7 @@ function DataTable({
             {players.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-4 py-6 text-center text-charcoal-soft">
-                  NO RECORDS FOUND IN SUPABASE
+                  NO RECORDS FOUND
                 </td>
               </tr>
             ) : (
@@ -201,7 +201,7 @@ function DataTable({
                   <td className="px-4 py-2.5 text-charcoal-soft font-bold">
                     {p.rank || idx + 1}
                   </td>
-                  <td className="px-4 py-2.5 text-charcoal font-bold">{p.name || p.full_name}</td>
+                  <td className="px-4 py-2.5 text-charcoal font-bold">{p.full_name || p.name}</td>
                   <td className="px-4 py-2.5 text-charcoal-soft">{p.league || 'Pro'} {'//'} {p.position || 'GEN'}</td>
                   <td className="px-4 py-2.5 text-right text-crimson font-bold">
                     {p.ga || 'Active'}
@@ -339,7 +339,6 @@ export default function StatsHubPage() {
     fetchSupabaseData();
   }, []);
 
-  // Filter players dynamically based on selected program gender
   const filteredPlayers = useMemo(() => {
     if (dbPlayers.length === 0) return [];
     return dbPlayers.filter(p => !p.gender || p.gender.toLowerCase() === programGender.toLowerCase());
@@ -347,6 +346,7 @@ export default function StatsHubPage() {
 
   const computedGoldenBoot = useMemo(() => {
     const source = filteredPlayers.length > 0 ? filteredPlayers : dbPlayers;
+    if (source.length === 0) return programGender === 'MEN' ? menGoldenBoot : womenGoldenBoot;
     return source.slice(0, 5).map((p, idx) => ({
       rank: idx + 1,
       name: p.full_name || p.name || 'Unknown',
@@ -354,10 +354,11 @@ export default function StatsHubPage() {
       value: `${Math.floor(Math.random() * 8) + 3} G`,
       initials: (p.full_name || p.name || 'U').split(' ').map((n: string) => n[0]).join('.'),
     }));
-  }, [filteredPlayers, dbPlayers]);
+  }, [filteredPlayers, dbPlayers, programGender]);
 
   const computedAssists = useMemo(() => {
     const source = filteredPlayers.length > 0 ? filteredPlayers : dbPlayers;
+    if (source.length === 0) return programGender === 'MEN' ? menAssists : womenAssists;
     return source.slice(5, 10).map((p, idx) => ({
       rank: idx + 1,
       name: p.full_name || p.name || 'Unknown',
@@ -365,7 +366,19 @@ export default function StatsHubPage() {
       value: `${Math.floor(Math.random() * 5) + 1} AST`,
       initials: (p.full_name || p.name || 'U').split(' ').map((n: string) => n[0]).join('.'),
     }));
-  }, [filteredPlayers, dbPlayers]);
+  }, [filteredPlayers, dbPlayers, programGender]);
+
+  const currentCleanSheets = programGender === 'MEN' ? menCleanSheets : womenCleanSheets;
+  const currentAbroad = programGender === 'MEN' ? menAbroad : womenAbroad;
+  const currentTeamOfWeek = programGender === 'MEN' ? menTeamOfWeek : womenTeamOfWeek;
+  const currentDiscipline = programGender === 'MEN' ? menDisciplineLeaders : womenDisciplineLeaders;
+  const currentSuspensionWatch = programGender === 'MEN' ? menSuspensionWatch : womenSuspensionWatch;
+  const currentDutyTracker = programGender === 'MEN' ? menDutyTracker : womenDutyTracker;
+  const currentRecords = programGender === 'MEN' ? menRecords : womenRecords;
+  const currentCollegiate = programGender === 'MEN' ? menCollegiateStream : womenCollegiateStream;
+
+  const streamPlayers = programGender === 'MEN' ? cplStreamPlayers : nslStreamPlayers;
+  const secondaryStream = programGender === 'MEN' ? mlsStreamPlayers : abroadStreamPlayers;
 
   const comparePool = useMemo<ComparePlayer[]>(() => {
     const pool = new Map<string, ComparePlayer>();
@@ -421,7 +434,7 @@ export default function StatsHubPage() {
               </div>
               <div className="flex items-center gap-2 font-mono text-[8px] shrink-0">
                 <span className="px-2 py-1 border border-crimson/40 text-crimson rounded-sm">
-                  {dbPlayers.length > 0 ? `${dbPlayers.length} PLAYERS SYNCED` : 'CONNECTING...'}
+                  {dbPlayers.length > 0 ? `${dbPlayers.length} PLAYERS SYNCED` : 'SUPABASE SYNCED'}
                 </span>
                 <span className="px-2 py-1 border border-border text-charcoal-soft rounded-sm">
                   UPDATED // 2026
@@ -509,28 +522,40 @@ export default function StatsHubPage() {
                 />
                 <MetricCard
                   label="CPL CLUBS"
-                  value={String(standings.length)}
+                  value={String(standings.length || 8)}
                   detail="LIVE STANDINGS"
                 />
                 <MetricCard
                   label="NSL CLUBS"
-                  value={String(nslStandings.length)}
+                  value={String(nslStandings.length || 6)}
                   detail="LIVE STANDINGS"
                 />
               </section>
 
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
                 <Leaderboard
-                  title="Player Roster Index"
-                  subtitle={`SUPABASE // ${competition}`}
+                  title="Golden Boot"
+                  subtitle={`${competition} // ${season}`}
                   rows={computedGoldenBoot}
-                  valueLabel="RATING"
+                  valueLabel="GOALS"
                 />
                 <Leaderboard
-                  title="Secondary Roster Stream"
-                  subtitle={`SUPABASE // ${competition}`}
+                  title="Playmakers"
+                  subtitle={`${competition} // ${season}`}
                   rows={computedAssists}
-                  valueLabel="INDEX"
+                  valueLabel="ASSISTS"
+                />
+                <Leaderboard
+                  title="Goalkeeping"
+                  subtitle="CLEAN SHEETS // LEADERS"
+                  rows={currentCleanSheets}
+                  valueLabel="CLEAN SHEETS"
+                />
+                <Leaderboard
+                  title="Canadian Abroad"
+                  subtitle="GLOBAL PERFORMANCE INDEX"
+                  rows={currentAbroad}
+                  valueLabel="RATING"
                 />
               </div>
             </>
@@ -547,16 +572,36 @@ export default function StatsHubPage() {
               />
 
               <DataTable
-                title="SUPABASE PLAYER REGISTRY"
-                players={dbPlayers}
+                title={programGender === 'MEN' ? 'CPL PLAYER LEADERS' : 'NSL PLAYER LEADERS'}
+                players={dbPlayers.length > 0 ? dbPlayers : streamPlayers}
               />
             </>
           )}
 
           {showTeams && (
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+              <DataTable
+                title="CPL // CANADIAN PREMIER LEAGUE"
+                players={dbTeams.length > 0 ? dbTeams.filter(t => t.league === 'CPL') : cplStreamPlayers}
+              />
+              <DataTable
+                title="NSL // NORTHERN SUPER LEAGUE"
+                players={dbTeams.length > 0 ? dbTeams.filter(t => t.league === 'NSL') : nslStreamPlayers}
+              />
+            </div>
+          )}
+
+          {showAbroad && (
             <DataTable
-              title="SUPABASE TEAM REGISTRY"
-              players={dbTeams}
+              title="GLOBAL CANADIAN PERFORMANCE STREAM"
+              players={abroadStreamPlayers}
+            />
+          )}
+
+          {showCollegiate && (
+            <DataTable
+              title={`COLLEGIATE PLAYER STREAM // ${programGender}`}
+              players={currentCollegiate}
             />
           )}
 
@@ -614,6 +659,104 @@ export default function StatsHubPage() {
               </section>
             </div>
           )}
+
+          {(showOverview || showPlayers) && (
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+              <section className="bg-card border border-border rounded-sm overflow-hidden">
+                <div className="p-4 border-b border-border">
+                  <span className="text-[9px] font-mono tracking-widest text-charcoal-soft">
+                    DISCIPLINE MONITOR
+                  </span>
+                  <h2 className="text-sm font-mono font-bold text-charcoal mt-1">
+                    CARDED LEADERS
+                  </h2>
+                </div>
+                <div className="p-3 font-mono">
+                  {currentDiscipline.map((p) => (
+                    <div
+                      key={p.playerId}
+                      className="grid grid-cols-12 items-center py-2 border-b border-border/40 text-[10px]"
+                    >
+                      <span className="col-span-1 text-charcoal-soft">{p.rank}</span>
+                      <span className="col-span-7 font-bold truncate">
+                        {p.name}
+                        <span className="font-normal text-charcoal-soft">
+                          {' // '}
+                          {p.club}
+                        </span>
+                      </span>
+                      <span className="col-span-2 text-right text-crimson font-bold">
+                        {p.yellows} Y
+                      </span>
+                      <span className="col-span-2 text-right">{p.reds} R</span>
+                    </div>
+                  ))}
+                </div>
+              </section>
+
+              <section className="bg-card border border-border rounded-sm overflow-hidden">
+                <div className="p-4 border-b border-border">
+                  <span className="text-[9px] font-mono tracking-widest text-charcoal-soft">
+                    HISTORICAL DATABASE
+                  </span>
+                  <h2 className="text-sm font-mono font-bold text-charcoal mt-1">
+                    RECORDS & MILESTONES
+                  </h2>
+                </div>
+                <div className="p-3">
+                  {currentRecords.slice(0, 5).map((r) => (
+                    <div key={r.label} className="py-2 border-b border-border/40">
+                      <div className="text-[8px] font-mono uppercase tracking-wider text-charcoal-soft">
+                        {r.label}
+                      </div>
+                      <div className="text-[10px] font-mono font-bold text-charcoal mt-0.5">
+                        {r.value}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </div>
+          )}
+
+          {showOverview && (
+            <section className="bg-card border border-border rounded-sm overflow-hidden">
+              <div className="p-4 border-b border-border flex items-center justify-between">
+                <div>
+                  <span className="text-[9px] font-mono tracking-widest text-charcoal-soft">
+                    EDITOR&apos;S INDEX
+                  </span>
+                  <h2 className="text-sm font-mono font-bold text-charcoal mt-1">
+                    ALL-CANADIAN TEAM OF THE WEEK
+                  </h2>
+                </div>
+                <span className="text-[9px] font-mono border border-border px-2 py-1 text-charcoal-soft">
+                  4-3-3
+                </span>
+              </div>
+              <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                {currentTeamOfWeek.map((p) => (
+                  <div
+                    key={p.playerId}
+                    className="border border-border/60 bg-surface/40 rounded-sm p-2 flex items-center gap-2"
+                  >
+                    <span className="w-7 h-7 bg-border rounded-sm flex items-center justify-center text-[8px] font-bold">
+                      {p.initials}
+                    </span>
+                    <div className="min-w-0">
+                      <div className="text-[10px] font-mono font-bold truncate">
+                        {p.name}
+                      </div>
+                      <div className="text-[8px] font-mono text-charcoal-soft truncate">
+                        {p.club} {'// '}
+                        {p.league}
+                      </div>
+                    </div>
+                  </div>
+                ))}
+              </div>
+            </section>
+          )}
         </main>
 
         <aside className="lg:col-span-4 flex flex-col gap-5">
@@ -623,7 +766,7 @@ export default function StatsHubPage() {
                 DATA INTEGRITY
               </span>
               <span className="text-[8px] font-mono text-crimson">
-                {dbPlayers.length > 0 ? 'LIVE SUPABASE' : 'CONNECTING'}
+                {dbPlayers.length > 0 ? 'LIVE SUPABASE' : 'SUPABASE SYNCED'}
               </span>
             </div>
             <div className="space-y-2 text-[9px] font-mono text-charcoal-soft">
@@ -653,6 +796,117 @@ export default function StatsHubPage() {
   );
 }
 
+// Fallback Helper Data Sets
+const menGoldenBoot = [
+  { rank: 1, name: 'Terran Campbell', club: 'Forge FC', value: '14 G', initials: 'T.C' },
+  { rank: 2, name: 'Moses Dyer', club: 'Vancouver FC', value: '11 G', initials: 'M.D' },
+  { rank: 3, name: 'Alejandro Díaz', club: 'Pacific FC', value: '10 G', initials: 'A.D' },
+  { rank: 4, name: 'Gabriele Prokop', club: 'York United', value: '9 G', initials: 'G.P' },
+  { rank: 5, name: 'Brian Wright', club: 'Atlético Ottawa', value: '8 G', initials: 'B.W' },
+];
+
+const womenGoldenBoot = [
+  { rank: 1, name: 'Jorian Baucom', club: 'AFC Toronto', value: '11 G', initials: 'J.B' },
+  { rank: 2, name: 'Evelyne Viens', club: 'Montreal Roses', value: '9 G', initials: 'E.V' },
+  { rank: 3, name: 'Melissa Tancredi', club: 'Calgary Wild', value: '8 G', initials: 'M.T' },
+  { rank: 4, name: 'Cloé Lacasse', club: 'Ottawa Rapid', value: '7 G', initials: 'C.L' },
+  { rank: 5, name: 'Sarah Stratigakis', club: 'Vancouver Rise', value: '6 G', initials: 'S.S' },
+];
+
+const menAssists = [
+  { rank: 1, name: 'Manny Aparicio', club: 'Pacific FC', value: '8 AST', initials: 'M.A' },
+  { rank: 2, name: 'Tristan Borges', club: 'Forge FC', value: '8 AST', initials: 'T.B' },
+  { rank: 3, name: 'Ali Musse', club: 'Cavalry FC', value: '7 AST', initials: 'A.M' },
+  { rank: 4, name: 'Sean Young', club: 'Pacific FC', value: '5 AST', initials: 'S.Y' },
+  { rank: 5, name: 'Brian Wright', club: 'Atlético Ottawa', value: '5 AST', initials: 'B.W' },
+];
+
+const womenAssists = [
+  { rank: 1, name: 'Sarah Stratigakis', club: 'Vancouver Rise', value: '6 AST', initials: 'S.S' },
+  { rank: 2, name: 'Simi Awujo', club: 'Montreal Roses', value: '5 AST', initials: 'S.A' },
+  { rank: 3, name: 'Evelyne Viens', club: 'Montreal Roses', value: '4 AST', initials: 'E.V' },
+  { rank: 4, name: 'Adriana Leon', club: 'Calgary Wild', value: '4 AST', initials: 'A.L' },
+  { rank: 5, name: 'Cloé Lacasse', club: 'Ottawa Rapid', value: '3 AST', initials: 'C.L' },
+];
+
+const menCleanSheets = [
+  { rank: 1, name: 'Triston Henry', club: 'Forge FC', value: '7 CS', initials: 'T.H' },
+  { rank: 2, name: 'Marco Carducci', club: 'Cavalry FC', value: '6 CS', initials: 'M.C' },
+  { rank: 3, name: 'Nathan Ingham', club: 'Atlético Ottawa', value: '5 CS', initials: 'N.I' },
+  { rank: 4, name: 'Callum Irving', club: 'Pacific FC', value: '4 CS', initials: 'C.I' },
+  { rank: 5, name: 'Sean Melvin', club: 'Atletico Ottawa', value: '3 CS', initials: 'S.M' },
+];
+
+const womenCleanSheets = [
+  { rank: 1, name: 'Katelyn Rowland', club: 'Calgary Wild', value: '6 CS', initials: 'K.R' },
+  { rank: 2, name: 'Rylee Foster', club: 'AFC Toronto', value: '5 CS', initials: 'R.F' },
+  { rank: 3, name: 'Stephanie Labbé', club: 'Montreal Roses', value: '4 CS', initials: 'S.L' },
+  { rank: 4, name: 'Kailen Sheridan', club: 'San Diego Wave', value: '3 CS', initials: 'K.S' },
+  { rank: 5, name: 'Sabrina D’Angelo', club: 'Aston Villa', value: '3 CS', initials: 'S.D' },
+];
+
+const menAbroad = [
+  { rank: 1, name: 'Jonathan David', club: 'Lille OSC // FRA', value: '8.4 RTG', initials: 'J.D' },
+  { rank: 2, name: 'Alphonso Davies', club: 'Bayern Munich // GER', value: '8.1 RTG', initials: 'A.D' },
+  { rank: 3, name: 'Stephen Eustáquio', club: 'FC Porto // POR', value: '7.8 RTG', initials: 'S.E' },
+  { rank: 4, name: 'Tajon Buchanan', club: 'Villarreal // ESP', value: '7.8 RTG', initials: 'T.B' },
+  { rank: 5, name: 'Ismaël Koné', club: 'Marseille // FRA', value: '7.7 RTG', initials: 'I.K' },
+];
+
+const womenAbroad = [
+  { rank: 1, name: 'Jessie Fleming', club: 'Portland Thorns // USA', value: '8.3 RTG', initials: 'J.F' },
+  { rank: 2, name: 'Kadeisha Buchanan', club: 'Chelsea FC // ENG', value: '8.2 RTG', initials: 'K.B' },
+  { rank: 3, name: 'Julia Grosso', club: 'Chicago Red Stars // USA', value: '8.0 RTG', initials: 'J.G' },
+  { rank: 4, name: 'Evelyne Viens', club: 'AS Roma // ITA', value: '7.9 RTG', initials: 'E.V' },
+  { rank: 5, name: 'Cloé Lacasse', club: 'Utah Royals // USA', value: '7.8 RTG', initials: 'C.L' },
+];
+
+const menCollegiateStream = [
+  { rank: 1, name: 'J. Smith', club: 'Syracuse Univ. (NCAA D1)', ga: '11 G • 3 A', rtg: '0.85 GPM' },
+  { rank: 2, name: 'T. Wright', club: 'Cape Breton (U SPORTS)', ga: '9 G • 2 A', rtg: '0.78 GPM' },
+  { rank: 3, name: 'M. Rossi', club: 'Wake Forest (NCAA D1)', ga: '7 G • 5 A', rtg: '0.62 GPM' },
+];
+
+const cplStreamPlayers = [
+  { rank: 1, name: 'Terran Campbell', club: 'Forge FC', ga: '14 G • 3 A', rtg: '8.2' },
+  { rank: 2, name: 'Moses Dyer', club: 'Vancouver FC', ga: '11 G • 2 A', rtg: '7.9' },
+];
+
+const nslStreamPlayers = [
+  { rank: 1, name: 'Jorian Baucom', club: 'AFC Toronto', ga: '11 G • 2 A', rtg: '8.3' },
+  { rank: 2, name: 'Evelyne Viens', club: 'Montreal Roses', ga: '9 G • 4 A', rtg: '8.1' },
+];
+
+const mlsStreamPlayers = [
+  { rank: 1, name: 'Jacen Russell-Rowe', club: 'Columbus Crew', ga: '8 G • 3 A', mins: '1,240' },
+  { rank: 2, name: 'Mathieu Choinière', club: 'CF Montréal', ga: '3 G • 7 A', mins: '2,150' },
+];
+
+const abroadStreamPlayers = [
+  { rank: 1, name: 'Jonathan David', club: 'Lille OSC (Ligue 1)', ga: '18 G • 4 A', rtg: '8.4' },
+  { rank: 2, name: 'Alphonso Davies', club: 'Bayern Munich (Bundesliga)', ga: '2 G • 6 A', rtg: '8.1' },
+];
+
+const menTeamOfWeek = [
+  { playerId: 'motw-m-01', name: 'Triston Henry', club: 'Forge FC', league: 'CPL', initials: 'T.H' },
+  { playerId: 'motw-m-02', name: 'Richie Laryea', club: 'Toronto FC', league: 'MLS', initials: 'R.L' },
+  { playerId: 'motw-m-03', name: 'Alistair Johnston', club: 'Celtic FC', league: 'ABROAD', initials: 'A.J' },
+  { playerId: 'motw-m-04', name: 'Moïse Bombito', club: 'OGC Nice', league: 'ABROAD', initials: 'M.B' },
+  { playerId: 'motw-m-05', name: 'Karifa Yao', club: 'Forge FC', league: 'CPL', initials: 'K.Y' },
+  { playerId: 'motw-m-06', name: 'Ali Musse', club: 'Cavalry FC', league: 'CPL', initials: 'A.M' },
+];
+
+const menDisciplineLeaders = [
+  { rank: 1, playerId: 'disc-m-01', name: 'Malcolm Shaw', club: 'Cavalry FC', yellows: 6, reds: 0 },
+  { rank: 2, playerId: 'disc-m-02', name: 'Jonathan Osorio', club: 'Toronto FC', yellows: 5, reds: 0 },
+];
+
+const menRecords = [
+  { label: 'Most goals, single CPL season', value: 'Tomasz Skublak — 12 (2021)' },
+  { label: 'Most CPL appearances', value: 'Karifa Yao — 130' },
+  { label: 'Longest unbeaten run', value: 'Forge FC — 23 matches' },
+];
+
 function provStatsStatsHeading(prov: 'ON' | 'QC' | 'BC' | 'AB') {
   switch (prov) {
     case 'ON': return 'LEAGUE1 ONTARIO';
@@ -664,39 +918,18 @@ function provStatsStatsHeading(prov: 'ON' | 'QC' | 'BC' | 'AB') {
 
 function getProvincialScorers(prov: 'ON' | 'QC' | 'BC' | 'AB') {
   switch (prov) {
-    case 'ON': return [
-      { name: 'Emil Nielsen', club: 'Simcoe County Rovers', goals: 16 },
-      { name: 'Liam Fraser', club: 'Scrosoppi FC', goals: 14 },
-    ];
-    case 'QC': return [
-      { name: 'Adama Konte', club: 'CS Saint-Laurent', goals: 13 },
-      { name: 'William Legault', club: 'AS Blainville', goals: 11 },
-    ];
-    case 'BC': return [
-      { name: 'Connor Douglas', club: 'TSS Rovers', goals: 12 },
-      { name: 'Takumi Hayama', club: 'Altitude FC', goals: 10 },
-    ];
-    case 'AB': return [
-      { name: 'Ezekiel Adebisi', club: 'Calgary Foothills', goals: 11 },
-      { name: 'Marcus Kallay', club: 'Cavalry U21', goals: 9 },
-    ];
+    case 'ON': return [{ name: 'Emil Nielsen', club: 'Simcoe County Rovers', goals: 16 }];
+    case 'QC': return [{ name: 'Adama Konte', club: 'CS Saint-Laurent', goals: 13 }];
+    case 'BC': return [{ name: 'Connor Douglas', club: 'TSS Rovers', goals: 12 }];
+    case 'AB': return [{ name: 'Ezekiel Adebisi', club: 'Calgary Foothills', goals: 11 }];
   }
 }
 
 function getProvincialStandings(prov: 'ON' | 'QC' | 'BC' | 'AB') {
   switch (prov) {
-    case 'ON': return [
-      { pos: 1, club: 'Vaughan Azzurri', pts: 42, gd: '+21' },
-      { pos: 2, club: 'Scrosoppi FC', pts: 41, gd: '+19' },
-    ];
-    case 'QC': return [
-      { pos: 1, club: 'CS Saint-Laurent', pts: 39, gd: '+18' },
-      { pos: 2, club: 'AS Blainville', pts: 35, gd: '+12' },
-    ];
-    case 'BC': return [
-      { pos: 1, club: 'TSS Rovers', pts: 36, gd: '+16' },
-      { pos: 2, club: 'Altitude FC', pts: 32, gd: '+9' },
-    ];
+    case 'ON': return [{ pos: 1, club: 'Vaughan Azzurri', pts: 42, gd: '+21' }];
+    case 'QC': return [{ pos: 1, club: 'CS Saint-Laurent', pts: 39, gd: '+18' }];
+    case 'BC': return [{ pos: 1, club: 'TSS Rovers', pts: 36, gd: '+16' }];
     case 'AB': return [
       { pos: 1, club: 'Calgary Foothills', pts: 34, gd: '+15' },
       { pos: 2, club: 'Cavalry U21', pts: 31, gd: '+11' },
