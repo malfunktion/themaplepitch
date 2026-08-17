@@ -225,7 +225,7 @@ function DataTable({
                       </Link>
                     </td>
                     <td className="px-4 py-2.5 text-charcoal-soft">
-                      {p.league || p.competitionName || 'Pro'} {'//'} {p.position || 'GEN'}
+                      {p.competitionName || p.league || 'Pro'} {'//'} {p.position || 'GEN'}
                     </td>
                     <td className="px-4 py-2.5 text-right text-crimson font-bold">
                       {p.ga || p.goals || 'Active'}
@@ -266,20 +266,24 @@ export default function StatsHubPage() {
 
   const filteredPlayers = useMemo(() => {
     return activePlayers.filter(
-      (p) => !p.gender || p.gender.toLowerCase() === programGender.toLowerCase()
+      (p: any) =>
+        !p.gender ||
+        String(p.gender).toLowerCase() === programGender.toLowerCase() ||
+        (programGender === 'MEN' && (p.competitionName?.includes('CPL') || p.clubName?.includes('Forge'))) ||
+        (programGender === 'WOMEN' && p.competitionName?.includes('NSL'))
     );
   }, [activePlayers, programGender]);
 
   const computedGoldenBoot = useMemo<PlayerRow[]>(() => {
     const source = filteredPlayers.length > 0 ? filteredPlayers : activePlayers;
-    return source.slice(0, 5).map((p, idx) => ({
+    return source.slice(0, 5).map((p: any, idx: number) => ({
       rank: idx + 1,
       name: p.name,
       club: p.clubName,
       value: `${p.goals} G`,
       initials: p.name
         .split(' ')
-        .map((n) => n[0])
+        .map((n: string) => n[0])
         .join('.'),
       slug: p.slug,
     }));
@@ -287,14 +291,14 @@ export default function StatsHubPage() {
 
   const computedAssists = useMemo<PlayerRow[]>(() => {
     const source = filteredPlayers.length > 0 ? filteredPlayers : activePlayers;
-    return source.slice(5, 10).map((p, idx) => ({
+    return source.slice(5, 10).map((p: any, idx: number) => ({
       rank: idx + 1,
       name: p.name,
       club: p.clubName,
       value: `${p.assists} AST`,
       initials: p.name
         .split(' ')
-        .map((n) => n[0])
+        .map((n: string) => n[0])
         .join('.'),
       slug: p.slug,
     }));
@@ -309,7 +313,7 @@ export default function StatsHubPage() {
 
   const comparePool = useMemo<ComparePlayer[]>(() => {
     const pool = new Map<string, ComparePlayer>();
-    activePlayers.forEach((p) => {
+    activePlayers.forEach((p: any) => {
       pool.set(p.slug, {
         playerId: p.slug,
         name: p.name,
@@ -497,11 +501,11 @@ export default function StatsHubPage() {
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
               <DataTable
                 title="CPL // CANADIAN PREMIER LEAGUE"
-                players={activeTeams.filter((t) => t.competitionName.includes('CPL'))}
+                players={activeTeams.filter((t: any) => t.competitionName?.includes('CPL'))}
               />
               <DataTable
                 title="NSL // NORTHERN SUPER LEAGUE"
-                players={activeTeams.filter((t) => t.competitionName.includes('NSL'))}
+                players={activeTeams.filter((t: any) => t.competitionName?.includes('NSL'))}
               />
             </div>
           )}
@@ -750,6 +754,12 @@ const menCollegiateStream = [
   { rank: 3, name: 'M. Rossi', club: 'Wake Forest (NCAA D1)', ga: '7 G • 5 A', rtg: '0.62 GPM' },
 ];
 
+const womenCollegiateStream = [
+  { rank: 1, name: 'S. Alarie', club: 'Penn State (NCAA D1)', ga: '14 G • 4 A', rtg: '0.92 GPM' },
+  { rank: 2, name: 'C. Briand', club: 'Laval (U SPORTS)', ga: '12 G • 2 A', rtg: '0.88 GPM' },
+  { rank: 3, name: 'M. Leon', club: 'Florida State (NCAA D1)', ga: '10 G • 3 A', rtg: '0.75 GPM' },
+];
+
 const abroadStreamPlayers = [
   { rank: 1, name: 'Jonathan David', club: 'Lille OSC (Ligue 1)', ga: '18 G • 4 A', rtg: '8.4' },
   { rank: 2, name: 'Alphonso Davies', club: 'Bayern Munich (Bundesliga)', ga: '2 G • 6 A', rtg: '8.1' },
@@ -764,14 +774,32 @@ const menTeamOfWeek = [
   { playerId: 'motw-m-06', name: 'Ali Musse', club: 'Cavalry FC', league: 'CPL', initials: 'A.M' },
 ];
 
+const womenTeamOfWeek = [
+  { playerId: 'motw-w-01', name: 'Katelyn Rowland', club: 'Calgary Wild', league: 'NSL', initials: 'K.R' },
+  { playerId: 'motw-w-02', name: 'Jade Rose', club: 'AFC Toronto', league: 'NSL', initials: 'J.R' },
+  { playerId: 'motw-w-03', name: 'Kadeisha Buchanan', club: 'Chelsea FC', league: 'ABROAD', initials: 'K.B' },
+  { playerId: 'motw-w-04', name: 'Vanessa Gilles', club: 'Vancouver Rise', league: 'NSL', initials: 'V.G' },
+  { playerId: 'motw-w-05', name: 'Shelina Zadorsky', club: 'Halifax Tides', league: 'NSL', initials: 'S.Z' },
+  { playerId: 'motw-w-06', name: 'Sarah Stratigakis', club: 'Vancouver Rise', league: 'NSL', initials: 'S.S' },
+];
+
 const menDisciplineLeaders = [
   { rank: 1, playerId: 'disc-m-01', name: 'Malcolm Shaw', club: 'Cavalry FC', yellows: 6, reds: 0 },
   { rank: 2, playerId: 'disc-m-02', name: 'Jonathan Osorio', club: 'Toronto FC', yellows: 5, reds: 0 },
 ];
 
+const womenDisciplineLeaders = [
+  { rank: 1, playerId: 'disc-w-01', name: 'Vanessa Gilles', club: 'Vancouver Rise', yellows: 5, reds: 0 },
+  { rank: 2, playerId: 'disc-w-02', name: 'Shelina Zadorsky', club: 'Halifax Tides', yellows: 4, reds: 0 },
+];
+
 const menRecords = [
   { label: 'Most goals, single CPL season', value: 'Tomasz Skublak — 12 (2021)' },
   { label: 'Most CPL appearances', value: 'Karifa Yao — 130' },
+];
+
+const womenRecords = [
+  { label: 'Most goals, inaugural NSL season', value: 'Jorian Baucom — 11 (2025)' },
 ];
 
 function provStatsStatsHeading(prov: 'ON' | 'QC' | 'BC' | 'AB') {
