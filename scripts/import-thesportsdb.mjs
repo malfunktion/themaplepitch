@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SERVICE_ROLE_KEY;
-const TSDB_KEY = process.env.THESPORTSDB_KEY || process.env.TSDB_KEY || process.env.APIF_KEY || '123';
+const TSDB_KEY = process.env.THESPORTSDB_KEY || process.env.THESPORTSDB_KEY || process.env.APIF_KEY || '123';
 
 if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
   console.error('Missing required environment variables (SUPABASE_URL or SERVICE_ROLE_KEY).');
@@ -87,13 +87,23 @@ async function importTeams() {
   console.log(`Successfully upserted ${uniqueRows.length} teams into Supabase.`);
 }
 
-async function getTeamIdMap() {
-  const { data, error } = await supabase.from('teams').select('id, external_id');
+async function getTeamMaps() {
+  const { data, error } = await supabase.from('teams').select('id, external_id, name, league');
   if (error) throw new Error(`Teams lookup failed: ${error.message}`);
-  return new Map(data.map((t) => [t.external_id, t.id]));
+  
+  const exactMap = new Map();
+  const looseMap = new Map();
+
+  for (const t of data) {
+    exactMap.set(t.external_id, t.id);
+    looseMap.set(`${t.league}-${slugify(t.name)}`, t.id);
+    looseMap.set(slugify(t.name), t.id);
+  }
+  return { exactMap, looseMap };
 }
 
-async function importFixtures(teamIdMap) {
+async function importFixtures(teamMaps) {
+  const { exactMap, looseMap } = teamMaps;
   const initialRows = [];
   let skipped = 0;
 
@@ -108,7 +118,6 @@ async function importFixtures(teamIdMap) {
         continue;
       }
 
-      // Find the 2026 season or fallback to the latest available season
       let targetSeasonObj = seasons.find(s => s.strSeason === '2026' || s.strSeason?.includes('2026'));
       if (!targetSeasonObj) {
         targetSeasonObj = seasons[seasons.length - 1];
@@ -133,10 +142,11 @@ async function importFixtures(teamIdMap) {
         const homeExtId = slugify(`${leagueConfig.code}-${homeName}`);
         const awayExtId = slugify(`${leagueConfig.code}-${awayName}`);
 
-        const homeId = teamIdMap.get(homeExtId);
-        const awayId = teamIdMap.get(awayExtId);
+        const homeId = exactMap.get(homeExtId) || looseMap.get(`${leagueConfig.code}-${slugify(homeName)}`) || looseMap.get(slugify(homeName));
+        const awayId = exactMap.get(awayExtId) || looseMap.get(`${leagueConfig.code}-${slugify(awayName)}`) || looseMap.get(slugify(awayName));
 
         if (!homeId || !awayId) {
+          console.warn(`Skipping fixture: Unmatched teams ("${homeName}" vs "${awayName}")`);
           skipped += 1;
           continue;
         }
@@ -174,13 +184,13 @@ async function importFixtures(teamIdMap) {
 
   const { error } = await supabase.from('matches').upsert(uniqueRows, { onConflict: 'external_id' });
   if (error) throw new Error(`Matches upsert failed: ${error.message}`);
-  console.log(`Upserted ${uniqueRows.length} matches. Skipped ${skipped} unmatched teams/fixtures.`);
+  console.log(`Upserted ${uniqueRows.length} matches. Skipped ${skipped} unmatched fixtures.`);
 }
 
 async function main() {
   await importTeams();
-  const teamIdMap = await getTeamIdMap();
-  await importFixtures(teamIdMap);
+  const teamMaps = await getTeamMaps();
+  await importFixtures(teamMaps);
   console.log('TheSportsDB import complete!');
 }
 
