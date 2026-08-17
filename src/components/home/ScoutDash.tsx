@@ -1,16 +1,41 @@
 // src/components/home/ScoutDash.tsx
 'use client';
-import React, { useState } from 'react';
+
+import React, { useState, useEffect } from 'react';
 import type { StandingsRow } from '@/lib/types';
 import { Target } from 'lucide-react';
+import { getCplStandings, getNslStandings } from '@/lib/data/standings';
 
-interface ScoutDashProps {
-  standings?: StandingsRow[];
+interface ScoutDashProps {  
+  standings?: StandingsRow[];  
   nslStandings?: StandingsRow[];
 }
 
-export default function ScoutDash({ standings = [], nslStandings = [] }: ScoutDashProps) {
+export default function ScoutDash({ standings = [], nslStandings = [] }: ScoutDashProps) {  
   const [leagueTab, setLeagueTab] = useState<'CPL' | 'NSL'>('CPL');
+
+  // Client-side state synchronized with props or live Supabase fetch
+  const [cplRows, setCplRows] = useState<StandingsRow[]>(standings);
+  const [nslRows, setNslRows] = useState<StandingsRow[]>(nslStandings);
+
+  useEffect(() => {
+    // If parent props weren't passed or are empty, fetch live data directly from Supabase
+    if (!standings || standings.length === 0) {
+      getCplStandings().then((data) => {
+        if (data && data.length > 0) setCplRows(data);
+      });
+    } else {
+      setCplRows(standings);
+    }
+
+    if (!nslStandings || nslStandings.length === 0) {
+      getNslStandings().then((data) => {
+        if (data && data.length > 0) setNslRows(data);
+      });
+    } else {
+      setNslRows(nslStandings);
+    }
+  }, [standings, nslStandings]);
 
   // Fallback structures reflecting the true baseline: 8 clubs for CPL, 6 clubs for NSL
   const fallbackCpl: StandingsRow[] = [
@@ -33,9 +58,9 @@ export default function ScoutDash({ standings = [], nslStandings = [] }: ScoutDa
     { position: 6, clubName: 'Halifax Tides', played: 15, points: 11, goalDifference: -14 },
   ];
 
-  const rawStandings = leagueTab === 'CPL' ? standings : nslStandings;
-  const activeStandings = rawStandings && rawStandings.length > 0 
-    ? rawStandings 
+  const rawStandings = leagueTab === 'CPL' ? cplRows : nslRows;
+  const activeStandings = rawStandings && rawStandings.length > 0     
+    ? rawStandings     
     : (leagueTab === 'CPL' ? fallbackCpl : fallbackNsl);
 
   const contractRadar = Array.from({ length: 6 }).map((_, i) => ({
@@ -70,7 +95,6 @@ export default function ScoutDash({ standings = [], nslStandings = [] }: ScoutDa
           </button>
         </div>
       </div>
-
       <div className="space-y-2">
         <div className="flex justify-between items-center text-[10px] font-mono text-neutral-400 uppercase tracking-widest border-b border-border/60 pb-1">
           <span>{leagueTab} Standings ({activeStandings.length} Clubs)</span>
@@ -81,14 +105,13 @@ export default function ScoutDash({ standings = [], nslStandings = [] }: ScoutDa
             <div key={idx} className="flex justify-between items-center text-xs font-mono py-1.5 px-1 border-b border-border/40 dark:border-neutral-800/40 hover:bg-neutral-900/20 rounded-sm">
               <span className="text-foreground font-bold flex items-center gap-2">
                 <span className="text-neutral-400 w-4 text-right">{row.position ?? idx + 1}.</span>
-                <span className="truncate max-w-[150px]">{row.clubName}</span>
+                <span className="truncate max-w-[150px]">{row.clubName || row.name}</span>
               </span>
               <span className="text-crimson font-bold">{row.points} PTS</span>
             </div>
           ))}
         </div>
       </div>
-
       <div className="space-y-2 mt-2">
         <div className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest border-b border-border/60 pb-1">
           Contract Radar (Expiring)
