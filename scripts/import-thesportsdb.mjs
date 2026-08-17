@@ -88,11 +88,11 @@ async function importTeams() {
 
   const finalDeduper = new Map();
   for (const row of initialRows) {
-    finalDeduper.set(row.external_id, row);
+    finalDeduper.set(`${row.league}::${row.name}`, row);
   }
   const uniqueRows = Array.from(finalDeduper.values());
 
-  const { error } = await supabase.from('teams').upsert(uniqueRows, { onConflict: 'external_id' });
+  const { error } = await supabase.from('teams').upsert(uniqueRows, { onConflict: 'league,name' });
   if (error) throw new Error(`Teams upsert failed: ${error.message}`);
   console.log(`Successfully upserted ${uniqueRows.length} official Canadian teams into Supabase.`);
 }
@@ -186,11 +186,11 @@ async function importFixtures(teamMap) {
 
   const finalDeduper = new Map();
   for (const row of initialRows) {
-    finalDeduper.set(row.external_id, row);
+    finalDeduper.set(`${row.match_date}::${row.home_team_id}::${row.away_team_id}`, row);
   }
   const uniqueRows = Array.from(finalDeduper.values());
 
-  const { error } = await supabase.from('matches').upsert(uniqueRows, { onConflict: 'external_id' });
+  const { error } = await supabase.from('matches').upsert(uniqueRows, { onConflict: 'match_date,home_team_id,away_team_id' });
   if (error) throw new Error(`Matches upsert failed: ${error.message}`);
   console.log(`Upserted ${uniqueRows.length} clean Canadian matches for 2026.`);
 }

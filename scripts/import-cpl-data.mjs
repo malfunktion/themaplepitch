@@ -71,11 +71,11 @@ async function importTeams() {
   // Step 2: Strict final deduplication by external_id to guarantee unique batch keys
   const finalDeduper = new Map();
   for (const row of initialRows) {
-    finalDeduper.set(row.external_id, row);
+    finalDeduper.set(`${row.league}::${row.name}`, row);
   }
   const uniqueRows = Array.from(finalDeduper.values());
 
-  const { error } = await supabase.from('teams').upsert(uniqueRows, { onConflict: 'external_id' });
+  const { error } = await supabase.from('teams').upsert(uniqueRows, { onConflict: 'league,name' });
   if (error) throw new Error(`teams upsert failed: ${error.message}`);
   console.log(`Upserted ${uniqueRows.length} unique teams (${teams.filter((t) => t.status === 'active').length} active, ${teams.filter((t) => t.status !== 'active').length} inactive).`);
 }
@@ -121,11 +121,11 @@ async function importMatches(teamIdMap) {
   // Strict final deduplication by external_id to guarantee unique match keys
   const finalDeduper = new Map();
   for (const row of initialRows) {
-    finalDeduper.set(row.external_id, row);
+    finalDeduper.set(`${row.match_date}::${row.home_team_id}::${row.away_team_id}`, row);
   }
   const uniqueRows = Array.from(finalDeduper.values());
 
-  const { error } = await supabase.from('matches').upsert(uniqueRows, { onConflict: 'external_id' });
+  const { error } = await supabase.from('matches').upsert(uniqueRows, { onConflict: 'match_date,home_team_id,away_team_id' });
   if (error) throw new Error(`matches upsert failed: ${error.message}`);
   console.log(`Upserted ${uniqueRows.length} unique matches. Skipped ${skipped} (team name didn't match).`);
 }
