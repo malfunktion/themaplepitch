@@ -193,7 +193,7 @@ function DataTable({
                 </td>
               </tr>
             ) : (
-              players.map((p, idx) => (
+              players.map((p: any, idx: number) => (
                 <tr
                   key={`${title}-${idx}`}
                   className="border-t border-border/40 hover:bg-surface/50"
@@ -347,7 +347,7 @@ export default function StatsHubPage() {
   const computedGoldenBoot = useMemo(() => {
     const source = filteredPlayers.length > 0 ? filteredPlayers : dbPlayers;
     if (source.length === 0) return programGender === 'MEN' ? menGoldenBoot : womenGoldenBoot;
-    return source.slice(0, 5).map((p, idx) => ({
+    return source.slice(0, 5).map((p: any, idx: number) => ({
       rank: idx + 1,
       name: p.full_name || p.name || 'Unknown',
       club: p.league || 'Professional',
@@ -359,7 +359,7 @@ export default function StatsHubPage() {
   const computedAssists = useMemo(() => {
     const source = filteredPlayers.length > 0 ? filteredPlayers : dbPlayers;
     if (source.length === 0) return programGender === 'MEN' ? menAssists : womenAssists;
-    return source.slice(5, 10).map((p, idx) => ({
+    return source.slice(5, 10).map((p: any, idx: number) => ({
       rank: idx + 1,
       name: p.full_name || p.name || 'Unknown',
       club: p.league || 'Professional',
@@ -383,7 +383,7 @@ export default function StatsHubPage() {
   const comparePool = useMemo<ComparePlayer[]>(() => {
     const pool = new Map<string, ComparePlayer>();
     const source = dbPlayers.length > 0 ? dbPlayers : [];
-    source.forEach((p) => {
+    source.forEach((p: any) => {
       const id = String(p.id || p.full_name || p.name);
       pool.set(id, {
         playerId: id,
@@ -582,11 +582,11 @@ export default function StatsHubPage() {
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
               <DataTable
                 title="CPL // CANADIAN PREMIER LEAGUE"
-                players={dbTeams.length > 0 ? dbTeams.filter(t => t.league === 'CPL') : cplStreamPlayers}
+                players={dbTeams.length > 0 ? dbTeams.filter((t: any) => t.league === 'CPL') : cplStreamPlayers}
               />
               <DataTable
                 title="NSL // NORTHERN SUPER LEAGUE"
-                players={dbTeams.length > 0 ? dbTeams.filter(t => t.league === 'NSL') : nslStreamPlayers}
+                players={dbTeams.length > 0 ? dbTeams.filter((t: any) => t.league === 'NSL') : nslStreamPlayers}
               />
             </div>
           )}
@@ -615,7 +615,7 @@ export default function StatsHubPage() {
                   STANDINGS SIGNAL
                 </h2>
                 <div className="mt-3 space-y-1 font-mono">
-                  {provincialStandings.map((r) => (
+                  {provincialStandings.map((r: any) => (
                     <div
                       key={r.pos}
                       className="grid grid-cols-12 text-[10px] py-2 border-b border-border/40"
@@ -639,7 +639,7 @@ export default function StatsHubPage() {
                   TOP PROVINCIAL SCORERS
                 </h2>
                 <div className="mt-3 space-y-1 font-mono">
-                  {provincialScorers.map((r, i) => (
+                  {provincialScorers.map((r: any, i: number) => (
                     <div
                       key={r.name}
                       className="flex items-center justify-between text-[10px] py-2 border-b border-border/40"
@@ -672,7 +672,7 @@ export default function StatsHubPage() {
                   </h2>
                 </div>
                 <div className="p-3 font-mono">
-                  {currentDiscipline.map((p) => (
+                  {currentDiscipline.map((p: any) => (
                     <div
                       key={p.playerId}
                       className="grid grid-cols-12 items-center py-2 border-b border-border/40 text-[10px]"
@@ -704,7 +704,7 @@ export default function StatsHubPage() {
                   </h2>
                 </div>
                 <div className="p-3">
-                  {currentRecords.slice(0, 5).map((r) => (
+                  {currentRecords.slice(0, 5).map((r: any) => (
                     <div key={r.label} className="py-2 border-b border-border/40">
                       <div className="text-[8px] font-mono uppercase tracking-wider text-charcoal-soft">
                         {r.label}
@@ -735,7 +735,7 @@ export default function StatsHubPage() {
                 </span>
               </div>
               <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                {currentTeamOfWeek.map((p) => (
+                {currentTeamOfWeek.map((p: any) => (
                   <div
                     key={p.playerId}
                     className="border border-border/60 bg-surface/40 rounded-sm p-2 flex items-center gap-2"
@@ -796,7 +796,7 @@ export default function StatsHubPage() {
   );
 }
 
-// Fallback Helper Data Sets
+// Fallback Helper Data Sets & Gender-Toggle Datasets
 const menGoldenBoot = [
   { rank: 1, name: 'Terran Campbell', club: 'Forge FC', value: '14 G', initials: 'T.C' },
   { rank: 2, name: 'Moses Dyer', club: 'Vancouver FC', value: '11 G', initials: 'M.D' },
@@ -867,6 +867,12 @@ const menCollegiateStream = [
   { rank: 3, name: 'M. Rossi', club: 'Wake Forest (NCAA D1)', ga: '7 G • 5 A', rtg: '0.62 GPM' },
 ];
 
+const womenCollegiateStream = [
+  { rank: 1, name: 'S. Alarie', club: 'Penn State (NCAA D1)', ga: '14 G • 4 A', rtg: '0.92 GPM' },
+  { rank: 2, name: 'C. Briand', club: 'Laval (U SPORTS)', ga: '12 G • 2 A', rtg: '0.88 GPM' },
+  { rank: 3, name: 'M. Leon', club: 'Florida State (NCAA D1)', ga: '10 G • 3 A', rtg: '0.75 GPM' },
+];
+
 const cplStreamPlayers = [
   { rank: 1, name: 'Terran Campbell', club: 'Forge FC', ga: '14 G • 3 A', rtg: '8.2' },
   { rank: 2, name: 'Moses Dyer', club: 'Vancouver FC', ga: '11 G • 2 A', rtg: '7.9' },
@@ -896,15 +902,48 @@ const menTeamOfWeek = [
   { playerId: 'motw-m-06', name: 'Ali Musse', club: 'Cavalry FC', league: 'CPL', initials: 'A.M' },
 ];
 
+const womenTeamOfWeek = [
+  { playerId: 'motw-w-01', name: 'Katelyn Rowland', club: 'Calgary Wild', league: 'NSL', initials: 'K.R' },
+  { playerId: 'motw-w-02', name: 'Jade Rose', club: 'AFC Toronto', league: 'NSL', initials: 'J.R' },
+  { playerId: 'motw-w-03', name: 'Kadeisha Buchanan', club: 'Chelsea FC', league: 'ABROAD', initials: 'K.B' },
+  { playerId: 'motw-w-04', name: 'Vanessa Gilles', club: 'Vancouver Rise', league: 'NSL', initials: 'V.G' },
+  { playerId: 'motw-w-05', name: 'Shelina Zadorsky', club: 'Halifax Tides', league: 'NSL', initials: 'S.Z' },
+  { playerId: 'motw-w-06', name: 'Sarah Stratigakis', club: 'Vancouver Rise', league: 'NSL', initials: 'S.S' },
+];
+
 const menDisciplineLeaders = [
   { rank: 1, playerId: 'disc-m-01', name: 'Malcolm Shaw', club: 'Cavalry FC', yellows: 6, reds: 0 },
   { rank: 2, playerId: 'disc-m-02', name: 'Jonathan Osorio', club: 'Toronto FC', yellows: 5, reds: 0 },
 ];
 
+const womenDisciplineLeaders = [
+  { rank: 1, playerId: 'disc-w-01', name: 'Vanessa Gilles', club: 'Vancouver Rise', yellows: 5, reds: 0 },
+  { rank: 2, playerId: 'disc-w-02', name: 'Shelina Zadorsky', club: 'Halifax Tides', yellows: 4, reds: 0 },
+];
+
+const menSuspensionWatch = [
+  { playerId: 'susp-m-01', name: 'Kamal Miller', club: 'Portland Timbers', yellows: 4 },
+];
+
+const womenSuspensionWatch = [
+  { playerId: 'susp-w-01', name: 'Shelina Zadorsky', club: 'Halifax Tides', yellows: 4 },
+];
+
+const menDutyTracker = [
+  { rank: 1, playerId: 'duty-m-01', name: 'Richie Laryea', position: 'RB', caps: 45, goals: 2, lastCalled: 'Jun 2026' },
+];
+
+const womenDutyTracker = [
+  { rank: 1, playerId: 'duty-w-01', name: 'Jessie Fleming', position: 'CM', caps: 130, goals: 30, lastCalled: 'Jun 2026' },
+];
+
 const menRecords = [
   { label: 'Most goals, single CPL season', value: 'Tomasz Skublak — 12 (2021)' },
   { label: 'Most CPL appearances', value: 'Karifa Yao — 130' },
-  { label: 'Longest unbeaten run', value: 'Forge FC — 23 matches' },
+];
+
+const womenRecords = [
+  { label: 'Most goals, inaugural NSL season', value: 'Jorian Baucom — 11 (2025)' },
 ];
 
 function provStatsStatsHeading(prov: 'ON' | 'QC' | 'BC' | 'AB') {
