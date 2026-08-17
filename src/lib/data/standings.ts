@@ -1,36 +1,21 @@
-import { supabase } from '@/lib/supabase/client';
-import type { StandingsRow, LiveTickerItem } from '@/lib/types';
+import { createClient } from '@/lib/supabase/client';
 
-// Single shared source of CPL/NSL standings — computed live from actual
-// match results in Supabase, not a hardcoded array. Every page that shows
-// a standings table should call getCplStandings()/getNslStandings() from
-// here instead of keeping its own local array: at last count there were
-// SEVEN independent hardcoded copies across the app (homepage, the-wire,
-// stats, scout-terminal, national-teams, plus proLeaguesDemo.ts), each
-// with a different team count and different point values — that drift is
-// exactly what this file exists to prevent going forward.
-//
-// Degrades gracefully: if the `matches` table has no rows yet for a
-// competition (e.g. before scripts/import-cpl-data.mjs has been run),
-// every team just shows 0 played/0 points rather than erroring.
+export type StandingsRow = {
+  id: number;
+  name: string;
+  played: number;
+  won: number;
+  drawn: number;
+  lost: number;
+  goalsFor: number;
+  goalsAgainst: number;
+  goalDifference: number;
+  points: number;
+};
 
-type TeamRow = { id: number; name: string };
-type MatchRow = { home_team_id: number; away_team_id: number; home_score: number; away_score: number };
+const supabase = createClient();
 
-// Single knob for "what season is current." Update this each January —
-// everything else in this file derives from it.
-const CURRENT_SEASON = 2026;
-
-async function computeStandings(competition: string): Promise<StandingsRow[]> {
-  let teams: TeamRow[] | null = null;
-  let matches: MatchRow[] | null = null;
-
-  // Current-season only. Without this, a dissolved club (e.g. Valour FC,
-  // which ceased operations in Nov 2025) would show up in "current"
-  // standings forever, since its historical matches never stop counting.
-  const seasonStart = `${CURRENT_SEASON}-01-01`;
-  const seasonEnd = `${CURRENT_SEASON + 1}-01-01`;
-
+export async function computeStandings(competition: string): Promise<StandingsRow[]> {
   try {
     const [teamsRes, matchesRes] = await Promise.all([
       supabase.from('teams').select('id, name').eq('league', competition),
@@ -38,96 +23,77 @@ async function computeStandings(competition: string): Promise<StandingsRow[]> {
         .from('matches')
         .select('home_team_id, away_team_id, home_score, away_score')
         .eq('competition', competition)
-        .eq('status', 'Finished')
-        .gte('match_date', seasonStart)
-        .lt('match_date', seasonEnd),
+        .eq('status', 'Finished'),
     ]);
-    if (teamsRes.error || matchesRes.error) {
-      console.error(`computeStandings(${competition}) failed:`, teamsRes.error || matchesRes.error);
+
+    if (teamsRes.error || matchesRes.error || !teamsRes.data) {
       return [];
     }
-    teams = teamsRes.data;
-    matches = matchesRes.data;
+
+    const teams = teamsRes.data;
+    const matches = matchesRes.data || [];
+
+    const statsMap: Record<number, { played: number; won: number; drawn: number; lost: number; gf: number; ga: number; pts: number }> = {};
+
+    teams.forEach(team => {
+      statsMap[team.id] = { played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, pts: 0 };
+    });
+
+    matches.forEach(m => {
+      const home = statsMap[m.home_team_id];
+      const away = statsMap[m.away_team_id];
+      if (!home || !away) return;
+
+      home.played += 1;
+      away.played += 1;
+      home.gf += m.home_score;
+      home.ga += m.away_score;
+      away.gf += m.away_score;
+      away.ga += m.home_score;
+
+      if (m.home_score > m.away_score) {
+        home.won += 1;
+        home.pts += 3;
+        away.lost += 1;
+      } else if (m.home_score < m.away_score) {
+        away.won += 1;
+        away.pts += 3;
+        home.lost += 1;
+      } else {
+        home.drawn += 1;
+        home.pts += 1;
+        away.drawn += 1;
+        away.pts += 1;
+      }
+    });
+
+    return teams
+      .map(team => {
+        const s = statsMap[team.id];
+        return {
+          id: team.id,
+          name: team.name,
+          played: s.played,
+          won: s.won,
+          drawn: s.drawn,
+          lost: s.lost,
+          goalsFor: s.gf,
+          goalsAgainst: s.ga,
+          goalDifference: s.gf - s.ga,
+          points: s.pts,
+        };
+      })
+      .sort((a, b) => b.points - b.points || b.goalDifference - a.goalDifference || b.goalsFor - a.goalsFor);
   } catch (err) {
-    // Defensive: covers a hard network/DNS failure (e.g. Supabase env vars
-    // not configured yet) that surfaces as a thrown error rather than a
-    // { error } result — never let a missing/unreachable Supabase project
-    // break the page, just show empty standings.
-    console.error(`computeStandings(${competition}) threw:`, err);
+    console.error(`Failed to compute standings for ${competition}:`, err);
     return [];
   }
-
-  if (!teams) return [];
-
-  const table = new Map<
-    number,
-    { clubName: string; played: number; won: number; drawn: number; lost: number; goalsFor: number; goalsAgainst: number; points: number }
-  >();
-  for (const team of teams as TeamRow[]) {
-    table.set(team.id, { clubName: team.name, played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0 });
-  }
-
-  for (const m of (matches ?? []) as MatchRow[]) {
-    const home = table.get(m.home_team_id);
-    const away = table.get(m.away_team_id);
-    if (!home || !away) continue; // defensive: team not found in this competition's roster
-
-    home.played += 1;
-    away.played += 1;
-    home.goalsFor += m.home_score;
-    home.goalsAgainst += m.away_score;
-    away.goalsFor += m.away_score;
-    away.goalsAgainst += m.home_score;
-
-    if (m.home_score > m.away_score) {
-      home.won += 1;
-      home.points += 3;
-      away.lost += 1;
-    } else if (m.home_score < m.away_score) {
-      away.won += 1;
-      away.points += 3;
-      home.lost += 1;
-    } else {
-      home.drawn += 1;
-      away.drawn += 1;
-      home.points += 1;
-      away.points += 1;
-    }
-  }
-
-  // Tiebreakers match canadasoccerapi.com's own documented rules: points,
-  // then goal difference, then goals scored — keeps this consistent with
-  // the source the match data itself comes from.
-  return Array.from(table.values())
-    .sort((a, b) => {
-      if (b.points !== a.points) return b.points - a.points;
-      const gdA = a.goalsFor - a.goalsAgainst;
-      const gdB = b.goalsFor - b.goalsAgainst;
-      if (gdB !== gdA) return gdB - gdA;
-      return b.goalsFor - a.goalsFor;
-    })
-    .map((row, i) => ({
-      position: i + 1,
-      clubName: row.clubName,
-      played: row.played,
-      points: row.points,
-      goalDifference: row.goalsFor - row.goalsAgainst,
-    }));
 }
 
-export async function getCplStandings(): Promise<StandingsRow[]> {
+export async function getCplStandings() {
   return computeStandings('CPL');
 }
 
-export async function getNslStandings(): Promise<StandingsRow[]> {
+export async function getNslStandings() {
   return computeStandings('NSL');
-}
-
-// TODO: still mock — no live_streams/live-score wiring yet (deliberately
-// muted per earlier decision). Untouched by this pass.
-export async function getLiveTicker(): Promise<LiveTickerItem[]> {
-  return [
-    { id: 't1', competition: 'CPL', homeTeam: 'Pacific FC', awayTeam: 'Forge FC', homeScore: 1, awayScore: 0, minute: 70, isLive: true },
-    { id: 't2', competition: 'NSL', homeTeam: 'Vancouver Rise', awayTeam: 'AFC Toronto', homeScore: 0, awayScore: 0, minute: null, isLive: false },
-  ];
 }
