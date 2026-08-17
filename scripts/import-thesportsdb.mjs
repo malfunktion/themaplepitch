@@ -1,5 +1,5 @@
 // scripts/import-thesportsdb.mjs
-// Pulls team and match history from TheSportsDB for CPL and NSL and upserts into Supabase.
+// Pulls team and match history from TheSportsDB for CPL and NSL using strict whitelists.
 
 import { createClient } from '@supabase/supabase-js';
 
@@ -15,10 +15,31 @@ if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 const API_BASE = `https://www.thesportsdb.com/api/v1/json/${TSDB_KEY}`;
 
-// Target Leagues: CPL (4820) and NSL (5602)
+// Strict Whitelists for Canadian Competitions
+const CPL_TEAMS = [
+  'Atlético Ottawa',
+  'Cavalry FC',
+  'Forge FC',
+  'HFX Wanderers FC',
+  'Pacific FC',
+  'Valour FC',
+  'Vancouver FC',
+  'York United FC',
+  'York9' // Historical fallback
+];
+
+const NSL_TEAMS = [
+  'AFC Toronto',
+  'Calgary Wild',
+  'Halifax Tides',
+  'Ottawa Rapid',
+  'Roses de Montréal',
+  'Vancouver Rise'
+];
+
 const TARGET_LEAGUES = [
-  { id: 4820, code: 'CPL', gender: 'men' },
-  { id: 5602, code: 'NSL', gender: 'women' }
+  { id: 4820, code: 'CPL', gender: 'men', whitelistedTeams: CPL_TEAMS },
+  { id: 5602, code: 'NSL', gender: 'women', whitelistedTeams: NSL_TEAMS }
 ];
 
 function slugify(name) {
@@ -28,15 +49,6 @@ function slugify(name) {
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '');
-}
-
-function normalizeName(name) {
-  return name
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/\b(fc|sc|united)\b/g, '')
-    .replace(/[^a-z0-9]/g, '');
 }
 
 async function fetchTheSportsDB(endpoint) {
@@ -56,34 +68,22 @@ async function importTeams() {
   const initialRows = [];
 
   for (const leagueConfig of TARGET_LEAGUES) {
-    console.log(`Fetching teams for ${leagueConfig.code} (League ID: ${leagueConfig.id})...`);
-    try {
-      const data = await fetchTheSportsDB(`/lookup_all_teams.php?id=${leagueConfig.id}`);
-      const teamsData = data.teams || [];
-      
-      for (const t of teamsData) {
-        const teamName = t.strTeam;
-        const extId = slugify(`${leagueConfig.code}-${teamName}`);
-        initialRows.push({
-          name: teamName,
-          short_name: t.strTeamShort || null,
-          league: leagueConfig.code,
-          gender: leagueConfig.gender,
-          division_level: 'Professional',
-          logo_url: t.strBadge || null,
-          youtube_search_tag: null,
-          slug: extId,
-          external_id: extId,
-        });
-      }
-    } catch (err) {
-      console.warn(`Warning: Could not fetch teams for ${leagueConfig.code}: ${err.message}`);
+    console.log(`Importing whitelisted teams for ${leagueConfig.code}...`);
+    
+    for (const teamName of leagueConfig.whitelistedTeams) {
+      const extId = slugify(`${leagueConfig.code}-${teamName}`);
+      initialRows.push({
+        name: teamName,
+        short_name: null,
+        league: leagueConfig.code,
+        gender: leagueConfig.gender,
+        division_level: 'Professional',
+        logo_url: null,
+        youtube_search_tag: null,
+        slug: extId,
+        external_id: extId,
+      });
     }
-  }
-
-  if (initialRows.length === 0) {
-    console.log('No teams fetched from any league.');
-    return;
   }
 
   const finalDeduper = new Map();
@@ -94,7 +94,7 @@ async function importTeams() {
 
   const { error } = await supabase.from('teams').upsert(uniqueRows, { onConflict: 'external_id' });
   if (error) throw new Error(`Teams upsert failed: ${error.message}`);
-  console.log(`Successfully upserted ${uniqueRows.length} teams into Supabase.`);
+  console.log(`Successfully upserted ${uniqueRows.length} official Canadian teams into Supabase.`);
 }
 
 async function getTeamMaps() {
@@ -106,45 +106,8 @@ async function getTeamMaps() {
     map.set(t.external_id, t.id);
     map.set(slugify(t.name), t.id);
     map.set(`${t.league}-${slugify(t.name)}`, t.id);
-    map.set(normalizeName(t.name), t.id);
-    map.set(`${t.league}-${normalizeName(t.name)}`, t.id);
   }
   return map;
-}
-
-async function getOrCreateTeamId(teamName, leagueCode, gender, teamMap) {
-  const normKey = normalizeName(teamName);
-  const leagueNormKey = `${leagueCode}-${normKey}`;
-  const extId = slugify(`${leagueCode}-${teamName}`);
-
-  if (teamMap.has(leagueNormKey)) return teamMap.get(leagueNormKey);
-  if (teamMap.has(normKey)) return teamMap.get(normKey);
-  if (teamMap.has(extId)) return teamMap.get(extId);
-
-  console.log(`Dynamically creating missing team: "${teamName}" for ${leagueCode}`);
-  const newTeam = {
-    name: teamName,
-    short_name: null,
-    league: leagueCode,
-    gender: gender,
-    division_level: 'Professional',
-    logo_url: null,
-    youtube_search_tag: null,
-    slug: extId,
-    external_id: extId,
-  };
-
-  const { data, error } = await supabase.from('teams').upsert(newTeam, { onConflict: 'external_id' }).select('id').single();
-  if (error) {
-    console.error(`Failed to insert team ${teamName}: ${error.message}`);
-    return null;
-  }
-
-  const newId = data.id;
-  teamMap.set(leagueNormKey, newId);
-  teamMap.set(normKey, newId);
-  teamMap.set(extId, newId);
-  return newId;
 }
 
 async function importFixtures(teamMap) {
@@ -183,8 +146,15 @@ async function importFixtures(teamMap) {
           continue;
         }
 
-        const homeId = await getOrCreateTeamId(homeName, leagueConfig.code, leagueConfig.gender, teamMap);
-        const awayId = await getOrCreateTeamId(awayName, leagueConfig.code, leagueConfig.gender, teamMap);
+        // Only process fixtures if both teams are in our official whitelist
+        if (!leagueConfig.whitelistedTeams.includes(homeName) && homeName !== 'York9') continue;
+        if (!leagueConfig.whitelistedTeams.includes(awayName) && awayName !== 'York9') continue;
+
+        const homeExtId = slugify(`${leagueConfig.code}-${homeName}`);
+        const awayExtId = slugify(`${leagueConfig.code}-${awayName}`);
+
+        const homeId = teamMap.get(homeExtId) || teamMap.get(slugify(homeName));
+        const awayId = teamMap.get(awayExtId) || teamMap.get(slugify(awayName));
 
         if (!homeId || !awayId) {
           skipped += 1;
@@ -224,7 +194,7 @@ async function importFixtures(teamMap) {
 
   const { error } = await supabase.from('matches').upsert(uniqueRows, { onConflict: 'external_id' });
   if (error) throw new Error(`Matches upsert failed: ${error.message}`);
-  console.log(`Upserted ${uniqueRows.length} matches. Skipped ${skipped} unmatched fixtures.`);
+  console.log(`Upserted ${uniqueRows.length} clean Canadian matches.`);
 }
 
 async function main() {
