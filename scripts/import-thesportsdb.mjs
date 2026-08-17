@@ -1,0 +1,172 @@
+// scripts/import-thesportsdb.mjs
+// Pulls team and match history from TheSportsDB for CPL and NSL and upserts into Supabase.
+
+import { createClient } from '@supabase/supabase-js';
+
+const SUPABASE_URL = process.env.SUPABASE_URL;
+const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SERVICE_ROLE_KEY;
+const TSDB_KEY = process.env.THESPORTSDB_KEY || process.env.TSDB_KEY || process.env.APIF_KEY || '123';
+
+if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
+  console.error('Missing required environment variables (SUPABASE_URL or SERVICE_ROLE_KEY).');
+  process.exit(1);
+}
+
+const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+const API_BASE = `https://www.thesportsdb.com/api/v1/json/${TSDB_KEY}`;
+
+// Target Leagues: CPL (4820) and NSL (5602) for season 2026
+const TARGET_LEAGUES = [
+  { id: 4820, code: 'CPL', gender: 'men', season: '2026' },
+  { id: 5602, code: 'NSL', gender: 'women', season: '2026' }
+];
+
+function slugify(name) {
+  return name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+}
+
+async function fetchTheSportsDB(endpoint) {
+  const url = `${API_BASE}${endpoint}`;
+  console.log(`Fetching: ${url}`);
+  const res = await fetch(url);
+
+  if (!res.ok) {
+    throw new Error(`TheSportsDB request failed (${res.status}): ${res.statusText}`);
+  }
+
+  const data = await res.json();
+  return data;
+}
+
+async function importTeams() {
+  const initialRows = [];
+
+  for (const leagueConfig of TARGET_LEAGUES) {
+    console.log(`Fetching teams for ${leagueConfig.code} (League ID: ${leagueConfig.id}, Season: ${leagueConfig.season})...`);
+    try {
+      const data = await fetchTheSportsDB(`/lookup_all_teams.php?id=${leagueConfig.id}`);
+      const teamsData = data.teams || [];
+      
+      for (const t of teamsData) {
+        const extId = slugify(`${leagueConfig.code}-${t.strTeam}`);
+        initialRows.push({
+          name: t.strTeam,
+          short_name: t.strTeamShort || null,
+          league: leagueConfig.code,
+          gender: leagueConfig.gender,
+          division_level: 'Professional',
+          logo_url: t.strBadge || null,
+          youtube_search_tag: null,
+          slug: slugify(t.strTeam),
+          external_id: extId,
+        });
+      }
+    } catch (err) {
+      console.warn(`Warning: Could not fetch teams for ${leagueConfig.code}: ${err.message}`);
+    }
+  }
+
+  if (initialRows.length === 0) {
+    console.log('No teams fetched from any league.');
+    return;
+  }
+
+  const finalDeduper = new Map();
+  for (const row of initialRows) {
+    finalDeduper.set(row.external_id, row);
+  }
+  const uniqueRows = Array.from(finalDeduper.values());
+
+  const { error } = await supabase.from('teams').upsert(uniqueRows, { onConflict: 'external_id' });
+  if (error) throw new Error(`Teams upsert failed: ${error.message}`);
+  console.log(`Successfully upserted ${uniqueRows.length} teams into Supabase.`);
+}
+
+async function getTeamIdMap() {
+  const { data, error } = await supabase.from('teams').select('id, external_id');
+  if (error) throw new Error(`Teams lookup failed: ${error.message}`);
+  return new Map(data.map((t) => [t.external_id, t.id]));
+}
+
+async function importFixtures(teamIdMap) {
+  const initialRows = [];
+  let skipped = 0;
+
+  for (const leagueConfig of TARGET_LEAGUES) {
+    console.log(`Fetching fixtures for ${leagueConfig.code} (League ID: ${leagueConfig.id}, Season: ${leagueConfig.season})...`);
+    try {
+      const data = await fetchTheSportsDB(`/eventsseason.php?id=${leagueConfig.id}&s=${leagueConfig.season}`);
+      const fixturesData = data.events || [];
+
+      for (const f of fixturesData) {
+        const homeName = f.strHomeTeam;
+        const awayName = f.strAwayTeam;
+
+        if (!homeName || !awayName) {
+          skipped += 1;
+          continue;
+        }
+
+        const homeExtId = slugify(`${leagueConfig.code}-${homeName}`);
+        const awayExtId = slugify(`${leagueConfig.code}-${awayName}`);
+
+        const homeId = teamIdMap.get(homeExtId);
+        const awayId = teamIdMap.get(awayExtId);
+
+        if (!homeId || !awayId) {
+          skipped += 1;
+          continue;
+        }
+
+        const matchDate = f.dateEvent ? `${f.dateEvent}T${f.strTime || '00:00:00'}` : new Date().toISOString();
+        const extId = slugify(`${f.dateEvent || 'date'}-${homeName}-${awayName}`);
+
+        initialRows.push({
+          home_team_id: homeId,
+          away_team_id: awayId,
+          match_date: matchDate,
+          status: f.strStatus === 'Match Finished' || f.strStatus === 'FT' ? 'Finished' : 'Scheduled',
+          home_score: f.intHomeScore !== null && f.intHomeScore !== '' ? parseInt(f.intHomeScore, 10) : 0,
+          away_score: f.intAwayScore !== null && f.intAwayScore !== '' ? parseInt(f.intAwayScore, 10) : 0,
+          competition: leagueConfig.code,
+          gender: leagueConfig.gender,
+          external_id: extId,
+        });
+      }
+    } catch (err) {
+      console.warn(`Warning: Could not fetch fixtures for ${leagueConfig.code}: ${err.message}`);
+    }
+  }
+
+  if (initialRows.length === 0) {
+    console.log('No matches to upsert.');
+    return;
+  }
+
+  const finalDeduper = new Map();
+  for (const row of initialRows) {
+    finalDeduper.set(row.external_id, row);
+  }
+  const uniqueRows = Array.from(finalDeduper.values());
+
+  const { error } = await supabase.from('matches').upsert(uniqueRows, { onConflict: 'external_id' });
+  if (error) throw new Error(`Matches upsert failed: ${error.message}`);
+  console.log(`Upserted ${uniqueRows.length} matches. Skipped ${skipped} unmatched teams/fixtures.`);
+}
+
+async function main() {
+  await importTeams();
+  const teamIdMap = await getTeamIdMap();
+  await importFixtures(teamIdMap);
+  console.log('TheSportsDB import complete!');
+}
+
+main().catch((err) => {
+  console.error('Import failed:', err.message);
+  process.exit(1);
+});
