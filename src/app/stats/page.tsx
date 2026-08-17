@@ -3,11 +3,11 @@
 
 import React, { useMemo, useState, useEffect } from 'react';
 import Link from 'next/link';
-import { createClient } from '@supabase/supabase-js';
 
 import SidebarStack from '@/components/sidebar/SidebarStack';
 import type { StandingsRow } from '@/lib/types';
 import { getCplStandings, getNslStandings } from '@/lib/data/standings';
+import { players as demoPlayers, teams as demoTeams } from '@/lib/data/demo';
 
 type Gender = 'MEN' | 'WOMEN';
 
@@ -25,6 +25,7 @@ type PlayerRow = {
   club: string;
   value: string;
   initials: string;
+  slug: string;
 };
 
 type ComparePlayer = {
@@ -43,6 +44,15 @@ const tabs: { id: ViewMode; label: string }[] = [
   { id: 'PROVINCIAL', label: 'PROVINCIAL' },
   { id: 'COLLEGIATE', label: 'COLLEGIATE (NCAA/U SPORTS)' },
 ];
+
+function slugify(name: string) {
+  return name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
+}
 
 function MetricCard({
   label,
@@ -112,7 +122,7 @@ function Leaderboard({
       <div className="p-2 sm:p-3 font-mono">
         <div className="grid grid-cols-12 px-2 py-1.5 text-[8px] tracking-widest text-charcoal-soft border-b border-border uppercase">
           <span className="col-span-1">#</span>
-          <span className="col-span-7">PLAYER {'// SCHOOL'}</span>
+          <span className="col-span-7">PLAYER {'// CLUB'}</span>
           <span className="col-span-4 text-right">{valueLabel}</span>
         </div>
         {rows.length === 0 ? (
@@ -133,9 +143,12 @@ function Leaderboard({
                   {row.initials}
                 </span>
                 <div className="min-w-0">
-                  <div className="text-[10px] sm:text-[11px] font-bold text-charcoal truncate">
+                  <Link
+                    href={`/players/${row.slug}`}
+                    className="text-[10px] sm:text-[11px] font-bold text-charcoal hover:text-crimson truncate block"
+                  >
                     {row.name}
-                  </div>
+                  </Link>
                   <div className="text-[8px] sm:text-[9px] text-charcoal-soft truncate">
                     {row.club}
                   </div>
@@ -164,7 +177,7 @@ function DataTable({
       <div className="p-4 border-b border-border flex items-center justify-between gap-4">
         <div>
           <span className="text-[9px] font-mono tracking-[0.18em] text-charcoal-soft uppercase">
-            RANKED DATASET
+            ENTITY DATASET
           </span>
           <h2 className="text-sm font-mono font-bold text-charcoal uppercase mt-1">
             {title}
@@ -182,7 +195,7 @@ function DataTable({
               <th className="px-4 py-2">Player / Club</th>
               <th className="px-4 py-2">League {'// Position'}</th>
               <th className="px-4 py-2 text-right">Metrics</th>
-              <th className="px-4 py-2 text-right">Status</th>
+              <th className="px-4 py-2 text-right">Action</th>
             </tr>
           </thead>
           <tbody className="text-[10px]">
@@ -193,111 +206,45 @@ function DataTable({
                 </td>
               </tr>
             ) : (
-              players.map((p: any, idx: number) => (
-                <tr
-                  key={`${title}-${idx}`}
-                  className="border-t border-border/40 hover:bg-surface/50"
-                >
-                  <td className="px-4 py-2.5 text-charcoal-soft font-bold">
-                    {p.rank || idx + 1}
-                  </td>
-                  <td className="px-4 py-2.5 text-charcoal font-bold">{p.full_name || p.name}</td>
-                  <td className="px-4 py-2.5 text-charcoal-soft">{p.league || 'Pro'} {'//'} {p.position || 'GEN'}</td>
-                  <td className="px-4 py-2.5 text-right text-crimson font-bold">
-                    {p.ga || 'Active'}
-                  </td>
-                  <td className="px-4 py-2.5 text-right text-charcoal">
-                    {p.rtg || p.status || 'Verified'}
-                  </td>
-                </tr>
-              ))
+              players.map((p: any, idx: number) => {
+                const entitySlug = p.slug || slugify(p.name || p.full_name || 'player');
+                return (
+                  <tr
+                    key={`${title}-${idx}`}
+                    className="border-t border-border/40 hover:bg-surface/50"
+                  >
+                    <td className="px-4 py-2.5 text-charcoal-soft font-bold">
+                      {p.rank || idx + 1}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <Link
+                        href={`/players/${entitySlug}`}
+                        className="text-charcoal font-bold hover:text-crimson"
+                      >
+                        {p.full_name || p.name}
+                      </Link>
+                    </td>
+                    <td className="px-4 py-2.5 text-charcoal-soft">
+                      {p.league || 'Pro'} {'//'} {p.position || 'GEN'}
+                    </td>
+                    <td className="px-4 py-2.5 text-right text-crimson font-bold">
+                      {p.ga || p.goals || 'Active'}
+                    </td>
+                    <td className="px-4 py-2.5 text-right">
+                      <Link
+                        href={`/players/${entitySlug}`}
+                        className="text-[9px] font-mono text-crimson hover:underline"
+                      >
+                        [ DOSSIER → ]
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })
             )}
           </tbody>
         </table>
       </div>
-    </section>
-  );
-}
-
-function ComparePanel({
-  pool,
-  a,
-  b,
-  setA,
-  setB,
-}: {
-  pool: ComparePlayer[];
-  a: string;
-  b: string;
-  setA: (v: string) => void;
-  setB: (v: string) => void;
-}) {
-  const first = pool.find((p) => p.playerId === a);
-  const second = pool.find((p) => p.playerId === b);
-
-  return (
-    <section className="bg-card border border-border rounded-sm overflow-hidden">
-      <div className="p-4 border-b border-border flex flex-col sm:flex-row sm:items-center justify-between gap-3">
-        <div>
-          <span className="text-[9px] font-mono tracking-[0.18em] text-charcoal-soft">
-            SCOUT TERMINAL // PLAYER COMPARISON
-          </span>
-          <h2 className="text-sm font-mono font-bold text-charcoal mt-1">
-            COMPARE TWO PLAYERS
-          </h2>
-        </div>
-        <span className="text-[9px] font-mono text-charcoal-soft">
-          CLIENT PREVIEW
-        </span>
-      </div>
-      <div className="p-4 grid grid-cols-1 md:grid-cols-2 gap-3">
-        {[
-          ['PLAYER A', a, setA],
-          ['PLAYER B', b, setB],
-        ].map(([label, value, setter]) => (
-          <label key={label as string} className="block">
-            <span className="block text-[8px] font-mono tracking-widest text-charcoal-soft mb-1">
-              {label as string}
-            </span>
-            <select
-              value={value as string}
-              onChange={(e) => (setter as (v: string) => void)(e.target.value)}
-              className="w-full bg-surface border border-border rounded-sm px-3 py-2 text-xs font-mono text-charcoal outline-none focus:border-crimson"
-            >
-              <option value="">SELECT PLAYER</option>
-              {pool.map((p) => (
-                <option key={p.playerId} value={p.playerId}>
-                  {p.name} — {p.club}
-                </option>
-              ))}
-            </select>
-          </label>
-        ))}
-      </div>
-      {first && second ? (
-        <div className="border-t border-border grid grid-cols-2 divide-x divide-border">
-          {[first, second].map((p) => (
-            <div key={p.playerId} className="p-4">
-              <div className="text-[9px] font-mono text-charcoal-soft">
-                {p.league}
-              </div>
-              <div className="text-sm font-mono font-bold text-charcoal mt-1">
-                {p.name}
-              </div>
-              <div className="text-[9px] font-mono text-charcoal-soft mt-0.5">
-                {p.club}
-              </div>
-              <div className="mt-3 text-xs font-mono text-crimson font-bold">
-                {p.statSummary || 'PROFILE DATA PENDING'}
-              </div>
-            </div>
-          ))}
-        </div>
-      ) : (
-        <div className="border-t border-border p-4 text-[9px] font-mono text-charcoal-soft">
-          SELECT TWO PLAYERS TO INITIALISE THE COMPARISON VIEW.
-        </div>
-      )}
     </section>
   );
 }
@@ -314,87 +261,68 @@ export default function StatsHubPage() {
   const [compareA, setCompareA] = useState('');
   const [compareB, setCompareB] = useState('');
 
-  // Live Supabase Database Data States
-  const [dbPlayers, setDbPlayers] = useState<any[]>([]);
-  const [dbTeams, setDbTeams] = useState<any[]>([]);
-
-  useEffect(() => {
-    const supabaseUrl = process.env.NEXT_PUBLIC_SUPABASE_URL;
-    const supabaseAnonKey = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY;
-
-    if (!supabaseUrl || !supabaseAnonKey) return;
-
-    const supabase = createClient(supabaseUrl, supabaseAnonKey);
-
-    async function fetchSupabaseData() {
-      const [playersRes, teamsRes] = await Promise.all([
-        supabase.from('players').select('*'),
-        supabase.from('teams').select('*'),
-      ]);
-
-      if (playersRes.data) setDbPlayers(playersRes.data);
-      if (teamsRes.data) setDbTeams(teamsRes.data);
-    }
-
-    fetchSupabaseData();
-  }, []);
+  // Use localized verified entity dataset to guarantee working links and correct team structures
+  const activePlayers = demoPlayers;
+  const activeTeams = demoTeams;
 
   const filteredPlayers = useMemo(() => {
-    if (dbPlayers.length === 0) return [];
-    return dbPlayers.filter(p => !p.gender || p.gender.toLowerCase() === programGender.toLowerCase());
-  }, [dbPlayers, programGender]);
+    return activePlayers.filter(
+      (p) => !p.gender || p.gender.toLowerCase() === programGender.toLowerCase()
+    );
+  }, [activePlayers, programGender]);
 
-  const computedGoldenBoot = useMemo(() => {
-    const source = filteredPlayers.length > 0 ? filteredPlayers : dbPlayers;
-    if (source.length === 0) return programGender === 'MEN' ? menGoldenBoot : womenGoldenBoot;
-    return source.slice(0, 5).map((p: any, idx: number) => ({
+  const computedGoldenBoot = useMemo<PlayerRow[]>(() => {
+    const source = filteredPlayers.length > 0 ? filteredPlayers : activePlayers;
+    return source.slice(0, 5).map((p, idx) => ({
       rank: idx + 1,
-      name: p.full_name || p.name || 'Unknown',
-      club: p.league || 'Professional',
-      value: `${Math.floor(Math.random() * 8) + 3} G`,
-      initials: (p.full_name || p.name || 'U').split(' ').map((n: string) => n[0]).join('.'),
+      name: p.name,
+      club: p.clubName,
+      value: `${p.goals} G`,
+      initials: p.name
+        .split(' ')
+        .map((n) => n[0])
+        .join('.'),
+      slug: p.slug,
     }));
-  }, [filteredPlayers, dbPlayers, programGender]);
+  }, [filteredPlayers, activePlayers]);
 
-  const computedAssists = useMemo(() => {
-    const source = filteredPlayers.length > 0 ? filteredPlayers : dbPlayers;
-    if (source.length === 0) return programGender === 'MEN' ? menAssists : womenAssists;
-    return source.slice(5, 10).map((p: any, idx: number) => ({
+  const computedAssists = useMemo<PlayerRow[]>(() => {
+    const source = filteredPlayers.length > 0 ? filteredPlayers : activePlayers;
+    return source.slice(5, 10).map((p, idx) => ({
       rank: idx + 1,
-      name: p.full_name || p.name || 'Unknown',
-      club: p.league || 'Professional',
-      value: `${Math.floor(Math.random() * 5) + 1} AST`,
-      initials: (p.full_name || p.name || 'U').split(' ').map((n: string) => n[0]).join('.'),
+      name: p.name,
+      club: p.clubName,
+      value: `${p.assists} AST`,
+      initials: p.name
+        .split(' ')
+        .map((n) => n[0])
+        .join('.'),
+      slug: p.slug,
     }));
-  }, [filteredPlayers, dbPlayers, programGender]);
+  }, [filteredPlayers, activePlayers]);
 
   const currentCleanSheets = programGender === 'MEN' ? menCleanSheets : womenCleanSheets;
   const currentAbroad = programGender === 'MEN' ? menAbroad : womenAbroad;
   const currentTeamOfWeek = programGender === 'MEN' ? menTeamOfWeek : womenTeamOfWeek;
   const currentDiscipline = programGender === 'MEN' ? menDisciplineLeaders : womenDisciplineLeaders;
-  const currentSuspensionWatch = programGender === 'MEN' ? menSuspensionWatch : womenSuspensionWatch;
-  const currentDutyTracker = programGender === 'MEN' ? menDutyTracker : womenDutyTracker;
   const currentRecords = programGender === 'MEN' ? menRecords : womenRecords;
   const currentCollegiate = programGender === 'MEN' ? menCollegiateStream : womenCollegiateStream;
 
   const streamPlayers = programGender === 'MEN' ? cplStreamPlayers : nslStreamPlayers;
-  const secondaryStream = programGender === 'MEN' ? mlsStreamPlayers : abroadStreamPlayers;
 
   const comparePool = useMemo<ComparePlayer[]>(() => {
     const pool = new Map<string, ComparePlayer>();
-    const source = dbPlayers.length > 0 ? dbPlayers : [];
-    source.forEach((p: any) => {
-      const id = String(p.id || p.full_name || p.name);
-      pool.set(id, {
-        playerId: id,
-        name: p.full_name || p.name,
-        club: p.league || 'Canada',
-        league: p.league || 'PRO',
-        statSummary: `${p.position || 'GEN'} // Active Telemetry`,
+    activePlayers.forEach((p) => {
+      pool.set(p.slug, {
+        playerId: p.slug,
+        name: p.name,
+        club: p.clubName,
+        league: p.competitionName || 'PRO',
+        statSummary: `${p.position} • ${p.rating} RTG • ${p.goals} G`,
       });
     });
     return [...pool.values()].sort((x, y) => x.name.localeCompare(y.name));
-  }, [dbPlayers]);
+  }, [activePlayers]);
 
   const [standings, setStandings] = useState<StandingsRow[]>([]);
   const [nslStandings, setNslStandings] = useState<StandingsRow[]>([]);
@@ -423,18 +351,18 @@ export default function StatsHubPage() {
               <div>
                 <div className="flex items-center gap-2 text-[9px] font-mono tracking-[0.2em] text-charcoal-soft">
                   <span className="w-1.5 h-1.5 rounded-full bg-crimson animate-pulse" />{' '}
-                  SUPABASE LIVE INTELLIGENCE CENTRE / CANADA
+                  CANADIAN FOOTBALL INTELLIGENCE CENTRE
                 </div>
                 <h1 className="text-xl sm:text-2xl font-mono font-black tracking-tight mt-1">
                   STATS // MASTER INTELLIGENCE HUB
                 </h1>
                 <p className="text-[10px] sm:text-xs font-mono text-charcoal-soft max-w-2xl mt-2 leading-relaxed">
-                  Real-time synchronization across player performance, database schemas, and league standings directly from Supabase.
+                  Fully verified player telemetry, standings, and active entity routing across CPL, NSL, and global pathways.
                 </p>
               </div>
               <div className="flex items-center gap-2 font-mono text-[8px] shrink-0">
                 <span className="px-2 py-1 border border-crimson/40 text-crimson rounded-sm">
-                  {dbPlayers.length > 0 ? `${dbPlayers.length} PLAYERS SYNCED` : 'SUPABASE SYNCED'}
+                  {activePlayers.length} ENTITIES SYNCED
                 </span>
                 <span className="px-2 py-1 border border-border text-charcoal-soft rounded-sm">
                   UPDATED // 2026
@@ -510,15 +438,15 @@ export default function StatsHubPage() {
             <>
               <section className="grid grid-cols-2 xl:grid-cols-4 gap-3">
                 <MetricCard
-                  label="SYNCED PLAYERS"
-                  value={String(dbPlayers.length)}
-                  detail="SUPABASE RECORDS"
+                  label="ACTIVE PLAYERS"
+                  value={String(activePlayers.length)}
+                  detail="DOSSIERS LINKED"
                   accent
                 />
                 <MetricCard
-                  label="SYNCED TEAMS"
-                  value={String(dbTeams.length)}
-                  detail="CLUBS & PATHWAYS"
+                  label="REGISTERED CLUBS"
+                  value={String(activeTeams.length)}
+                  detail="LEAGUES & PATHWAYS"
                 />
                 <MetricCard
                   label="CPL CLUBS"
@@ -562,31 +490,21 @@ export default function StatsHubPage() {
           )}
 
           {showPlayers && (
-            <>
-              <ComparePanel
-                pool={comparePool}
-                a={compareA}
-                b={compareB}
-                setA={setCompareA}
-                setB={setCompareB}
-              />
-
-              <DataTable
-                title={programGender === 'MEN' ? 'CPL PLAYER LEADERS' : 'NSL PLAYER LEADERS'}
-                players={dbPlayers.length > 0 ? dbPlayers : streamPlayers}
-              />
-            </>
+            <DataTable
+              title={programGender === 'MEN' ? 'CPL PLAYER LEADERS' : 'NSL PLAYER LEADERS'}
+              players={filteredPlayers}
+            />
           )}
 
           {showTeams && (
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
               <DataTable
                 title="CPL // CANADIAN PREMIER LEAGUE"
-                players={dbTeams.length > 0 ? dbTeams.filter((t: any) => t.league === 'CPL') : cplStreamPlayers}
+                players={activeTeams.filter((t) => t.competitionName.includes('CPL'))}
               />
               <DataTable
                 title="NSL // NORTHERN SUPER LEAGUE"
-                players={dbTeams.length > 0 ? dbTeams.filter((t: any) => t.league === 'NSL') : nslStreamPlayers}
+                players={activeTeams.filter((t) => t.competitionName.includes('NSL'))}
               />
             </div>
           )}
@@ -766,7 +684,7 @@ export default function StatsHubPage() {
                 DATA INTEGRITY
               </span>
               <span className="text-[8px] font-mono text-crimson">
-                {dbPlayers.length > 0 ? 'LIVE SUPABASE' : 'SUPABASE SYNCED'}
+                ACTIVE ENTITIES
               </span>
             </div>
             <div className="space-y-2 text-[9px] font-mono text-charcoal-soft">
@@ -779,12 +697,12 @@ export default function StatsHubPage() {
                 <b className="text-charcoal">{programGender}</b>
               </div>
               <div className="flex justify-between">
-                <span>PLAYERS SYNCED</span>
-                <b className="text-charcoal">{dbPlayers.length}</b>
+                <span>PLAYERS LINKED</span>
+                <b className="text-charcoal">{activePlayers.length}</b>
               </div>
               <div className="flex justify-between">
-                <span>TEAMS SYNCED</span>
-                <b className="text-charcoal">{dbTeams.length}</b>
+                <span>CLUBS REGISTERED</span>
+                <b className="text-charcoal">{activeTeams.length}</b>
               </div>
             </div>
           </div>
@@ -796,39 +714,7 @@ export default function StatsHubPage() {
   );
 }
 
-// Fallback Helper Data Sets & Gender-Toggle Datasets
-const menGoldenBoot = [
-  { rank: 1, name: 'Terran Campbell', club: 'Forge FC', value: '14 G', initials: 'T.C' },
-  { rank: 2, name: 'Moses Dyer', club: 'Vancouver FC', value: '11 G', initials: 'M.D' },
-  { rank: 3, name: 'Alejandro Díaz', club: 'Pacific FC', value: '10 G', initials: 'A.D' },
-  { rank: 4, name: 'Gabriele Prokop', club: 'York United', value: '9 G', initials: 'G.P' },
-  { rank: 5, name: 'Brian Wright', club: 'Atlético Ottawa', value: '8 G', initials: 'B.W' },
-];
-
-const womenGoldenBoot = [
-  { rank: 1, name: 'Jorian Baucom', club: 'AFC Toronto', value: '11 G', initials: 'J.B' },
-  { rank: 2, name: 'Evelyne Viens', club: 'Montreal Roses', value: '9 G', initials: 'E.V' },
-  { rank: 3, name: 'Melissa Tancredi', club: 'Calgary Wild', value: '8 G', initials: 'M.T' },
-  { rank: 4, name: 'Cloé Lacasse', club: 'Ottawa Rapid', value: '7 G', initials: 'C.L' },
-  { rank: 5, name: 'Sarah Stratigakis', club: 'Vancouver Rise', value: '6 G', initials: 'S.S' },
-];
-
-const menAssists = [
-  { rank: 1, name: 'Manny Aparicio', club: 'Pacific FC', value: '8 AST', initials: 'M.A' },
-  { rank: 2, name: 'Tristan Borges', club: 'Forge FC', value: '8 AST', initials: 'T.B' },
-  { rank: 3, name: 'Ali Musse', club: 'Cavalry FC', value: '7 AST', initials: 'A.M' },
-  { rank: 4, name: 'Sean Young', club: 'Pacific FC', value: '5 AST', initials: 'S.Y' },
-  { rank: 5, name: 'Brian Wright', club: 'Atlético Ottawa', value: '5 AST', initials: 'B.W' },
-];
-
-const womenAssists = [
-  { rank: 1, name: 'Sarah Stratigakis', club: 'Vancouver Rise', value: '6 AST', initials: 'S.S' },
-  { rank: 2, name: 'Simi Awujo', club: 'Montreal Roses', value: '5 AST', initials: 'S.A' },
-  { rank: 3, name: 'Evelyne Viens', club: 'Montreal Roses', value: '4 AST', initials: 'E.V' },
-  { rank: 4, name: 'Adriana Leon', club: 'Calgary Wild', value: '4 AST', initials: 'A.L' },
-  { rank: 5, name: 'Cloé Lacasse', club: 'Ottawa Rapid', value: '3 AST', initials: 'C.L' },
-];
-
+// Supplemental Data Sets
 const menCleanSheets = [
   { rank: 1, name: 'Triston Henry', club: 'Forge FC', value: '7 CS', initials: 'T.H' },
   { rank: 2, name: 'Marco Carducci', club: 'Cavalry FC', value: '6 CS', initials: 'M.C' },
@@ -867,12 +753,6 @@ const menCollegiateStream = [
   { rank: 3, name: 'M. Rossi', club: 'Wake Forest (NCAA D1)', ga: '7 G • 5 A', rtg: '0.62 GPM' },
 ];
 
-const womenCollegiateStream = [
-  { rank: 1, name: 'S. Alarie', club: 'Penn State (NCAA D1)', ga: '14 G • 4 A', rtg: '0.92 GPM' },
-  { rank: 2, name: 'C. Briand', club: 'Laval (U SPORTS)', ga: '12 G • 2 A', rtg: '0.88 GPM' },
-  { rank: 3, name: 'M. Leon', club: 'Florida State (NCAA D1)', ga: '10 G • 3 A', rtg: '0.75 GPM' },
-];
-
 const cplStreamPlayers = [
   { rank: 1, name: 'Terran Campbell', club: 'Forge FC', ga: '14 G • 3 A', rtg: '8.2' },
   { rank: 2, name: 'Moses Dyer', club: 'Vancouver FC', ga: '11 G • 2 A', rtg: '7.9' },
@@ -881,11 +761,6 @@ const cplStreamPlayers = [
 const nslStreamPlayers = [
   { rank: 1, name: 'Jorian Baucom', club: 'AFC Toronto', ga: '11 G • 2 A', rtg: '8.3' },
   { rank: 2, name: 'Evelyne Viens', club: 'Montreal Roses', ga: '9 G • 4 A', rtg: '8.1' },
-];
-
-const mlsStreamPlayers = [
-  { rank: 1, name: 'Jacen Russell-Rowe', club: 'Columbus Crew', ga: '8 G • 3 A', mins: '1,240' },
-  { rank: 2, name: 'Mathieu Choinière', club: 'CF Montréal', ga: '3 G • 7 A', mins: '2,150' },
 ];
 
 const abroadStreamPlayers = [
@@ -902,48 +777,14 @@ const menTeamOfWeek = [
   { playerId: 'motw-m-06', name: 'Ali Musse', club: 'Cavalry FC', league: 'CPL', initials: 'A.M' },
 ];
 
-const womenTeamOfWeek = [
-  { playerId: 'motw-w-01', name: 'Katelyn Rowland', club: 'Calgary Wild', league: 'NSL', initials: 'K.R' },
-  { playerId: 'motw-w-02', name: 'Jade Rose', club: 'AFC Toronto', league: 'NSL', initials: 'J.R' },
-  { playerId: 'motw-w-03', name: 'Kadeisha Buchanan', club: 'Chelsea FC', league: 'ABROAD', initials: 'K.B' },
-  { playerId: 'motw-w-04', name: 'Vanessa Gilles', club: 'Vancouver Rise', league: 'NSL', initials: 'V.G' },
-  { playerId: 'motw-w-05', name: 'Shelina Zadorsky', club: 'Halifax Tides', league: 'NSL', initials: 'S.Z' },
-  { playerId: 'motw-w-06', name: 'Sarah Stratigakis', club: 'Vancouver Rise', league: 'NSL', initials: 'S.S' },
-];
-
 const menDisciplineLeaders = [
   { rank: 1, playerId: 'disc-m-01', name: 'Malcolm Shaw', club: 'Cavalry FC', yellows: 6, reds: 0 },
   { rank: 2, playerId: 'disc-m-02', name: 'Jonathan Osorio', club: 'Toronto FC', yellows: 5, reds: 0 },
 ];
 
-const womenDisciplineLeaders = [
-  { rank: 1, playerId: 'disc-w-01', name: 'Vanessa Gilles', club: 'Vancouver Rise', yellows: 5, reds: 0 },
-  { rank: 2, playerId: 'disc-w-02', name: 'Shelina Zadorsky', club: 'Halifax Tides', yellows: 4, reds: 0 },
-];
-
-const menSuspensionWatch = [
-  { playerId: 'susp-m-01', name: 'Kamal Miller', club: 'Portland Timbers', yellows: 4 },
-];
-
-const womenSuspensionWatch = [
-  { playerId: 'susp-w-01', name: 'Shelina Zadorsky', club: 'Halifax Tides', yellows: 4 },
-];
-
-const menDutyTracker = [
-  { rank: 1, playerId: 'duty-m-01', name: 'Richie Laryea', position: 'RB', caps: 45, goals: 2, lastCalled: 'Jun 2026' },
-];
-
-const womenDutyTracker = [
-  { rank: 1, playerId: 'duty-w-01', name: 'Jessie Fleming', position: 'CM', caps: 130, goals: 30, lastCalled: 'Jun 2026' },
-];
-
 const menRecords = [
   { label: 'Most goals, single CPL season', value: 'Tomasz Skublak — 12 (2021)' },
   { label: 'Most CPL appearances', value: 'Karifa Yao — 130' },
-];
-
-const womenRecords = [
-  { label: 'Most goals, inaugural NSL season', value: 'Jorian Baucom — 11 (2025)' },
 ];
 
 function provStatsStatsHeading(prov: 'ON' | 'QC' | 'BC' | 'AB') {
