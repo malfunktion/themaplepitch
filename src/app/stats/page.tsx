@@ -265,11 +265,9 @@ export default function StatsHubPage() {
   const activeTeams = demoTeams;
 
   const filteredPlayers = useMemo(() => {
-    return activePlayers.filter((p) => {
-      const isFemaleTeam = p.clubName.includes('Wild') || p.clubName.includes('Toronto') || p.clubName.includes('Roses') || p.clubName.includes('Rise');
-      if (programGender === 'WOMEN') return isFemaleTeam;
-      return !isFemaleTeam;
-    });
+    return activePlayers.filter(
+      (p) => !p.gender || p.gender.toLowerCase() === programGender.toLowerCase()
+    );
   }, [activePlayers, programGender]);
 
   const computedGoldenBoot = useMemo<PlayerRow[]>(() => {
@@ -713,7 +711,7 @@ export default function StatsHubPage() {
   );
 }
 
-// Supplemental Data Sets (Men & Women)
+// Supplemental Data Sets
 const menCleanSheets = [
   { rank: 1, name: 'Triston Henry', club: 'Forge FC', value: '7 CS', initials: 'T.H' },
   { rank: 2, name: 'Marco Carducci', club: 'Cavalry FC', value: '6 CS', initials: 'M.C' },
@@ -752,12 +750,6 @@ const menCollegiateStream = [
   { rank: 3, name: 'M. Rossi', club: 'Wake Forest (NCAA D1)', ga: '7 G • 5 A', rtg: '0.62 GPM' },
 ];
 
-const womenCollegiateStream = [
-  { rank: 1, name: 'S. Alarie', club: 'Penn State (NCAA D1)', ga: '14 G • 4 A', rtg: '0.92 GPM' },
-  { rank: 2, name: 'C. Briand', club: 'Laval (U SPORTS)', ga: '12 G • 2 A', rtg: '0.88 GPM' },
-  { rank: 3, name: 'M. Leon', club: 'Florida State (NCAA D1)', ga: '10 G • 3 A', rtg: '0.75 GPM' },
-];
-
 const abroadStreamPlayers = [
   { rank: 1, name: 'Jonathan David', club: 'Lille OSC (Ligue 1)', ga: '18 G • 4 A', rtg: '8.4' },
   { rank: 2, name: 'Alphonso Davies', club: 'Bayern Munich (Bundesliga)', ga: '2 G • 6 A', rtg: '8.1' },
@@ -772,32 +764,14 @@ const menTeamOfWeek = [
   { playerId: 'motw-m-06', name: 'Ali Musse', club: 'Cavalry FC', league: 'CPL', initials: 'A.M' },
 ];
 
-const womenTeamOfWeek = [
-  { playerId: 'motw-w-01', name: 'Katelyn Rowland', club: 'Calgary Wild', league: 'NSL', initials: 'K.R' },
-  { playerId: 'motw-w-02', name: 'Jade Rose', club: 'AFC Toronto', league: 'NSL', initials: 'J.R' },
-  { playerId: 'motw-w-03', name: 'Kadeisha Buchanan', club: 'Chelsea FC', league: 'ABROAD', initials: 'K.B' },
-  { playerId: 'motw-w-04', name: 'Vanessa Gilles', club: 'Vancouver Rise', league: 'NSL', initials: 'V.G' },
-  { playerId: 'motw-w-05', name: 'Shelina Zadorsky', club: 'Halifax Tides', league: 'NSL', initials: 'S.Z' },
-  { playerId: 'motw-w-06', name: 'Sarah Stratigakis', club: 'Vancouver Rise', league: 'NSL', initials: 'S.S' },
-];
-
 const menDisciplineLeaders = [
   { rank: 1, playerId: 'disc-m-01', name: 'Malcolm Shaw', club: 'Cavalry FC', yellows: 6, reds: 0 },
   { rank: 2, playerId: 'disc-m-02', name: 'Jonathan Osorio', club: 'Toronto FC', yellows: 5, reds: 0 },
 ];
 
-const womenDisciplineLeaders = [
-  { rank: 1, playerId: 'disc-w-01', name: 'Vanessa Gilles', club: 'Vancouver Rise', yellows: 5, reds: 0 },
-  { rank: 2, playerId: 'disc-w-02', name: 'Shelina Zadorsky', club: 'Halifax Tides', yellows: 4, reds: 0 },
-];
-
 const menRecords = [
   { label: 'Most goals, single CPL season', value: 'Tomasz Skublak — 12 (2021)' },
   { label: 'Most CPL appearances', value: 'Karifa Yao — 130' },
-];
-
-const womenRecords = [
-  { label: 'Most goals, inaugural NSL season', value: 'Jorian Baucom — 11 (2025)' },
 ];
 
 function provStatsStatsHeading(prov: 'ON' | 'QC' | 'BC' | 'AB') {
