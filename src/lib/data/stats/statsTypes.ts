@@ -1,7 +1,4 @@
 // src/lib/data/stats/statsTypes.ts
-// Shared between src/app/stats/page.tsx and the extracted components in
-// src/components/stats/ — kept alongside statsDemo.ts since they describe
-// that data's shape.
 
 export type PlayerRow = {
   rank: number;
@@ -17,4 +14,13 @@ export type ComparePlayer = {
   club: string;
   league: string;
   statSummary: string;
+};
+
+export type DbPlayerRecord = {
+  id: string | number;
+  name?: string;
+  full_name?: string;
+  league?: string;
+  position?: string;
+  gender?: string;
 };
