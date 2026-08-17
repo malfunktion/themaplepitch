@@ -717,35 +717,35 @@ export default function StatsHubPage() {
 
 // Supplemental Data Sets
 const menCleanSheets = [
-  { rank: 1, name: 'Triston Henry', club: 'Forge FC', value: '7 CS', initials: 'T.H' },
-  { rank: 2, name: 'Marco Carducci', club: 'Cavalry FC', value: '6 CS', initials: 'M.C' },
-  { rank: 3, name: 'Nathan Ingham', club: 'Atlético Ottawa', value: '5 CS', initials: 'N.I' },
-  { rank: 4, name: 'Callum Irving', club: 'Pacific FC', value: '4 CS', initials: 'C.I' },
-  { rank: 5, name: 'Sean Melvin', club: 'Atletico Ottawa', value: '3 CS', initials: 'S.M' },
+  { rank: 1, name: 'Triston Henry', club: 'Forge FC', value: '7 CS', initials: 'T.H', slug: 'triston-henry' },
+  { rank: 2, name: 'Marco Carducci', club: 'Cavalry FC', value: '6 CS', initials: 'M.C', slug: 'marco-carducci' },
+  { rank: 3, name: 'Nathan Ingham', club: 'Atlético Ottawa', value: '5 CS', initials: 'N.I', slug: 'nathan-ingham' },
+  { rank: 4, name: 'Callum Irving', club: 'Pacific FC', value: '4 CS', initials: 'C.I', slug: 'callum-irving' },
+  { rank: 5, name: 'Sean Melvin', club: 'Atletico Ottawa', value: '3 CS', initials: 'S.M', slug: 'sean-melvin' },
 ];
 
 const womenCleanSheets = [
-  { rank: 1, name: 'Katelyn Rowland', club: 'Calgary Wild', value: '6 CS', initials: 'K.R' },
-  { rank: 2, name: 'Rylee Foster', club: 'AFC Toronto', value: '5 CS', initials: 'R.F' },
-  { rank: 3, name: 'Stephanie Labbé', club: 'Montreal Roses', value: '4 CS', initials: 'S.L' },
-  { rank: 4, name: 'Kailen Sheridan', club: 'San Diego Wave', value: '3 CS', initials: 'K.S' },
-  { rank: 5, name: 'Sabrina D’Angelo', club: 'Aston Villa', value: '3 CS', initials: 'S.D' },
+  { rank: 1, name: 'Katelyn Rowland', club: 'Calgary Wild', value: '6 CS', initials: 'K.R', slug: 'katelyn-rowland' },
+  { rank: 2, name: 'Rylee Foster', club: 'AFC Toronto', value: '5 CS', initials: 'R.F', slug: 'rylee-foster' },
+  { rank: 3, name: 'Stephanie Labbé', club: 'Montreal Roses', value: '4 CS', initials: 'S.L', slug: 'stephanie-labbe' },
+  { rank: 4, name: 'Kailen Sheridan', club: 'San Diego Wave', value: '3 CS', initials: 'K.S', slug: 'kailen-sheridan' },
+  { rank: 5, name: 'Sabrina D’Angelo', club: 'Aston Villa', value: '3 CS', initials: 'S.D', slug: 'sabrina-dangelo' },
 ];
 
 const menAbroad = [
-  { rank: 1, name: 'Jonathan David', club: 'Lille OSC // FRA', value: '8.4 RTG', initials: 'J.D' },
-  { rank: 2, name: 'Alphonso Davies', club: 'Bayern Munich // GER', value: '8.1 RTG', initials: 'A.D' },
-  { rank: 3, name: 'Stephen Eustáquio', club: 'FC Porto // POR', value: '7.8 RTG', initials: 'S.E' },
-  { rank: 4, name: 'Tajon Buchanan', club: 'Villarreal // ESP', value: '7.8 RTG', initials: 'T.B' },
-  { rank: 5, name: 'Ismaël Koné', club: 'Marseille // FRA', value: '7.7 RTG', initials: 'I.K' },
+  { rank: 1, name: 'Jonathan David', club: 'Lille OSC // FRA', value: '8.4 RTG', initials: 'J.D', slug: 'jonathan-david' },
+  { rank: 2, name: 'Alphonso Davies', club: 'Bayern Munich // GER', value: '8.1 RTG', initials: 'A.D', slug: 'alphonso-davies' },
+  { rank: 3, name: 'Stephen Eustáquio', club: 'FC Porto // POR', value: '7.8 RTG', initials: 'S.E', slug: 'stephen-eustaquio' },
+  { rank: 4, name: 'Tajon Buchanan', club: 'Villarreal // ESP', value: '7.8 RTG', initials: 'T.B', slug: 'tajon-buchanan' },
+  { rank: 5, name: 'Ismaël Koné', club: 'Marseille // FRA', value: '7.7 RTG', initials: 'I.K', slug: 'ismael-kone' },
 ];
 
 const womenAbroad = [
-  { rank: 1, name: 'Jessie Fleming', club: 'Portland Thorns // USA', value: '8.3 RTG', initials: 'J.F' },
-  { rank: 2, name: 'Kadeisha Buchanan', club: 'Chelsea FC // ENG', value: '8.2 RTG', initials: 'K.B' },
-  { rank: 3, name: 'Julia Grosso', club: 'Chicago Red Stars // USA', value: '8.0 RTG', initials: 'J.G' },
-  { rank: 4, name: 'Evelyne Viens', club: 'AS Roma // ITA', value: '7.9 RTG', initials: 'E.V' },
-  { rank: 5, name: 'Cloé Lacasse', club: 'Utah Royals // USA', value: '7.8 RTG', initials: 'C.L' },
+  { rank: 1, name: 'Jessie Fleming', club: 'Portland Thorns // USA', value: '8.3 RTG', initials: 'J.F', slug: 'jessie-fleming' },
+  { rank: 2, name: 'Kadeisha Buchanan', club: 'Chelsea FC // ENG', value: '8.2 RTG', initials: 'K.B', slug: 'kadeisha-buchanan' },
+  { rank: 3, name: 'Julia Grosso', club: 'Chicago Red Stars // USA', value: '8.0 RTG', initials: 'J.G', slug: 'julia-grosso' },
+  { rank: 4, name: 'Evelyne Viens', club: 'AS Roma // ITA', value: '7.9 RTG', initials: 'E.V', slug: 'evelyne-viens' },
+  { rank: 5, name: 'Cloé Lacasse', club: 'Utah Royals // USA', value: '7.8 RTG', initials: 'C.L', slug: 'cloe-lacasse' },
 ];
 
 const menCollegiateStream = [
@@ -832,7 +832,7 @@ function getProvincialStandings(prov: 'ON' | 'QC' | 'BC' | 'AB') {
       { pos: 4, club: 'St. Albert Impact', pts: 21, gd: '-2' },
       { pos: 5, club: 'Calgary Wild Pro-Am', pts: 18, gd: '-5' },
       { pos: 6, club: 'Edmonton BTB', pts: 14, gd: '-8' },
-      { pos: 7, club: 'Cavalry U21 B', items: 10, pts: 10, gd: '-12' },
+      { pos: 7, club: 'Cavalry U21 B', pts: 10, gd: '-12' },
     ];
   }
 }
