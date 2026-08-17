@@ -21,7 +21,10 @@ async function computeStandings(competition: string): Promise<StandingsRow[]> {
       return [];
     }
 
-    if (!standings || standings.length === 0) return [];
+    if (!standings || standings.length === 0) {
+      console.warn(`computeStandings(${competition}): No rows returned from league_standings view.`);
+      return [];
+    }
 
     return standings.map((row, i) => ({
       position: i + 1,
