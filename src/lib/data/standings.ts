@@ -1,16 +1,31 @@
+// src/lib/data/standings.ts
 import { createClient } from '@/lib/supabase/client';
 
 export type StandingsRow = {
-  id: number;
-  name: string;
+  id?: number;
+  position?: number;
+  clubName?: string;
+  name?: string;
   played: number;
-  won: number;
-  drawn: number;
-  lost: number;
-  goalsFor: number;
-  goalsAgainst: number;
+  won?: number;
+  drawn?: number;
+  lost?: number;
+  goalsFor?: number;
+  goalsAgainst?: number;
   goalDifference: number;
   points: number;
+};
+
+type Team = {
+  id: number;
+  name: string;
+};
+
+type Match = {
+  home_team_id: number;
+  away_team_id: number;
+  home_score: number;
+  away_score: number;
 };
 
 const supabase = createClient();
@@ -30,16 +45,16 @@ export async function computeStandings(competition: string): Promise<StandingsRo
       return [];
     }
 
-    const teams = teamsRes.data;
-    const matches = matchesRes.data || [];
+    const teams: Team[] = teamsRes.data;
+    const matches: Match[] = matchesRes.data || [];
 
     const statsMap: Record<number, { played: number; won: number; drawn: number; lost: number; gf: number; ga: number; pts: number }> = {};
-
-    teams.forEach(team => {
+    
+    teams.forEach((team: Team) => {
       statsMap[team.id] = { played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, pts: 0 };
     });
 
-    matches.forEach(m => {
+    matches.forEach((m: Match) => {
       const home = statsMap[m.home_team_id];
       const away = statsMap[m.away_team_id];
       if (!home || !away) return;
@@ -68,10 +83,11 @@ export async function computeStandings(competition: string): Promise<StandingsRo
     });
 
     return teams
-      .map(team => {
-        const s = statsMap[team.id];
+      .map((team: Team) => {
+        const s = statsMap[team.id] || { played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, pts: 0 };
         return {
           id: team.id,
+          clubName: team.name,
           name: team.name,
           played: s.played,
           won: s.won,
@@ -83,17 +99,21 @@ export async function computeStandings(competition: string): Promise<StandingsRo
           points: s.pts,
         };
       })
-      .sort((a, b) => b.points - b.points || b.goalDifference - a.goalDifference || b.goalsFor - a.goalsFor);
+      .sort((a: StandingsRow, b: StandingsRow) => b.points - a.points || b.goalDifference - a.goalDifference || (b.goalsFor || 0) - (a.goalsFor || 0))
+      .map((row: StandingsRow, idx: number) => ({
+        ...row,
+        position: idx + 1,
+      }));
   } catch (err) {
     console.error(`Failed to compute standings for ${competition}:`, err);
     return [];
   }
 }
 
-export async function getCplStandings() {
+export async function getCplStandings(): Promise<StandingsRow[]> {
   return computeStandings('CPL');
 }
 
-export async function getNslStandings() {
+export async function getNslStandings(): Promise<StandingsRow[]> {
   return computeStandings('NSL');
 }
