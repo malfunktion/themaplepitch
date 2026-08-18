@@ -23,7 +23,7 @@ function slugify(name) {
 async function importNationalTeams() {
   console.log('Importing Canadian National Teams...');
 
-  // 1. Upsert National Teams using 'name' (matching your existing teams schema)
+  // 1. Upsert National Teams using 'name' and 'external_id'
   const nationalTeams = [
     {
       external_id: 'nat-canmnt',
