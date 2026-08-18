@@ -13,11 +13,12 @@
     "typecheck": "tsc --noEmit",
     "test:data": "node scripts/validate-data.mjs",
     "import:cpl": "node scripts/import-cpl-data.mjs",
-    "check": "rm -rf .open-next .next && npm run lint && npm run typecheck && npm run test:data && npm run build"
+    "check": "rm -rf .open-next .next && npm run lint && npm run typecheck && npm run test:data && npm run build",
+    "check:local": "npm run typecheck && npm run test:data"
   },
   "dependencies": {
     "@sanity/image-url": "^2.1.1",
-    "@supabase/supabase-js": "^2.45.0",
+    "@supabase/supabase-js": "^2.112.3",
     "class-variance-authority": "^0.7.1",
     "clsx": "^2.1.1",
     "lucide-react": "^0.460.0",
