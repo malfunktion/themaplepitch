@@ -47,7 +47,6 @@ const TARGET_LEAGUES = [
   { id: 4346, code: 'MLS', gender: 'men', whitelistedTeams: CANADIAN_MLS_TEAMS, season: '2026' }
 ];
 
-
 function slugify(name) {
   return name
     .toLowerCase()
@@ -77,7 +76,6 @@ function normalizeTeamName(name) {
 
 async function fetchTheSportsDB(endpoint) {
   const url = `${API_BASE}${endpoint}`;
-  console.log(`Fetching: ${url}`);
   const res = await fetch(url);
   if (!res.ok) {
     throw new Error(`TheSportsDB request failed (${res.status}): ${res.statusText}`);
@@ -133,43 +131,59 @@ async function getTeamMaps() {
   return map;
 }
 
+// THE FIX: Iterating by Round to bypass the free tier limit
 async function importFixtures(teamMap) {
   const fixtureLeagues = TARGET_LEAGUES.filter(l => l.code === 'CPL' || l.code === 'NSL' || l.code === 'Canadian Championship' || l.code === 'MLS');
   const initialRows = [];
 
   for (const leagueConfig of fixtureLeagues) {
-    console.log(`Fetching fixtures for ${leagueConfig.code}...`);
-    try {
-      const data = await fetchTheSportsDB(`/eventsseason.php?id=${leagueConfig.id}&s=${leagueConfig.season}`);
-      const fixturesData = data.events || [];
-      console.log(`Found ${fixturesData.length} events for ${leagueConfig.code}`);
+    console.log(`Fetching fixtures for ${leagueConfig.code} (Season ${leagueConfig.season})...`);
+    
+    // Loop through 40 possible rounds. This completely circumvents the API match cap.
+    for (let round = 1; round <= 40; round++) {
+      try {
+        const data = await fetchTheSportsDB(`/eventsround.php?id=${leagueConfig.id}&r=${round}&s=${leagueConfig.season}`);
+        const fixturesData = data.events;
 
-      for (const f of fixturesData) {
-        const homeName = normalizeTeamName(f.strHomeTeam || '');
-        const awayName = normalizeTeamName(f.strAwayTeam || '');
-        if (!homeName || !awayName) continue;
+        // If API returns no events for this round, we hit the end of the season. Break loop safely.
+        if (!fixturesData || fixturesData.length === 0) {
+          console.log(`  -> Reached end of schedule for ${leagueConfig.code} at Round ${round - 1}.`);
+          break; 
+        }
 
-        const homeId = teamMap.get(slugify(`${leagueConfig.code}-${homeName}`)) || teamMap.get(slugify(homeName));
-        const awayId = teamMap.get(slugify(`${leagueConfig.code}-${awayName}`)) || teamMap.get(slugify(awayName));
-        if (!homeId || !awayId) continue;
+        console.log(`  -> Found ${fixturesData.length} matches for ${leagueConfig.code} (Round ${round})`);
 
-        const matchDate = f.dateEvent ? `${f.dateEvent}T${f.strTime || '00:00:00'}` : new Date().toISOString();
-        const extId = slugify(`${f.dateEvent || 'date'}-${leagueConfig.code}-${homeName}-${awayName}`);
+        for (const f of fixturesData) {
+          const homeName = normalizeTeamName(f.strHomeTeam || '');
+          const awayName = normalizeTeamName(f.strAwayTeam || '');
+          if (!homeName || !awayName) continue;
 
-        initialRows.push({
-          home_team_id: homeId,
-          away_team_id: awayId,
-          match_date: matchDate,
-          status: f.strStatus === 'Match Finished' || f.strStatus === 'FT' ? 'Finished' : 'Scheduled',
-          home_score: f.intHomeScore !== null && f.intHomeScore !== '' ? parseInt(f.intHomeScore, 10) : 0,
-          away_score: f.intAwayScore !== null && f.intAwayScore !== '' ? parseInt(f.intAwayScore, 10) : 0,
-          competition: leagueConfig.code,
-          gender: leagueConfig.gender,
-          external_id: extId,
-        });
+          const homeId = teamMap.get(slugify(`${leagueConfig.code}-${homeName}`)) || teamMap.get(slugify(homeName));
+          const awayId = teamMap.get(slugify(`${leagueConfig.code}-${awayName}`)) || teamMap.get(slugify(awayName));
+          if (!homeId || !awayId) continue;
+
+          const matchDate = f.dateEvent ? `${f.dateEvent}T${f.strTime || '00:00:00'}` : new Date().toISOString();
+          const extId = slugify(`${f.dateEvent || 'date'}-${leagueConfig.code}-${homeName}-${awayName}`);
+
+          initialRows.push({
+            home_team_id: homeId,
+            away_team_id: awayId,
+            match_date: matchDate,
+            status: f.strStatus === 'Match Finished' || f.strStatus === 'FT' ? 'Finished' : 'Scheduled',
+            home_score: f.intHomeScore !== null && f.intHomeScore !== '' ? parseInt(f.intHomeScore, 10) : 0,
+            away_score: f.intAwayScore !== null && f.intAwayScore !== '' ? parseInt(f.intAwayScore, 10) : 0,
+            competition: leagueConfig.code,
+            gender: leagueConfig.gender,
+            external_id: extId,
+          });
+        }
+      } catch (err) {
+        // If it throws a 400 or block for a specific round, break the loop and move to next league
+        if (err.message.includes('400') || err.message.includes('404')) {
+          break;
+        }
+        console.warn(`  -> Skipping round ${round} for ${leagueConfig.code}: ${err.message}`);
       }
-    } catch (err) {
-      console.warn(`Skipping live fixture fetch for ${leagueConfig.code} (API endpoint restriction): ${err.message}`);
     }
   }
 
@@ -181,7 +195,7 @@ async function importFixtures(teamMap) {
     const uniqueRows = Array.from(finalDeduper.values());
     const { error } = await supabase.from('matches').upsert(uniqueRows, { onConflict: 'external_id' });
     if (error) console.warn(`Matches upsert warning: ${error.message}`);
-    else console.log(`Upserted ${uniqueRows.length} clean match fixtures.`);
+    else console.log(`Upserted ${uniqueRows.length} total season match fixtures!`);
   } else {
     console.log('No external match fixtures retrieved; proceeding with team and player vaults.');
   }
