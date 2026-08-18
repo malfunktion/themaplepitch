@@ -1,14 +1,62 @@
-// src/app/teams/[slug]/page.tsx
-
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import HubHeader from '@/components/entity/HubHeader';
 import SourceStamp from '@/components/entity/SourceStamp';
-import { getTeam, teams, players, matches } from '@/lib/data/demo';
+import { createClient } from '@supabase/supabase-js';
 
-export function generateStaticParams() {
-  return teams.map((t) => ({ slug: t.slug }));
+const supabase = createClient(
+  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://wsbyyvtcvyhidvijvwuo.supabase.co',
+  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
+);
+
+export const revalidate = 3600;
+
+export async function generateStaticParams() {
+  const { data: teams } = await supabase.from('teams').select('slug');
+  return (teams || [])
+    .filter((t) => t.slug)
+    .map((t) => ({ slug: t.slug }));
+}
+
+function formatDate(dateVal: string | null | undefined): string {
+  if (!dateVal) return 'TBD';
+  const parsed = new Date(dateVal);
+  return isNaN(parsed.getTime())
+    ? 'TBD'
+    : parsed.toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
+async function getTeamData(slug: string) {
+  const { data: team } = await supabase
+    .from('teams')
+    .select('*')
+    .eq('slug', slug)
+    .single();
+
+  if (!team) return null;
+
+  const [playersRes, matchesRes] = await Promise.all([
+    supabase.from('players').select('*').eq('current_team_id', team.id),
+    supabase
+      .from('matches')
+      .select(`
+        id,
+        match_date,
+        stage,
+        home_team:teams!home_team_id(name, slug),
+        away_team:teams!away_team_id(name, slug)
+      `)
+      .or(`home_team_id.eq.${team.id},away_team_id.eq.${team.id}`)
+      .order('match_date', { ascending: false })
+      .limit(8),
+  ]);
+
+  return {
+    team,
+    players: playersRes.data || [],
+    matches: matchesRes.data || [],
+  };
 }
 
 export async function generateMetadata({
@@ -17,124 +65,116 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const t = getTeam(slug);
-  if (!t) return { title: 'Team Not Found' };
-  const title = t.name;
-  const description = `${t.name} — ${t.city}, ${t.province} · ${t.competitionName}. Standings, roster, form and match centre on The Maple Pitch.`;
+  const data = await getTeamData(slug);
+
+  if (!data?.team) {
+    return { title: 'Team Not Found' };
+  }
+
+  const { team } = data;
+  const title = `${team.name} | The Maple Pitch`;
+  const description = `${team.name} club hub, roster, fixtures, and telemetry on The Maple Pitch.`;
+
   return {
     title,
     description,
-    alternates: { canonical: `/teams/${t.slug}` },
+    alternates: { canonical: `/teams/${team.slug}` },
     openGraph: {
       type: 'website',
       title,
       description,
-      url: `/teams/${t.slug}`,
+      url: `/teams/${team.slug}`,
     },
-    twitter: { card: 'summary_large_image', title, description },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
+    },
   };
 }
 
-export default async function TeamProfile({
-  params,
-}: {
-  params: Promise<{ slug: string }>;
-}) {
+export default async function TeamProfilePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const t = getTeam(slug);
-  if (!t) notFound();
-  const roster = players.filter((p) => p.clubId === t.id);
-  const games = matches.filter(
-    (m) => m.homeTeamId === t.id || m.awayTeamId === t.id
-  );
+  const data = await getTeamData(slug);
+
+  if (!data?.team) notFound();
+
+  const { team, players, matches } = data;
+
   return (
     <>
       <HubHeader
-        eyebrow={`Team dossier // ${t.competitionName}`}
-        title={t.name.toUpperCase()}
-        description={`${t.city}, ${t.province} · ${t.gender} · ${t.competitionName}. One team entity feeds standings, match centre, player and tactical views.`}
+        eyebrow={`Club Hub // ${team.league || 'Canada'}`}
+        title={team.name.toUpperCase()}
+        description={`Official club dossier, active roster, and competition schedule for ${team.name}.`}
       />
+
       <div className="grid gap-6 lg:grid-cols-3">
         <section className="lg:col-span-2 space-y-6">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-4">
-            {[
-              ['PTS', t.points],
-              ['W', t.wins],
-              ['GF', t.goalsFor],
-              ['GA', t.goalsAgainst],
-            ].map(([k, v]) => (
-              <div key={String(k)} className="border border-border bg-card p-4">
-                <div className="text-[9px] font-mono text-charcoal-soft">{k}</div>
-                <div className="mt-2 text-3xl font-black">{v}</div>
+          <div className="border border-border p-5 bg-card">
+            <div className="text-[10px] font-mono uppercase text-crimson mb-3">Active Roster ({players.length})</div>
+            {players.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {players.map((p) => (
+                  <Link
+                    key={p.id}
+                    href={`/players/${p.external_id || p.id}`}
+                    className="border border-border/60 p-3 flex justify-between items-center hover:border-crimson transition-colors text-xs"
+                  >
+                    <span className="font-bold">{p.name}</span>
+                    <span className="font-mono text-charcoal-soft uppercase">{p.position || 'CM'}</span>
+                  </Link>
+                ))}
               </div>
-            ))}
+            ) : (
+              <div className="text-xs text-charcoal-soft">No active roster loaded in vault.</div>
+            )}
           </div>
-          <div className="border border-border p-5">
-            <div className="text-[10px] font-mono uppercase text-crimson">
-              Recent & upcoming
-            </div>
-            <div className="mt-3 divide-y divide-border">
-              {games.map((m) => (
-                <Link
-                  key={m.id}
-                  href={`/matches/${m.id}`}
-                  className="flex items-center justify-between py-3 text-xs hover:text-crimson"
-                >
-                  <span>{m.date}</span>
-                  <span>
-                    {m.homeTeamName} {m.status === 'final' ? m.homeScore : '—'}–
-                    {m.status === 'final' ? m.awayScore : '—'} {m.awayTeamName}
-                  </span>
-                  <span className="font-mono uppercase">{m.status}</span>
-                </Link>
-              ))}
-            </div>
-          </div>
-          <div className="border border-border p-5">
-            <div className="text-[10px] font-mono uppercase text-crimson">
-              Roster entities
-            </div>
-            <div className="mt-3 grid gap-2 sm:grid-cols-2">
-              {roster.map((p) => (
-                <Link
-                  key={p.id}
-                  href={`/players/${p.slug}`}
-                  className="border border-border p-3 hover:border-crimson"
-                >
-                  <div className="text-xs font-black">{p.name}</div>
-                  <div className="text-[9px] font-mono text-charcoal-soft">
-                    {p.position} {'// INDEX '}
-                    {p.rating}
-                  </div>
-                </Link>
-              ))}
-            </div>
+
+          <div className="border border-border p-5 bg-card">
+            <div className="text-[10px] font-mono uppercase text-crimson mb-3">Fixtures &amp; Results</div>
+            {matches.length > 0 ? (
+              <div className="divide-y divide-border text-xs">
+                {matches.map((m: any) => {
+                  const homeTeam = Array.isArray(m.home_team) ? m.home_team[0] : m.home_team;
+                  const awayTeam = Array.isArray(m.away_team) ? m.away_team[0] : m.away_team;
+                  const homeName = homeTeam?.name;
+                  const awayName = awayTeam?.name;
+                  return (
+                    <div key={m.id} className="py-2.5 flex justify-between items-center">
+                      <span>{formatDate(m.match_date)}</span>
+                      <span>{homeName || 'Home'} vs {awayName || 'Away'}</span>
+                      <span className="font-mono uppercase text-charcoal-soft">{m.stage || 'Match'}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-xs text-charcoal-soft">No fixtures recorded for this club.</div>
+            )}
           </div>
         </section>
+
         <aside>
           <div className="border border-border bg-card p-5">
-            <div className="text-[10px] font-mono uppercase text-crimson">
-              Form
-            </div>
-            <div className="mt-4 flex gap-1">
-              {t.form.map((f, i) => (
-                <span
-                  key={i}
-                  className="flex h-9 w-9 items-center justify-center border border-border text-xs font-black"
-                >
-                  {f}
-                </span>
-              ))}
-            </div>
-            <div className="mt-6 text-xs text-charcoal-soft">
-              Founded {t.founded ?? '—'} · {t.city}, {t.province}
+            <div className="text-[10px] font-mono uppercase text-crimson">Club Information</div>
+            <div className="mt-4 space-y-2 text-xs text-charcoal-soft">
+              <div className="flex justify-between">
+                <span>League</span>
+                <span className="font-mono uppercase text-charcoal">{team.league || 'N/A'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Slug</span>
+                <span className="font-mono text-charcoal">{team.slug}</span>
+              </div>
             </div>
           </div>
         </aside>
       </div>
+
       <div className="mt-6">
-        <SourceStamp source={t.source} />
+        <SourceStamp source={"TheSportsDB Automated Vault Sync" as any} />
       </div>
     </>
   );
-                    }
+}
