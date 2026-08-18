@@ -30,7 +30,6 @@ function matchesLeague(teamLeague: string | null | undefined, targetLeague: stri
 
 export async function computeStandings(competition: string): Promise<StandingsRow[]> {
   try {
-    // 1. Fetch live imported teams directly from Supabase
     const { data: teamsData, error: teamsError } = await supabase
       .from('teams')
       .select('*')
@@ -40,14 +39,12 @@ export async function computeStandings(competition: string): Promise<StandingsRo
       return [];
     }
 
-    // Filter teams by target league directly from the database
     const filteredTeams = teamsData.filter((t: any) => matchesLeague(t.league, competition));
 
     if (filteredTeams.length === 0) {
       return [];
     }
 
-    // 2. Fetch matches from database
     const { data: matchesData } = await supabase.from('matches').select('*');
 
     const targetUpper = competition.toUpperCase();
@@ -56,11 +53,8 @@ export async function computeStandings(competition: string): Promise<StandingsRo
       const comp = String(m.competition || m.competition_id || '').toUpperCase();
       const status = (m.status || '').toLowerCase();
       
-      // Accept standard finished statuses from API-Football (FT, AET, PEN, finished)
       const isFinished = status === 'finished' || status === 'ft' || status === 'aet' || status === 'pen';
-      
-      const matchesComp = comp.includes(targetUpper) || 
-                          comp === (targetUpper === 'CPL' ? '491' : comp);
+      const matchesComp = comp.includes(targetUpper) || comp === (targetUpper === 'CPL' ? '491' : comp);
 
       return isFinished && matchesComp;
     });
@@ -71,7 +65,6 @@ export async function computeStandings(competition: string): Promise<StandingsRo
       statsMap[team.id] = { played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, pts: 0 };
     });
 
-    // 3. Accumulate stats if finished match fixtures exist
     matches.forEach((m: Match) => {
       const home = statsMap[m.home_team_id];
       const away = statsMap[m.away_team_id];
@@ -103,7 +96,6 @@ export async function computeStandings(competition: string): Promise<StandingsRo
       }
     });
 
-    // 4. Return database teams ordered by points, goal differential, or alphabetically
     return filteredTeams
       .map((team: any) => {
         const s = statsMap[team.id] || { played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, pts: 0 };
@@ -111,6 +103,8 @@ export async function computeStandings(competition: string): Promise<StandingsRo
         const ga = s.ga;
         return {
           id: team.id,
+          slug: team.slug || team.external_id, // Expose true database slug
+          external_id: team.external_id,
           position: 1,
           clubName: team.name,
           name: team.name,
