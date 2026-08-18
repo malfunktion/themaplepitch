@@ -145,6 +145,7 @@ function Leaderboard({
                   {row.slug ? (
                     <Link
                       href={`/players/${row.slug}`}
+                      prefetch={false}
                       className="text-[10px] sm:text-[11px] font-bold text-charcoal hover:text-crimson truncate block"
                     >
                       {row.name}
@@ -231,6 +232,7 @@ function DataTable({
                     <td className="px-4 py-2.5">
                       <Link
                         href={`/players/${entitySlug}`}
+                        prefetch={false}
                         className="text-charcoal font-bold hover:text-crimson"
                       >
                         {playerName}
@@ -261,6 +263,7 @@ function DataTable({
                       )}
                       <Link
                         href={`/players/${entitySlug}`}
+                        prefetch={false}
                         className="text-[9px] font-mono text-crimson hover:underline"
                       >
                         [ DOSSIER → ]
@@ -738,6 +741,7 @@ export default function StatsHubPage() {
                         <div className="col-span-7 min-w-0">
                           <Link
                             href={`/players/${p.slug}`}
+                            prefetch={false}
                             className="font-bold text-charcoal hover:text-crimson truncate block"
                           >
                             {p.name}
@@ -805,6 +809,7 @@ export default function StatsHubPage() {
                   <Link
                     key={p.playerId}
                     href={`/players/${p.slug}`}
+                    prefetch={false}
                     className="border border-border/60 bg-surface/40 hover:border-crimson rounded-sm p-2 flex items-center gap-2 transition-colors"
                   >
                     <span className="w-7 h-7 bg-border rounded-sm flex items-center justify-center text-[8px] font-bold shrink-0">
@@ -886,7 +891,7 @@ function getProvincialStandings(prov: 'ON' | 'QC' | 'BC' | 'AB') {
     case 'QC': return [{ pos: 1, club: 'CS Saint-Laurent', pts: 39, gd: '+18' }];
     case 'BC': return [{ pos: 1, club: 'TSS Rovers', pts: 36, gd: '+16' }];
     case 'AB': return [
-      { pos: 1, club: 'Calgary Foothills', pts: 34, gd: '+15' },
+      { pos: 1, club: 'Calgary Foothills', pts: 34, gd: '+34' },
       { pos: 2, club: 'Cavalry U21', pts: 31, gd: '+11' },
       { pos: 3, club: 'Edmonton Scottish', pts: 26, gd: '+3' },
       { pos: 4, club: 'St. Albert Impact', pts: 21, gd: '-2' },
