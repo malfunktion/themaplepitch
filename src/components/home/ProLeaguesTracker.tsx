@@ -11,6 +11,10 @@ type ExtendedStandingsRow = StandingsRow & {
   external_id?: string;
 };
 
+interface ProLeaguesTrackerProps {
+  league?: 'CPL' | 'NSL';
+}
+
 function slugify(name: string) {
   if (!name) return '';
   return name
@@ -21,8 +25,9 @@ function slugify(name: string) {
     .replace(/(^-|-$)/g, '');
 }
 
-export default function ProLeaguesTracker() {
-  const [gender, setGender] = useState<'men' | 'women'>('men');
+export default function ProLeaguesTracker({ league }: ProLeaguesTrackerProps = {}) {
+  const initialGender = league === 'NSL' ? 'women' : 'men';
+  const [gender, setGender] = useState<'men' | 'women'>(initialGender);
   const [scope, setScope] = useState<'ALL' | 'ABROAD' | 'DOMESTIC'>('ALL');
 
   const [cplStandings, setCplStandings] = useState<StandingsRow[]>([]);
