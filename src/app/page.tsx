@@ -1,4 +1,3 @@
-// src/app/page.tsx
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import StatsDashboard from '@/components/home/StatsDashboard';
@@ -7,7 +6,7 @@ import WireFeedList from '@/components/home/WireFeedList';
 import PlayerDatabaseSpotlights from '@/components/home/PlayerDatabaseSpotlights';
 import ProLeaguesTracker from '@/components/home/ProLeaguesTracker';
 import YouthToProPipeline from '@/components/home/YouthToProPipeline';
-import CollegiateWatchlist from '@/components/home/CollegiateWatchlist'; // <-- 1. Import component
+import CollegiateWatchlist from '@/components/home/CollegiateWatchlist';
 import FanHubSection from '@/components/home/FanHubSection';
 import PlayerAndProvincialSection from '@/components/home/PlayerAndProvincialSection';
 import LegendsGallery from '@/components/home/LegendsGallery';
@@ -32,8 +31,34 @@ async function getSiteSettings() {
   }
 }
 
+async function getPlayerSpotlights() {
+  const groq = `*[_type == "playerSpotlight" && isFeatured == true] | order(order asc) {
+    _id,
+    name,
+    "slug": slug.current,
+    gender,
+    position,
+    club,
+    vitals,
+    tag
+  }`;
+  try {
+    return await client.fetch(groq, {}, { cache: 'no-store' });
+  } catch (error) {
+    console.error('getPlayerSpotlights fetch failed:', error);
+    return [];
+  }
+}
+
 export default async function HomePage() {
-  const settings = await getSiteSettings();
+  const [settings, spotlights, wireFeed, standings, nslStandings] = await Promise.all([
+    getSiteSettings(),
+    getPlayerSpotlights(),
+    getWireFeed({ limit: 6 }),
+    getCplStandings(),
+    getNslStandings(),
+  ]);
+
   const fallbackFeatured: WireStory = {
     id: 'fallback-1',
     league: 'CPL',
@@ -46,21 +71,18 @@ export default async function HomePage() {
     isEditorPick: true,
   };
 
-  const wireFeed = await getWireFeed({ limit: 6 });
   const featured: WireStory = wireFeed[0]
     ? { ...wireFeed[0], isEditorPick: true }
     : fallbackFeatured;
   const wireStories = wireFeed.slice(1, 6);
 
-  const [standings, nslStandings] = await Promise.all([getCplStandings(), getNslStandings()]);
-
   const sections: Record<string, ReactNode> = {
     hero: <HeroDossier story={featured} />,
     wire: <WireFeedList stories={wireStories} />,
-    'player-database': <PlayerDatabaseSpotlights />,
+    'player-database': <PlayerDatabaseSpotlights spotlights={spotlights} />,
     'pro-leagues-tracker': <ProLeaguesTracker />,
     'youth-pipeline': <YouthToProPipeline />,
-    'collegiate-watchlist': <CollegiateWatchlist />, // <-- 2. Map grid key to component
+    'collegiate-watchlist': <CollegiateWatchlist />,
     'fan-hub': <FanHubSection />,
     'player-provincial': <PlayerAndProvincialSection />,
     'stats-dashboard': <StatsDashboard />,
@@ -88,7 +110,6 @@ export default async function HomePage() {
           ))}
         </div>
         
-        {/* THE FAMOUS 5TH COLUMN */}
         <div className="lg:col-span-4 flex flex-col gap-4 sticky top-6">
           <SidebarStack standings={standings} nslStandings={nslStandings} defaultTab="standings" />
         </div>
