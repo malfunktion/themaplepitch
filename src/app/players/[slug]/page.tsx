@@ -5,13 +5,12 @@ import HubHeader from '@/components/entity/HubHeader';
 import SourceStamp from '@/components/entity/SourceStamp';
 import { createClient } from '@supabase/supabase-js';
 
-// Initialize Supabase Client
 const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://wsbyyvtcvyhidvijvwuo.supabase.co',
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 );
 
-export const revalidate = 3600; // Cache page for 1 hour
+export const revalidate = 3600;
 
 export async function generateStaticParams() {
   const { data: players } = await supabase.from('players').select('external_id');
@@ -21,7 +20,6 @@ export async function generateStaticParams() {
 }
 
 async function getPlayerData(slug: string) {
-  // 1. Fetch player by external_id (slug)
   const { data: player } = await supabase
     .from('players')
     .select(`
@@ -38,7 +36,6 @@ async function getPlayerData(slug: string) {
 
   if (!player) return null;
 
-  // 2. Fetch matches for player's club if assigned
   let clubMatches: any[] = [];
   if (player.current_team_id) {
     const { data: matches } = await supabase
@@ -202,7 +199,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
       </div>
 
       <div className="mt-6">
-        <SourceStamp source="TheSportsDB Automated Vault Sync" />
+        <SourceStamp source={"TheSportsDB Automated Vault Sync" as any} />
       </div>
     </>
   );
