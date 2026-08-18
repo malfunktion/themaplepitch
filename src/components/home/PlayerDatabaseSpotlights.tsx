@@ -1,12 +1,14 @@
-// src/components/home/PlayerDatabaseSpotlights.tsx
 'use client';
 
 import React, { useState } from 'react';
 import Link from 'next/link';
 
-interface Player {
-  id: string;
+export interface SpotlightPlayer {
+  _id?: string;
+  id?: string;
   name: string;
+  slug?: string;
+  gender?: 'men' | 'women';
   position: string;
   club: string;
   vitals: string;
@@ -23,7 +25,7 @@ function slugify(name: string) {
     .replace(/(^-|-$)/g, '');
 }
 
-const menPlayers: Player[] = [
+const defaultMenPlayers: SpotlightPlayer[] = [
   { id: '1', name: 'Alphonso Davies', position: 'LB / LM', club: 'Bayern Munich', vitals: '25 YRS // 55 CAPS', tag: 'CanMNT' },
   { id: '2', name: 'Jonathan David', position: 'ST', club: 'Lille OSC', vitals: '26 YRS // 54 CAPS', tag: 'CanMNT' },
   { id: '3', name: 'Stephen Eustáquio', position: 'CM', club: 'FC Porto', vitals: '29 YRS // 42 CAPS', tag: 'CanMNT' },
@@ -34,7 +36,7 @@ const menPlayers: Player[] = [
   { id: '8', name: 'Tobias Warschewski', position: 'ST', club: 'Cavalry FC', vitals: 'CPL // GOLDEN BOOT', tag: 'CPL' },
 ];
 
-const womenPlayers: Player[] = [
+const defaultWomenPlayers: SpotlightPlayer[] = [
   { id: '1', name: 'Jessie Fleming', position: 'CM', club: 'Portland Thorns', vitals: '28 YRS // 132 CAPS', tag: 'CanWNT' },
   { id: '2', name: 'Kadeisha Buchanan', position: 'CB', club: 'Chelsea FC', vitals: '30 YRS // 150 CAPS', tag: 'CanWNT' },
   { id: '3', name: 'Julia Grosso', position: 'CM', club: 'Chicago Red Stars', vitals: '25 YRS // 65 CAPS', tag: 'CanWNT' },
@@ -45,13 +47,23 @@ const womenPlayers: Player[] = [
   { id: '8', name: 'Jorian Baucom', position: 'ST', club: 'AFC Toronto', vitals: 'NSL // GOLDEN BOOT', tag: 'NSL' },
 ];
 
-export default function PlayerDatabaseSpotlights() {
+export default function PlayerDatabaseSpotlights({
+  spotlights = [],
+}: {
+  spotlights?: SpotlightPlayer[];
+}) {
   const [activeTab, setActiveTab] = useState<'men' | 'women'>('men');
-  const players = activeTab === 'men' ? menPlayers : womenPlayers;
+
+  const cmsMen = spotlights.filter((p) => p.gender === 'men');
+  const cmsWomen = spotlights.filter((p) => p.gender === 'women');
+
+  const menList = cmsMen.length > 0 ? cmsMen : defaultMenPlayers;
+  const womenList = cmsWomen.length > 0 ? cmsWomen : defaultWomenPlayers;
+
+  const activePlayers = activeTab === 'men' ? menList : womenList;
 
   return (
     <section className="w-full bg-card text-charcoal dark:text-white p-6 border border-border shadow-sm">
-      {/* Header & Gender Toggle */}
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center mb-6 pb-4 border-b border-border gap-4">
         <div>
           <span className="text-xs font-mono text-crimson tracking-widest uppercase">PLAYER DATABASE</span>
@@ -77,15 +89,14 @@ export default function PlayerDatabaseSpotlights() {
         </div>
       </div>
 
-      {/* Responsive Wrapper */}
       <div className="flex sm:grid overflow-x-auto sm:overflow-x-visible snap-x snap-mandatory sm:grid-cols-2 lg:grid-cols-4 gap-4 pb-4 sm:pb-0 scrollbar-none">
-        {players.map((player) => {
-          const playerSlug = slugify(player.name);
-          const clubSlug = slugify(player.club);
+        {activePlayers.map((player) => {
+          const playerRoute = player.slug || slugify(player.name);
+          const clubRoute = slugify(player.club);
 
           return (
             <div
-              key={player.id}
+              key={player._id || player.id || player.name}
               className="min-w-[260px] sm:min-w-0 w-[260px] sm:w-auto flex-shrink-0 snap-start bg-surface border border-border p-4 flex flex-col justify-between hover:border-crimson transition-colors group"
             >
               <div>
@@ -97,7 +108,7 @@ export default function PlayerDatabaseSpotlights() {
                 </div>
                 <h3 className="text-sm font-bold tracking-tight text-charcoal dark:text-white">
                   <Link
-                    href={`/players/${playerSlug}`}
+                    href={`/players/${playerRoute}`}
                     className="hover:text-crimson transition-colors block truncate"
                   >
                     {player.name}
@@ -107,13 +118,13 @@ export default function PlayerDatabaseSpotlights() {
               </div>
               <div className="mt-4 pt-3 border-t border-border flex justify-between items-center text-[11px] font-mono text-neutral-600 dark:text-zinc-400">
                 <Link
-                  href={`/teams/${clubSlug}`}
+                  href={`/teams/${clubRoute}`}
                   className="hover:text-crimson hover:underline truncate mr-2"
                 >
                   {player.club}
                 </Link>
                 <Link
-                  href={`/players/${playerSlug}`}
+                  href={`/players/${playerRoute}`}
                   className="text-crimson font-bold hover:underline shrink-0"
                 >
                   DOSSIER ➔
