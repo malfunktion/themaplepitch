@@ -180,3 +180,4 @@ export default async function TeamProfilePage({ params }: { params: Promise<{ sl
     </>
   );
 }
+
