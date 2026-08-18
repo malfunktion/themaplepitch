@@ -13,10 +13,10 @@ const supabase = createClient(
 export const revalidate = 3600;
 
 export async function generateStaticParams() {
-  const { data: players } = await supabase.from('players').select('external_id');
-  return (players || [])
-    .filter((p) => p.external_id)
-    .map((p) => ({ slug: p.external_id }));
+  const { data: teams } = await supabase.from('teams').select('slug');
+  return (teams || [])
+    .filter((t) => t.slug)
+    .map((t) => ({ slug: t.slug }));
 }
 
 function formatDate(dateVal: string | null | undefined): string {
@@ -27,26 +27,18 @@ function formatDate(dateVal: string | null | undefined): string {
     : parsed.toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' });
 }
 
-async function getPlayerData(slug: string) {
-  const { data: player } = await supabase
-    .from('players')
-    .select(`
-      *,
-      current_team:teams!current_team_id (
-        id,
-        name,
-        slug,
-        logo_url
-      )
-    `)
-    .eq('external_id', slug)
+async function getTeamData(slug: string) {
+  const { data: team } = await supabase
+    .from('teams')
+    .select('*')
+    .eq('slug', slug)
     .single();
 
-  if (!player) return null;
+  if (!team) return null;
 
-  let clubMatches: any[] = [];
-  if (player.current_team_id) {
-    const { data: matches } = await supabase
+  const [playersRes, matchesRes] = await Promise.all([
+    supabase.from('players').select('*').eq('current_team_id', team.id),
+    supabase
       .from('matches')
       .select(`
         id,
@@ -55,14 +47,16 @@ async function getPlayerData(slug: string) {
         home_team:teams!home_team_id(name, slug),
         away_team:teams!away_team_id(name, slug)
       `)
-      .or(`home_team_id.eq.${player.current_team_id},away_team_id.eq.${player.current_team_id}`)
+      .or(`home_team_id.eq.${team.id},away_team_id.eq.${team.id}`)
       .order('match_date', { ascending: false })
-      .limit(6);
+      .limit(8),
+  ]);
 
-    clubMatches = matches || [];
-  }
-
-  return { player, clubMatches };
+  return {
+    team,
+    players: playersRes.data || [],
+    matches: matchesRes.data || [],
+  };
 }
 
 export async function generateMetadata({
@@ -71,29 +65,25 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const data = await getPlayerData(slug);
+  const data = await getTeamData(slug);
 
-  if (!data?.player) {
-    return { title: 'Player Not Found' };
+  if (!data?.team) {
+    return { title: 'Team Not Found' };
   }
 
-  const { player } = data;
-  const rawTeam = player.current_team;
-  const clubName = Array.isArray(rawTeam)
-    ? rawTeam[0]?.name
-    : rawTeam?.name || player.league || 'Free Agent';
-  const title = `${player.name} | The Maple Pitch`;
-  const description = `${player.name} — ${player.position || 'Player'} (${clubName}). Nationality: ${player.nationality || 'Canada'}. Stats and dossier on The Maple Pitch.`;
+  const { team } = data;
+  const title = `${team.name} | The Maple Pitch`;
+  const description = `${team.name} club hub, roster, fixtures, and telemetry on The Maple Pitch.`;
 
   return {
     title,
     description,
-    alternates: { canonical: `/players/${player.external_id}` },
+    alternates: { canonical: `/teams/${team.slug}` },
     openGraph: {
-      type: 'profile',
+      type: 'website',
       title,
       description,
-      url: `/players/${player.external_id}`,
+      url: `/teams/${team.slug}`,
     },
     twitter: {
       card: 'summary_large_image',
@@ -103,110 +93,77 @@ export async function generateMetadata({
   };
 }
 
-export default async function PlayerProfilePage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function TeamProfilePage({ params }: { params: Promise<{ slug: string }> }) {
   const { slug } = await params;
-  const data = await getPlayerData(slug);
+  const data = await getTeamData(slug);
 
-  if (!data?.player) notFound();
+  if (!data?.team) notFound();
 
-  const { player, clubMatches } = data;
-  const club = Array.isArray(player.current_team) ? player.current_team[0] : player.current_team;
-  const clubName = club?.name || (player.league ? `${player.league} League` : 'Unattached');
-
-  const statTiles: [string, string | number][] = [
-    ['RATING', player.rating ? Number(player.rating).toFixed(1) : '—'],
-    ['GOALS', player.goals ?? 0],
-    ['ASSISTS', player.assists ?? 0],
-    ['POSITION', player.position || '—'],
-    ['GENDER', player.gender ? player.gender.toUpperCase() : '—'],
-    ['NATIONALITY', player.nationality || 'CAN'],
-  ];
+  const { team, players, matches } = data;
 
   return (
     <>
       <HubHeader
-        eyebrow={`Player dossier // ${clubName}`}
-        title={player.name.toUpperCase()}
-        description={`${player.position || 'Player'} · ${player.nationality || 'Canada'} · Playing in ${player.league || 'Domestic'}. Live profile powered by Supabase telemetry.`}
+        eyebrow={`Club Hub // ${team.league || 'Canada'}`}
+        title={team.name.toUpperCase()}
+        description={`Official club dossier, active roster, and competition schedule for ${team.name}.`}
       />
 
       <div className="grid gap-6 lg:grid-cols-3">
         <section className="lg:col-span-2 space-y-6">
-          <div className="grid grid-cols-2 gap-3 sm:grid-cols-3">
-            {statTiles.map(([label, value]) => (
-              <div key={label} className="border border-border bg-card p-4">
-                <div className="text-[9px] font-mono text-charcoal-soft">{label}</div>
-                <div className="mt-2 text-2xl font-black">{value}</div>
+          <div className="border border-border p-5 bg-card">
+            <div className="text-[10px] font-mono uppercase text-crimson mb-3">Active Roster ({players.length})</div>
+            {players.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {players.map((p) => (
+                  <Link
+                    key={p.id}
+                    href={`/players/${p.external_id || p.id}`}
+                    className="border border-border/60 p-3 flex justify-between items-center hover:border-crimson transition-colors text-xs"
+                  >
+                    <span className="font-bold">{p.name}</span>
+                    <span className="font-mono text-charcoal-soft uppercase">{p.position || 'CM'}</span>
+                  </Link>
+                ))}
               </div>
-            ))}
+            ) : (
+              <div className="text-xs text-charcoal-soft">No active roster loaded in vault.</div>
+            )}
           </div>
 
-          <div className="border border-border p-5">
-            <div className="text-[10px] font-mono uppercase text-crimson">Club &amp; Pathway</div>
-            <div className="mt-3 flex flex-wrap items-center gap-2 text-xs">
-              {club ? (
-                <Link
-                  href={`/teams/${club.slug}`}
-                  className="border border-border px-3 py-1.5 font-bold hover:border-crimson hover:text-crimson transition-colors"
-                >
-                  {club.name}
-                </Link>
-              ) : (
-                <span className="border border-border px-3 py-1.5 font-bold text-charcoal-soft">
-                  {clubName}
-                </span>
-              )}
-              <span className="border border-border/60 px-3 py-1.5 text-charcoal-soft uppercase font-mono">
-                {player.league}
-              </span>
-            </div>
-          </div>
-
-          {clubMatches.length > 0 && (
-            <div className="border border-border p-5">
-              <div className="text-[10px] font-mono uppercase text-crimson">Recent Fixtures</div>
-              <div className="mt-3 divide-y divide-border">
-                {clubMatches.map((m) => {
+          <div className="border border-border p-5 bg-card">
+            <div className="text-[10px] font-mono uppercase text-crimson mb-3">Fixtures &amp; Results</div>
+            {matches.length > 0 ? (
+              <div className="divide-y divide-border text-xs">
+                {matches.map((m) => {
                   const homeName = Array.isArray(m.home_team) ? m.home_team[0]?.name : m.home_team?.name;
                   const awayName = Array.isArray(m.away_team) ? m.away_team[0]?.name : m.away_team?.name;
                   return (
-                    <Link
-                      key={m.id}
-                      href={`/matches/${m.id}`}
-                      className="flex items-center justify-between py-3 text-xs hover:text-crimson"
-                    >
+                    <div key={m.id} className="py-2.5 flex justify-between items-center">
                       <span>{formatDate(m.match_date)}</span>
-                      <span>
-                        {homeName || 'TBD'} vs {awayName || 'TBD'}
-                      </span>
-                      <span className="font-mono uppercase text-charcoal-soft">{m.stage || 'Fixture'}</span>
-                    </Link>
+                      <span>{homeName || 'Home'} vs {awayName || 'Away'}</span>
+                      <span className="font-mono uppercase text-charcoal-soft">{m.stage || 'Match'}</span>
+                    </div>
                   );
                 })}
               </div>
-            </div>
-          )}
+            ) : (
+              <div className="text-xs text-charcoal-soft">No fixtures recorded for this club.</div>
+            )}
+          </div>
         </section>
 
         <aside>
           <div className="border border-border bg-card p-5">
-            <div className="text-[10px] font-mono uppercase text-crimson">Entity Status</div>
+            <div className="text-[10px] font-mono uppercase text-crimson">Club Information</div>
             <div className="mt-4 space-y-2 text-xs text-charcoal-soft">
               <div className="flex justify-between">
-                <span>Database ID</span>
-                <span className="font-mono text-charcoal">{player.id}</span>
+                <span>League</span>
+                <span className="font-mono uppercase text-charcoal">{team.league || 'N/A'}</span>
               </div>
               <div className="flex justify-between">
-                <span>External Slug</span>
-                <span className="font-mono text-charcoal">{player.external_id}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Position</span>
-                <span className="font-mono uppercase text-charcoal">{player.position || 'N/A'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>League Vault</span>
-                <span className="font-mono uppercase text-charcoal">{player.league}</span>
+                <span>Slug</span>
+                <span className="font-mono text-charcoal">{team.slug}</span>
               </div>
             </div>
           </div>
