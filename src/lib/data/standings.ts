@@ -1,64 +1,79 @@
-// src/lib/data/standings.ts
 import { createClient } from '@/lib/supabase/client';
 import type { StandingsRow, LiveTickerItem } from '@/lib/types';
-
-type Team = {
-  id: number;
-  name: string;
-  league: string;
-};
 
 type Match = {
   home_team_id: number;
   away_team_id: number;
-  home_score: number;
-  away_score: number;
-  status: string;
-  competition: string;
+  home_score?: number;
+  away_score?: number;
+  status?: string;
+  competition?: string;
 };
 
 const supabase = createClient();
 
+function matchesLeague(teamLeague: string | null | undefined, targetLeague: string): boolean {
+  if (!teamLeague) return false;
+  const normalized = teamLeague.toUpperCase();
+  const target = targetLeague.toUpperCase();
+
+  if (target === 'CPL') {
+    return normalized.includes('CPL') || normalized.includes('CANADIAN PREMIER LEAGUE');
+  }
+  if (target === 'NSL') {
+    return normalized.includes('NSL') || normalized.includes('NORTHERN SUPER LEAGUE');
+  }
+  return normalized === target;
+}
+
+function getFallbackStandings(competition: string): StandingsRow[] {
+  if (competition === 'CPL') {
+    return [
+      { id: 1, position: 1, clubName: 'Forge FC', name: 'Forge FC', played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, goalDifference: 0 },
+      { id: 2, position: 2, clubName: 'Cavalry FC', name: 'Cavalry FC', played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, goalDifference: 0 },
+      { id: 3, position: 3, clubName: 'Atlético Ottawa', name: 'Atlético Ottawa', played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, goalDifference: 0 },
+      { id: 4, position: 4, clubName: 'Pacific FC', name: 'Pacific FC', played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, goalDifference: 0 },
+      { id: 5, position: 5, clubName: 'York United FC', name: 'York United FC', played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, goalDifference: 0 },
+      { id: 6, position: 6, clubName: 'Vancouver FC', name: 'Vancouver FC', played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, goalDifference: 0 },
+      { id: 7, position: 7, clubName: 'HFX Wanderers FC', name: 'HFX Wanderers FC', played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, goalDifference: 0 },
+      { id: 8, position: 8, clubName: 'Quebec Supra', name: 'Quebec Supra', played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, goalDifference: 0 },
+    ];
+  }
+  return [
+    { id: 1, position: 1, clubName: 'AFC Toronto', name: 'AFC Toronto', played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, goalDifference: 0 },
+    { id: 2, position: 2, clubName: 'Montreal Roses', name: 'Montreal Roses', played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, goalDifference: 0 },
+    { id: 3, position: 3, clubName: 'Vancouver Rise', name: 'Vancouver Rise', played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, goalDifference: 0 },
+    { id: 4, position: 4, clubName: 'Calgary Wild', name: 'Calgary Wild', played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, goalDifference: 0 },
+    { id: 5, position: 5, clubName: 'Ottawa Rapid', name: 'Ottawa Rapid', played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, goalDifference: 0 },
+    { id: 6, position: 6, clubName: 'Halifax Tides', name: 'Halifax Tides', played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, points: 0, goalDifference: 0 },
+  ];
+}
+
 export async function computeStandings(competition: string): Promise<StandingsRow[]> {
   try {
-    const [teamsRes, matchesRes] = await Promise.all([
-      supabase.from('teams').select('id, name, league').eq('league', competition),
-      supabase
-        .from('matches')
-        .select('home_team_id, away_team_id, home_score, away_score, status, competition')
-        .eq('competition', competition)
-        .eq('status', 'Finished'),
-    ]);
+    const { data: teamsData, error: teamsError } = await supabase.from('teams').select('*');
 
-    if (teamsRes.error || matchesRes.error || !teamsRes.data || teamsRes.data.length === 0) {
-      if (competition === 'CPL') {
-        return [
-          { position: 1, clubName: 'Forge FC', name: 'Forge FC', played: 0, points: 0, goalDifference: 0 },
-          { position: 2, clubName: 'Cavalry FC', name: 'Cavalry FC', played: 0, points: 0, goalDifference: 0 },
-          { position: 3, clubName: 'Atlético Ottawa', name: 'Atlético Ottawa', played: 0, points: 0, goalDifference: 0 },
-          { position: 4, clubName: 'Pacific FC', name: 'Pacific FC', played: 0, points: 0, goalDifference: 0 },
-          { position: 5, clubName: 'York United FC', name: 'York United FC', played: 0, points: 0, goalDifference: 0 },
-          { position: 6, clubName: 'Vancouver FC', name: 'Vancouver FC', played: 0, points: 0, goalDifference: 0 },
-          { position: 7, clubName: 'HFX Wanderers FC', name: 'HFX Wanderers FC', played: 0, points: 0, goalDifference: 0 },
-          { position: 8, clubName: 'Quebec Supra', name: 'Quebec Supra', played: 0, points: 0, goalDifference: 0 },
-        ];
-      } else {
-        return [
-          { position: 1, clubName: 'AFC Toronto', name: 'AFC Toronto', played: 0, points: 0, goalDifference: 0 },
-          { position: 2, clubName: 'Montreal Roses', name: 'Montreal Roses', played: 0, points: 0, goalDifference: 0 },
-          { position: 3, clubName: 'Vancouver Rise', name: 'Vancouver Rise', played: 0, points: 0, goalDifference: 0 },
-          { position: 4, clubName: 'Calgary Wild', name: 'Calgary Wild', played: 0, points: 0, goalDifference: 0 },
-          { position: 5, clubName: 'Ottawa Rapid', name: 'Ottawa Rapid', played: 0, points: 0, goalDifference: 0 },
-          { position: 6, clubName: 'Halifax Tides', name: 'Halifax Tides', played: 0, points: 0, goalDifference: 0 },
-        ];
-      }
+    if (teamsError || !teamsData || teamsData.length === 0) {
+      return getFallbackStandings(competition);
     }
 
-    const teams: Team[] = teamsRes.data;
-    const matches: Match[] = matchesRes.data || [];
+    const filteredTeams = teamsData.filter((t: any) => matchesLeague(t.league, competition));
+
+    if (filteredTeams.length === 0) {
+      return getFallbackStandings(competition);
+    }
+
+    const { data: matchesData } = await supabase.from('matches').select('*');
+
+    const matches: Match[] = (matchesData || []).filter((m: any) => {
+      const comp = m.competition || m.competition_id || '';
+      const isFinished = (m.status || '').toLowerCase() === 'finished' || (m.status || '').toLowerCase() === 'ft';
+      return isFinished && matchesLeague(String(comp), competition);
+    });
+
     const statsMap: Record<number, { played: number; won: number; drawn: number; lost: number; gf: number; ga: number; pts: number }> = {};
-    
-    teams.forEach((team: Team) => {
+
+    filteredTeams.forEach((team: any) => {
       statsMap[team.id] = { played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, pts: 0 };
     });
 
@@ -67,18 +82,21 @@ export async function computeStandings(competition: string): Promise<StandingsRo
       const away = statsMap[m.away_team_id];
       if (!home || !away) return;
 
+      const homeScore = m.home_score ?? 0;
+      const awayScore = m.away_score ?? 0;
+
       home.played += 1;
       away.played += 1;
-      home.gf += m.home_score || 0;
-      home.ga += m.away_score || 0;
-      away.gf += m.away_score || 0;
-      away.ga += m.home_score || 0;
+      home.gf += homeScore;
+      home.ga += awayScore;
+      away.gf += awayScore;
+      away.ga += homeScore;
 
-      if ((m.home_score || 0) > (m.away_score || 0)) {
+      if (homeScore > awayScore) {
         home.won += 1;
         home.pts += 3;
         away.lost += 1;
-      } else if ((m.home_score || 0) < (m.away_score || 0)) {
+      } else if (homeScore < awayScore) {
         away.won += 1;
         away.pts += 3;
         home.lost += 1;
@@ -90,8 +108,8 @@ export async function computeStandings(competition: string): Promise<StandingsRo
       }
     });
 
-    return teams
-      .map((team: Team) => {
+    return filteredTeams
+      .map((team: any) => {
         const s = statsMap[team.id] || { played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, pts: 0 };
         const gf = s.gf;
         const ga = s.ga;
@@ -110,14 +128,19 @@ export async function computeStandings(competition: string): Promise<StandingsRo
           points: s.pts,
         };
       })
-      .sort((a: StandingsRow, b: StandingsRow) => b.points - a.points || b.goalDifference - a.goalDifference || (b.goalsFor || 0) - (a.goalsFor || 0))
+      .sort((a: StandingsRow, b: StandingsRow) => 
+        b.points - a.points || 
+        b.goalDifference - a.goalDifference || 
+        (b.goalsFor || 0) - (a.goalsFor || 0) ||
+        a.clubName.localeCompare(b.clubName)
+      )
       .map((row: StandingsRow, idx: number) => ({
         ...row,
         position: idx + 1,
       }));
   } catch (err) {
     console.error(`Failed to compute standings for ${competition}:`, err);
-    return [];
+    return getFallbackStandings(competition);
   }
 }
 
@@ -131,10 +154,7 @@ export async function getNslStandings(): Promise<StandingsRow[]> {
 
 export async function getLiveTicker(): Promise<LiveTickerItem[]> {
   try {
-    const { data, error } = await supabase
-      .from('matches')
-      .select('id, competition, home_score, away_score, status, home_teams:teams!home_team_id(name), away_teams:teams!away_team_id(name)')
-      .limit(6);
+    const { data, error } = await supabase.from('matches').select('*').limit(6);
 
     if (error || !data || data.length === 0) {
       return [
@@ -147,8 +167,8 @@ export async function getLiveTicker(): Promise<LiveTickerItem[]> {
     return data.map((m: any, idx: number) => ({
       id: String(m.id || idx),
       competition: m.competition || 'CPL',
-      homeTeam: m.home_teams?.name || 'Home Team',
-      awayTeam: m.away_teams?.name || 'Away Team',
+      homeTeam: m.home_team_name || 'Home Team',
+      awayTeam: m.away_team_name || 'Away Team',
       homeScore: m.home_score || 0,
       awayScore: m.away_score || 0,
       minute: m.status === 'Live' ? 75 : null,
