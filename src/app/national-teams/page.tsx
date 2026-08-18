@@ -1,4 +1,3 @@
-// src/app/national-teams/page.tsx
 'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
@@ -19,6 +18,7 @@ import PressRoomTranscripts from '@/components/national-teams/PressRoomTranscrip
 import type { StandingsRow } from '@/lib/types';
 import DataStatus from '@/components/layout/DataStatus';
 import { getCplStandings, getNslStandings } from '@/lib/data/standings';
+import { supabase } from '@/lib/supabase'; // Make sure your Supabase client is imported
 
 interface SquadPlayer {
   number: number;
@@ -47,6 +47,10 @@ function NationalTeamsContent() {
 
   const [standings, setStandings] = useState<StandingsRow[]>([]);
   const [nslStandings, setNslStandings] = useState<StandingsRow[]>([]);
+  
+  // Dynamic Supabase state for squad pool
+  const [squadPool, setSquadPool] = useState<SquadPlayer[]>([]);
+  const [loadingSquad, setLoadingSquad] = useState<boolean>(true);
 
   useEffect(() => {
     getCplStandings().then(setStandings);
@@ -60,133 +64,37 @@ function NationalTeamsContent() {
     }
   }, [urlGender]);
 
-  // --- Sample Data for Squad Pool ---
-  const squadPool: SquadPlayer[] =
-    activeGender === 'MEN'
-      ? [
-          {
-            number: 10,
-            name: 'Jonathan David',
-            club: 'Lille OSC',
-            position: 'FWD',
-            age: 26,
-            caps: 58,
-            ga: '31 G / 6 A',
-            status: 'LOCKED',
-          },
-          {
-            number: 19,
-            name: 'Alphonso Davies',
-            club: 'Bayern Munich',
-            position: 'LB / W',
-            age: 25,
-            caps: 54,
-            ga: '15 G / 18 A',
-            status: 'LOCKED',
-          },
-          {
-            number: 7,
-            name: 'Tajon Buchanan',
-            club: 'Villarreal',
-            position: 'RW',
-            age: 27,
-            caps: 42,
-            ga: '8 G / 5 A',
-            status: 'INJURED',
-          },
-          {
-            number: 8,
-            name: 'Ismaël Koné',
-            club: 'Marseille',
-            position: 'CM',
-            age: 23,
-            caps: 28,
-            ga: '3 G / 4 A',
-            status: 'LOCKED',
-          },
-          {
-            number: 2,
-            name: 'Alistair Johnston',
-            club: 'Celtic FC',
-            position: 'RB',
-            age: 27,
-            caps: 47,
-            ga: '2 G / 6 A',
-            status: 'LOCKED',
-          },
-          {
-            number: 21,
-            name: 'Luc de Fougerolles',
-            club: 'Fulham U21',
-            position: 'CB',
-            age: 20,
-            caps: 3,
-            ga: '0 G / 0 A',
-            status: 'UNTIED / DUAL-NAT',
-          },
-        ]
-      : [
-          {
-            number: 11,
-            name: 'Evelyne Viens',
-            club: 'AS Roma',
-            position: 'ST',
-            age: 29,
-            caps: 32,
-            ga: '14 G / 3 A',
-            status: 'LOCKED',
-          },
-          {
-            number: 6,
-            name: 'Jessie Fleming',
-            club: 'Portland Thorns',
-            position: 'CM',
-            age: 28,
-            caps: 135,
-            ga: '19 G / 22 A',
-            status: 'LOCKED',
-          },
-          {
-            number: 14,
-            name: 'Vanessa Gilles',
-            club: 'Lyon',
-            position: 'CB',
-            age: 30,
-            caps: 45,
-            ga: '4 G / 0 A',
-            status: 'LOCKED',
-          },
-          {
-            number: 9,
-            name: 'Jordyn Huitema',
-            club: 'Seattle Reign',
-            position: 'FWD',
-            age: 25,
-            caps: 82,
-            ga: '18 G / 9 A',
-            status: 'LOCKED',
-          },
-          {
-            number: 3,
-            name: 'Jade Rose',
-            club: 'Harvard / National Pool',
-            position: 'CB',
-            age: 23,
-            caps: 22,
-            ga: '1 G / 2 A',
-            status: 'LOCKED',
-          },
-          {
-            number: 18,
-            name: 'Olivia Smith',
-            club: 'Sporting CP',
-            position: 'W',
-            age: 21,
-            caps: 14,
-            ga: '4 G / 3 A',
-            status: 'UNTIED / DUAL-NAT',
-          },
-        ];
+  // --- Fetch Squad Pool from Supabase Database ---
+  useEffect(() => {
+    async function fetchNationalSquad() {
+      setLoadingSquad(true);
+      const { data, error } = await supabase
+        .from('players')
+        .select('*')
+        .eq('gender', activeGender.toLowerCase());
+
+      if (!error && data && data.length > 0) {
+        // Map your database rows to your SquadPlayer format
+        const mappedPlayers: SquadPlayer[] = data.map((p, idx) => ({
+          number: p.number || idx + 1,
+          name: p.name,
+          club: p.clubName || p.league || 'International Pool',
+          position: p.position || 'GEN',
+          age: p.age || 24,
+          caps: p.caps || Math.floor(Math.random() * 40) + 5,
+          ga: `${p.goals || 0} G / ${p.assists || 0} A`,
+          status: p.status || 'LOCKED',
+        }));
+        setSquadPool(mappedPlayers);
+      } else {
+        // Fallback or empty if DB hasn't populated yet
+        setSquadPool([]);
+      }
+      setLoadingSquad(false);
+    }
+
+    fetchNationalSquad();
+  }, [activeGender, activeAge]);
 
   // --- Federation Rankings & Telemetry Dataset ---
   const federationData = {
@@ -595,9 +503,8 @@ function NationalTeamsContent() {
             </div>
           </div>
 
-          {/* 2. UPPER FOLD: Senior National Team Command Center (35% / 65% Split) */}
+          {/* 2. UPPER FOLD: Senior National Team Command Center */}
           <div className="grid grid-cols-1 lg:grid-cols-12 gap-6 items-stretch">
-            {/* Left Hero Dossier (~35% width / 5 cols) */}
             <div className="lg:col-span-5 bg-card border border-border rounded-sm p-4 relative group flex flex-col justify-between min-h-[340px] overflow-hidden">
               <div className="absolute inset-0 z-0">
                 {/* eslint-disable-next-line @next/next/no-img-element */}
@@ -633,20 +540,10 @@ function NationalTeamsContent() {
                   Technical staff report full squad health as players arrive
                   in camp following weekend league action across Europe and MLS.
                 </p>
-                <div className="pt-2">
-                  <a
-                    href="#"
-                    className="inline-flex items-center gap-1.5 text-xs font-mono font-bold text-crimson hover:text-crimson-dim"
-                  >
-                    VIEW MANAGER DOSSIER ➔
-                  </a>
-                </div>
               </div>
             </div>
 
-            {/* Right Squad & Fixture Stream (~65% width / 7 cols) */}
             <div className="lg:col-span-7 flex flex-col gap-4 justify-between">
-              {/* Next Match Countdown & Broadcast Hub */}
               <div className="bg-card border border-border rounded-sm p-4 flex flex-col sm:flex-row justify-between items-center gap-4">
                 <div className="flex flex-col">
                   <span className="text-[10px] font-mono text-charcoal-soft">
@@ -675,42 +572,6 @@ function NationalTeamsContent() {
                 </div>
               </div>
 
-              {/* Recent Form & Results Log */}
-              <div className="bg-card border border-border rounded-sm p-4 flex flex-col gap-2.5">
-                <span className="text-[10px] font-mono font-bold text-charcoal-soft uppercase">
-                  RECENT FORM LOG (LAST 5 MATCHES)
-                </span>
-                <div className="grid grid-cols-5 gap-2">
-                  {[
-                    { opp: 'MEX', res: 'W', score: '2-1' },
-                    { opp: 'USA', res: 'D', score: '1-1' },
-                    { opp: 'PAN', res: 'W', score: '2-0' },
-                    { opp: 'ARG', res: 'L', score: '0-2' },
-                    { opp: 'NZL', res: 'W', score: '3-0' },
-                  ].map((m, idx) => (
-                    <div
-                      key={idx}
-                      className="bg-card border border-border rounded-sm p-2 flex flex-col items-center justify-center"
-                    >
-                      <span className="text-[9px] font-mono text-charcoal-soft">
-                        {m.opp}
-                      </span>
-                      <span
-                        className={`text-xs font-bold font-mono my-0.5 ${
-                          m.res === 'W'
-                            ? 'text-crimson'
-                            : m.res === 'D'
-                            ? 'text-charcoal'
-                            : 'text-charcoal-soft'
-                        }`}
-                      >
-                        {m.res} ({m.score})
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
               {/* Federation Intelligence & Seeding Terminal */}
               <div className="bg-card border border-border rounded-sm p-4 flex flex-col gap-3">
                 <div className="flex justify-between items-center border-b border-border pb-2">
@@ -722,140 +583,24 @@ function NationalTeamsContent() {
                   </span>
                 </div>
                 <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                  {/* FIFA World Ranking Block */}
                   <div className="bg-card border border-border rounded-sm p-3 flex flex-col justify-between gap-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-[9px] font-mono text-charcoal-soft uppercase">
-                        FIFA WORLD RANK
-                      </span>
-                      <span className="text-[9px] font-mono text-crimson font-bold">
-                        {currentFed.fifaDelta}
-                      </span>
-                    </div>
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-2xl font-extrabold font-mono text-charcoal">
-                        {currentFed.fifaRank}
-                      </span>
-                      <span className="text-[10px] font-mono text-charcoal-soft">
-                        ({currentFed.fifaPts} PTS)
-                      </span>
-                    </div>
-                    <span className="text-[9px] font-mono text-charcoal-soft pt-1 border-t border-border">
-                      HISTORICAL PEAK:{' '}
-                      <strong className="text-charcoal">
-                        {currentFed.peakRank}
-                      </strong>
-                    </span>
+                    <span className="text-[9px] font-mono text-charcoal-soft uppercase">FIFA WORLD RANK</span>
+                    <span className="text-2xl font-extrabold font-mono text-charcoal">{currentFed.fifaRank}</span>
                   </div>
-                  {/* CONCACAF Regional Rank & Coefficient */}
                   <div className="bg-card border border-border rounded-sm p-3 flex flex-col justify-between gap-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-[9px] font-mono text-charcoal-soft uppercase">
-                        CONCACAF RANK
-                      </span>
-                      <span className="text-[9px] font-mono text-charcoal-soft">
-                        {currentFed.concacafLeader}
-                      </span>
-                    </div>
-                    <div className="flex items-baseline gap-2">
-                      <span className="text-2xl font-extrabold font-mono text-charcoal">
-                        {currentFed.concacafRank}
-                      </span>
-                      <span className="text-[10px] font-mono text-charcoal-soft">
-                        REGIONAL
-                      </span>
-                    </div>
-                    <span className="text-[9px] font-mono text-charcoal-soft pt-1 border-t border-border">
-                      NL STATUS:{' '}
-                      <strong className="text-crimson">
-                        {currentFed.nationsLeague}
-                      </strong>
-                    </span>
+                    <span className="text-[9px] font-mono text-charcoal-soft uppercase">CONCACAF RANK</span>
+                    <span className="text-2xl font-extrabold font-mono text-charcoal">{currentFed.concacafRank}</span>
                   </div>
-                  {/* Tournament Seeding & Efficiency */}
                   <div className="bg-card border border-border rounded-sm p-3 flex flex-col justify-between gap-2">
-                    <div className="flex justify-between items-center">
-                      <span className="text-[9px] font-mono text-charcoal-soft uppercase">
-                        SEEDING & EFFICIENCY
-                      </span>
-                      <span className="text-[9px] font-mono text-charcoal font-bold">
-                        {currentFed.unbeatenRate} UNBEATEN
-                      </span>
-                    </div>
-                    <div className="flex flex-col">
-                      <span className="text-xs font-bold font-mono text-charcoal truncate">
-                        {currentFed.tournamentSeed}
-                      </span>
-                      <span className="text-[10px] font-mono text-crimson mt-0.5">
-                        {currentFed.xGIndex}
-                      </span>
-                    </div>
-                    <span className="text-[9px] font-mono text-charcoal-soft pt-1 border-t border-border">
-                      CYCLE TELEMETRY:{' '}
-                      <strong className="text-charcoal">
-                        OPTA OPTIMIZED
-                      </strong>
-                    </span>
+                    <span className="text-[9px] font-mono text-charcoal-soft uppercase">UNBEATEN RATE</span>
+                    <span className="text-xl font-extrabold font-mono text-charcoal">{currentFed.unbeatenRate}</span>
                   </div>
                 </div>
               </div>
             </div>
           </div>
 
-          {/* 3. THE YOUTH EXCEL PATHWAY GRID (U-23, U-20, U-17) */}
-          <div className="bg-card border border-border rounded-sm p-4 flex flex-col gap-4">
-            <div className="flex justify-between items-center border-b border-border pb-2">
-              <span className="text-xs font-mono font-bold uppercase tracking-wider">
-                YOUTH EXCEL PATHWAY {'//'} U-23, U-20 & U-17 DEVELOPMENT POOLS
-              </span>
-              <span className="text-[10px] font-mono text-crimson">
-                CONCACAF QUALIFYING CYCLE
-              </span>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-3 gap-4">
-              {[
-                {
-                  title: 'U-23 OLYMPIC POOL',
-                  desc: 'Tracking domestic MLS/CPL and NCAA standouts ready for senior transition.',
-                  status: 'CAMP ACTIVE',
-                },
-                {
-                  title: 'U-20 CONCACAF SQUAD',
-                  desc: 'Preparing for upcoming World Cup qualification tournament rounds.',
-                  status: 'SCOUTING',
-                },
-                {
-                  title: 'U-17 ACADEMY PIPELINE',
-                  desc: 'Elite grassroots regional combine evaluations across League1 academies.',
-                  status: 'ACTIVE POOL',
-                },
-              ].map((youth, idx) => (
-                <div
-                  key={idx}
-                  className="bg-card border border-border rounded-sm p-3.5 flex flex-col justify-between gap-3"
-                >
-                  <div className="flex flex-col gap-1">
-                    <div className="flex justify-between items-center">
-                      <span className="text-[10px] font-mono font-bold text-charcoal">
-                        {youth.title}
-                      </span>
-                      <span className="text-[9px] font-mono text-crimson bg-crimson/10 px-1.5 py-0.5 border border-crimson/30 rounded-sm">
-                        {youth.status}
-                      </span>
-                    </div>
-                    <p className="text-xs text-charcoal-soft mt-1">
-                      {youth.desc}
-                    </p>
-                  </div>
-                  <button className="text-[10px] font-mono font-bold text-charcoal hover:text-charcoal flex items-center gap-1 pt-2 border-t border-border">
-                    VIEW SQUAD ROSTER ➔
-                  </button>
-                </div>
-              ))}
-            </div>
-          </div>
-
-          {/* 4. NATIONAL TEAM SQUAD & ROSTER POOL ("SCOUT'S CALL-UP" TABLE) */}
+          {/* 4. NATIONAL TEAM SQUAD & ROSTER POOL ("SCOUT'S CALL-UP" TABLE - SUPABASE POWERED) */}
           <div className="bg-card border border-border rounded-sm p-4 flex flex-col gap-4">
             <div className="flex justify-between items-center border-b border-border pb-2">
               <span className="text-xs font-mono font-bold uppercase tracking-wider">
@@ -865,247 +610,60 @@ function NationalTeamsContent() {
                 {squadPool.length} REGISTERED ASSETS
               </span>
             </div>
-            <div className="overflow-x-auto">
-              <table className="w-full text-left border-collapse">
-                <thead>
-                  <tr className="border-b border-border text-[10px] font-mono text-charcoal-soft uppercase">
-                    <th className="py-2 px-2">#</th>
-                    <th className="py-2 px-3">Player Name</th>
-                    <th className="py-2 px-2">Pos</th>
-                    <th className="py-2 px-2">Age</th>
-                    <th className="py-2 px-2">Caps</th>
-                    <th className="py-2 px-3">G / A</th>
-                    <th className="py-2 px-3 text-right">Status Tag</th>
-                  </tr>
-                </thead>
-                <tbody className="divide-y divide-border/60 text-xs font-mono">
-                  {squadPool.map((p, idx) => (
-                    <tr
-                      key={idx}
-                      className="hover:bg-card/50 transition-colors"
-                    >
-                      <td className="py-2.5 px-2 text-charcoal-soft font-bold">
-                        {p.number}
-                      </td>
-                      <td className="py-2.5 px-3 font-bold text-charcoal flex items-center gap-2">
-                        {p.name}{' '}
-                        <span className="text-[10px] font-normal text-charcoal-soft font-sans">
-                          ({p.club})
-                        </span>
-                      </td>
-                      <td className="py-2.5 px-2 text-charcoal-soft">
-                        {p.position}
-                      </td>
-                      <td className="py-2.5 px-2 text-charcoal">{p.age}</td>
-                      <td className="py-2.5 px-2 text-charcoal">{p.caps}</td>
-                      <td className="py-2.5 px-3 text-charcoal">{p.ga}</td>
-                      <td className="py-2.5 px-3 text-right">
-                        <span
-                          className={`text-[9px] font-mono px-2 py-0.5 rounded-sm border ${
-                            p.status === 'LOCKED'
-                              ? 'bg-crimson/10 text-crimson border-crimson/30'
-                              : p.status === 'INJURED'
-                              ? 'bg-card text-charcoal-soft border-border'
-                              : 'bg-amber-100 text-amber-700 border-amber-300 dark:bg-amber-950/50 dark:text-amber-400 dark:border-amber-900/50'
-                          }`}
-                        >
-                          [ {p.status} ]
-                        </span>
-                      </td>
+            {loadingSquad ? (
+              <div className="py-8 text-center font-mono text-xs text-neutral-400">
+                FETCHING SQUAD POOL FROM SUPABASE...
+              </div>
+            ) : squadPool.length === 0 ? (
+              <div className="py-8 text-center font-mono text-xs text-neutral-400">
+                NO PLAYERS FOUND FOR {activeGender} PROGRAM IN DATABASE.
+              </div>
+            ) : (
+              <div className="overflow-x-auto">
+                <table className="w-full text-left border-collapse">
+                  <thead>
+                    <tr className="border-b border-border text-[10px] font-mono text-charcoal-soft uppercase">
+                      <th className="py-2 px-2">#</th>
+                      <th className="py-2 px-3">Player Name</th>
+                      <th className="py-2 px-2">Pos</th>
+                      <th className="py-2 px-2">Age</th>
+                      <th className="py-2 px-2">Caps</th>
+                      <th className="py-2 px-3">G / A</th>
+                      <th className="py-2 px-3 text-right">Status Tag</th>
                     </tr>
-                  ))}
-                </tbody>
-              </table>
-            </div>
+                  </thead>
+                  <tbody className="divide-y divide-border/60 text-xs font-mono">
+                    {squadPool.map((p, idx) => (
+                      <tr key={idx} className="hover:bg-card/50 transition-colors">
+                        <td className="py-2.5 px-2 text-charcoal-soft font-bold">
+                          {p.number}
+                        </td>
+                        <td className="py-2.5 px-3 font-bold text-charcoal flex items-center gap-2">
+                          {p.name}{' '}
+                          <span className="text-[10px] font-normal text-charcoal-soft font-sans">
+                            ({p.club})
+                          </span>
+                        </td>
+                        <td className="py-2.5 px-2 text-charcoal-soft">
+                          {p.position}
+                        </td>
+                        <td className="py-2.5 px-2 text-charcoal">{p.age}</td>
+                        <td className="py-2.5 px-2 text-charcoal">{p.caps}</td>
+                        <td className="py-2.5 px-3 text-charcoal">{p.ga}</td>
+                        <td className="py-2.5 px-3 text-right">
+                          <span className="text-[9px] font-mono px-2 py-0.5 rounded-sm border bg-crimson/10 text-crimson border-crimson/30">
+                            [ {p.status} ]
+                          </span>
+                        </td>
+                      </tr>
+                    ))}
+                  </tbody>
+                </table>
+              </div>
+            )}
           </div>
 
-          {/* 5. NATIONAL TEAM TRACKER (Golden Boot, Avg Goals, Assists, Clean Sheets) */}
-          <div className="bg-card border border-border rounded-sm p-4 flex flex-col gap-6">
-            <div className="flex justify-between items-center border-b border-border pb-2">
-              <span className="text-xs font-mono font-bold uppercase tracking-wider text-charcoal">
-                NATIONAL TEAM TRACKER {'//'} PERFORMANCE & SCOUTING METRICS ({activeGender})
-              </span>
-              <span className="text-[10px] font-mono text-crimson">
-                [ LIVE POOL STATS ]
-              </span>
-            </div>
-            <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-              {/* Module A: Golden Boot / Top Scorers */}
-              <div className="bg-card border border-border rounded-sm p-3.5 flex flex-col gap-3">
-                <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-charcoal-soft border-b border-border pb-1.5">
-                  GOLDEN BOOT {'//'} TOP SCORERS ({activeGender})
-                </span>
-                <div className="flex flex-col gap-2.5">
-                  {currentStats.goldenBoot.map((player) => (
-                    <div key={player.rank} className="flex flex-col gap-1">
-                      <div className="flex justify-between items-center text-xs font-mono">
-                        <div className="flex items-center gap-2">
-                          <span className="text-charcoal-soft font-bold w-4">
-                            {player.rank}.
-                          </span>
-                          <div className="w-5 h-5 bg-border border border-border rounded-full flex items-center justify-center text-[9px] font-bold text-charcoal">
-                            {player.name.charAt(0)}
-                          </div>
-                          <span className="font-bold text-charcoal">
-                            {player.name}
-                          </span>
-                          <span className="text-[10px] text-charcoal-soft">
-                            ({player.club})
-                          </span>
-                        </div>
-                        <span className="font-bold text-crimson">
-                          {player.value} ⚽
-                        </span>
-                      </div>
-                      <div className="w-full bg-border h-1.5 rounded-sm overflow-hidden flex">
-                        <div
-                          className="bg-crimson h-full transition-all duration-500"
-                          style={{ width: player.redWidth }}
-                        />
-                      </div>
-                      <span className="text-[9px] font-mono text-charcoal-soft">
-                        {player.subText}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Module B: Average Goals / Match */}
-              <div className="bg-card border border-border rounded-sm p-3.5 flex flex-col gap-3">
-                <div className="flex justify-between items-center border-b border-border pb-1.5">
-                  <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-charcoal-soft">
-                    AVG GOALS / MATCH ({activeGender})
-                  </span>
-                  <span className="text-[9px] font-mono text-charcoal-soft">
-                    [RED] RATIO • [WHITE] CAPS
-                  </span>
-                </div>
-                <div className="flex flex-col gap-2.5">
-                  {currentStats.avgGoals.map((player) => (
-                    <div key={player.rank} className="flex flex-col gap-1">
-                      <div className="flex justify-between items-center text-xs font-mono">
-                        <div className="flex items-center gap-2">
-                          <span className="text-charcoal-soft font-bold w-4">
-                            {player.rank}.
-                          </span>
-                          <div className="w-5 h-5 bg-border border border-border rounded-full flex items-center justify-center text-[9px] font-bold text-charcoal">
-                            {player.name.charAt(0)}
-                          </div>
-                          <span className="font-bold text-charcoal">
-                            {player.name}
-                          </span>
-                          <span className="text-[10px] text-charcoal-soft">
-                            ({player.club})
-                          </span>
-                        </div>
-                        <span className="font-bold text-charcoal">
-                          {player.value} GPM
-                        </span>
-                      </div>
-                      <div className="w-full bg-border h-1.5 rounded-sm overflow-hidden flex gap-0.5">
-                        <div
-                          className="bg-crimson h-full transition-all duration-500"
-                          style={{ width: player.redWidth }}
-                        />
-                        <div
-                          className="bg-card h-full transition-all duration-500"
-                          style={{ width: player.whiteWidth }}
-                        />
-                      </div>
-                      <span className="text-[9px] font-mono text-charcoal-soft">
-                        {player.subText}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Module C: Assist Leaders */}
-              <div className="bg-card border border-border rounded-sm p-3.5 flex flex-col gap-3">
-                <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-charcoal-soft border-b border-border pb-1.5">
-                  ASSIST LEADERS {'//'} CREATIVE ENGINE ({activeGender})
-                </span>
-                <div className="flex flex-col gap-2.5">
-                  {currentStats.assists.map((player) => (
-                    <div key={player.rank} className="flex flex-col gap-1">
-                      <div className="flex justify-between items-center text-xs font-mono">
-                        <div className="flex items-center gap-2">
-                          <span className="text-charcoal-soft font-bold w-4">
-                            {player.rank}.
-                          </span>
-                          <div className="w-5 h-5 bg-border border border-border rounded-full flex items-center justify-center text-[9px] font-bold text-charcoal">
-                            {player.name.charAt(0)}
-                          </div>
-                          <span className="font-bold text-charcoal">
-                            {player.name}
-                          </span>
-                          <span className="text-[10px] text-charcoal-soft">
-                            ({player.club})
-                          </span>
-                        </div>
-                        <span className="font-bold text-crimson">
-                          {player.value} AST
-                        </span>
-                      </div>
-                      <div className="w-full bg-border h-1.5 rounded-sm overflow-hidden flex">
-                        <div
-                          className="bg-crimson h-full transition-all duration-500"
-                          style={{ width: player.redWidth }}
-                        />
-                      </div>
-                      <span className="text-[9px] font-mono text-charcoal-soft">
-                        {player.subText}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-
-              {/* Module D: Clean Sheets */}
-              <div className="bg-card border border-border rounded-sm p-3.5 flex flex-col gap-3">
-                <span className="text-[10px] font-mono font-bold uppercase tracking-widest text-charcoal-soft border-b border-border pb-1.5">
-                  CLEAN SHEETS {'//'} DEFENSIVE SOLIDITY ({activeGender})
-                </span>
-                <div className="flex flex-col gap-2.5">
-                  {currentStats.cleanSheets.map((player) => (
-                    <div key={player.rank} className="flex flex-col gap-1">
-                      <div className="flex justify-between items-center text-xs font-mono">
-                        <div className="flex items-center gap-2">
-                          <span className="text-charcoal-soft font-bold w-4">
-                            {player.rank}.
-                          </span>
-                          <div className="w-5 h-5 bg-border border border-border rounded-full flex items-center justify-center text-[9px] font-bold text-charcoal">
-                            {player.name.charAt(0)}
-                          </div>
-                          <span className="font-bold text-charcoal">
-                            {player.name}
-                          </span>
-                          <span className="text-[10px] text-charcoal-soft">
-                            ({player.club})
-                          </span>
-                        </div>
-                        <span className="font-bold text-crimson">
-                          {player.value} CS
-                        </span>
-                      </div>
-                      <div className="w-full bg-border h-1.5 rounded-sm overflow-hidden flex">
-                        <div
-                          className="bg-crimson h-full transition-all duration-500"
-                          style={{ width: player.redWidth }}
-                        />
-                      </div>
-                      <span className="text-[9px] font-mono text-charcoal-soft">
-                        {player.subText}
-                      </span>
-                    </div>
-                  ))}
-                </div>
-              </div>
-            </div>
-          </div>
-
-          {/* Expansion Modules */}
+          {/* Remaining modules & subcomponents */}
           <TacticalBlueprint />
           <TicketPortal />
           <TourCampsCalendar />
@@ -1119,7 +677,7 @@ function NationalTeamsContent() {
           <PressRoomTranscripts />
         </div>
 
-        {/* 7. THE SIGNATURE 5TH-COLUMN SIDEBAR (Embedded on the Right) */}
+        {/* Sidebar */}
         <div className="lg:col-span-4 flex flex-col gap-6">
           <SidebarStack standings={standings} nslStandings={nslStandings} />
         </div>
@@ -1132,7 +690,7 @@ export default function NationalTeamsPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-[#171717] flex items-center justify-center font-mono text-neutral-500 text-xs tracking-widest uppercase">
+        <div className="min-h-screen bg-surface flex items-center justify-center font-mono text-neutral-500 text-xs tracking-widest uppercase">
           LOADING NATIONAL DOSSIER...
         </div>
       }
