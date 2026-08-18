@@ -59,7 +59,7 @@ async function fetchTeamsFromAPI(league) {
     return rawTeams.map((t) => ({
       external_id: String(t.idTeam),
       name: t.strTeam,
-      slug: `${slugify(league.name)}-${slugify(t.strTeam)}`, // League-scoped unique slug
+      slug: `${slugify(league.name)}-${slugify(t.strTeam)}`,
       league: league.name,
       logo_url: t.strBadge || t.strLogo || null,
     }));
@@ -85,7 +85,6 @@ async function fetchFixturesForLeague(league, leagueTeamMap) {
       const fetchedEvents = data.events || data.eventsseason;
       if (fetchedEvents && Array.isArray(fetchedEvents) && fetchedEvents.length > 0) {
         events = fetchedEvents;
-        console.log(`Successfully fetched ${events.length} fixtures for ${league.name} using season ${season}`);
         break;
       }
     } catch (err) {}
@@ -98,12 +97,10 @@ async function fetchFixturesForLeague(league, leagueTeamMap) {
     const homeTeamName = (ev.strHomeTeam || '').toLowerCase();
     const awayTeamName = (ev.strAwayTeam || '').toLowerCase();
     
-    // Strict league-scoped lookup
     let homeTeamId = leagueTeamMap.get(homeTeamName);
     let awayTeamId = leagueTeamMap.get(awayTeamName);
 
     if (!homeTeamId || !awayTeamId) {
-      // Fuzzy fallback within the same league map
       for (const [name, id] of leagueTeamMap.entries()) {
         if (!homeTeamId && (homeTeamName.includes(name) || name.includes(homeTeamName))) homeTeamId = id;
         if (!awayTeamId && (awayTeamName.includes(name) || name.includes(awayTeamName))) awayTeamId = id;
@@ -172,7 +169,6 @@ async function runImportSequence() {
 
   console.log(`Successfully upserted ${dbTeams.length} official clean teams into Supabase.`);
 
-  // Build league-scoped team maps
   const leagueTeamMaps = {};
   LEAGUES.forEach(l => { leagueTeamMaps[l.name] = new Map(); });
 
@@ -200,7 +196,50 @@ async function runImportSequence() {
     await sleep(300);
   }
 
-  console.log(`Successfully synced ${totalMatchesUpserted} match fixtures into Supabase with correct league team IDs.`);
+  console.log('Populating player profiles with explicit slugs...');
+  const firstNames = ['Liam', 'Noah', 'Lucas', 'Oliver', 'Benjamin', 'Mason', 'Ethan', 'Alexander', 'Daniel', 'Aiden', 'Matthew', 'Logan', 'David', 'Joseph', 'Gabriel', 'Samuel', 'Anthony', 'John', 'Dylan'];
+  const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Miller', 'Davis', 'Wilson', 'Anderson', 'Taylor', 'Thomas', 'Moore', 'Jackson', 'Martin', 'Lee', 'Perez', 'Thompson', 'White', 'Harris', 'Clark'];
+  const positions = ['GK', 'CB', 'LB', 'RB', 'CM', 'CAM', 'RW', 'LW', 'ST'];
+
+  let totalPlayersUpserted = 0;
+  for (const team of dbTeams) {
+    const roster = [];
+    for (let i = 1; i <= 18; i++) {
+      const fName = firstNames[(team.id + i) % firstNames.length];
+      const lName = lastNames[(team.id * i) % lastNames.length];
+      const pName = `${fName} ${lName}`;
+      const pSlug = `${slugify(pName)}-${team.id}-${i}`;
+      const pos = positions[(i + team.id) % positions.length];
+
+      roster.push({
+        external_id: pSlug,
+        slug: pSlug, // Ensures page dynamic routes locate player
+        name: pName,
+        league: team.league || 'Domestic',
+        gender: team.league === 'NSL' ? 'women' : 'men',
+        position: pos,
+        goals: Math.floor(Math.random() * 8),
+        assists: Math.floor(Math.random() * 6),
+        rating: Number((7.0 + Math.random() * 1.5).toFixed(1)),
+        current_team_id: team.id,
+        nationality: 'Canada',
+      });
+    }
+
+    if (roster.length > 0) {
+      const { data: insertedPlayers, error: playerUpsertErr } = await supabase
+        .from('players')
+        .upsert(roster, { onConflict: 'external_id' })
+        .select('id');
+      if (playerUpsertErr) {
+        console.error(`Error upserting roster for ${team.name}:`, playerUpsertErr.message);
+      } else {
+        totalPlayersUpserted += insertedPlayers?.length || roster.length;
+      }
+    }
+  }
+
+  console.log(`Successfully populated ${totalPlayersUpserted} player profiles.`);
   console.log('Import sequence completed successfully!');
 }
 
