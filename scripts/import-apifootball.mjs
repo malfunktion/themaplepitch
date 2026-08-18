@@ -105,13 +105,13 @@ async function importTeams() {
             logo_url: t.logo || null,
             youtube_search_tag: null,
             slug: slugify(displayName),
-            external_id: t.id ? String(t.id) : extId, // Store API team ID as external_id for squad mapping
+            external_id: t.id ? String(t.id) : extId,
           });
         }
       } catch (err) {
         console.warn(`Warning: Could not fetch teams for ${leagueConfig.code} (${season}): ${err.message}`);
       }
-      await sleep(250);
+      await sleep(500);
     }
   }
 
@@ -141,7 +141,6 @@ async function importFixtures(teams) {
   const initialRows = [];
   let skipped = 0;
   
-  // Create a map matching slugified names back to database internal UUIDs
   const teamIdMap = new Map();
   teams.forEach(t => {
     teamIdMap.set(slugify(`${t.league}-${t.name}`), t.id);
@@ -186,7 +185,7 @@ async function importFixtures(teams) {
       } catch (err) {
         console.warn(`Warning: Could not fetch fixtures for ${leagueConfig.code} (${season}): ${err.message}`);
       }
-      await sleep(250);
+      await sleep(500);
     }
   }
 
@@ -208,15 +207,17 @@ async function importFixtures(teams) {
 
 async function importPlayers(teams) {
   console.log('Importing player rosters from API-Football squads...');
+  
+  // Filter to only process actual Canadian league teams (CPL or NSL)
+  const canadianTeams = teams.filter(t => t.league === 'CPL' || t.league === 'NSL');
   let totalPlayersUpserted = 0;
 
-  for (const team of teams) {
-    // If external_id is numeric, it maps directly to API-Football team ID
+  for (const team of canadianTeams) {
     const apiTeamId = team.external_id;
     if (!apiTeamId || isNaN(Number(apiTeamId))) continue;
 
     try {
-      console.log(`Fetching squad for team: ${team.name} (API ID: ${apiTeamId})`);
+      console.log(`Fetching squad for Canadian team: ${team.name} (API ID: ${apiTeamId})`);
       const squadData = await fetchApiFootball(`/players/squads?team=${apiTeamId}`);
       
       if (!squadData || squadData.length === 0 || !squadData[0].players) {
@@ -235,7 +236,7 @@ async function importPlayers(teams) {
           assists: 0,
           rating: 7.0,
           current_team_id: team.id,
-          nationality: 'Canada', // Default or parse if available
+          nationality: 'Canada',
         };
       });
 
@@ -254,7 +255,8 @@ async function importPlayers(teams) {
     } catch (err) {
       console.warn(`Warning: Could not fetch squad for ${team.name}: ${err.message}`);
     }
-    await sleep(250);
+    // Increased sleep delay to 1000ms (1 second) to prevent 429 rate limit errors
+    await sleep(1000);
   }
 
   console.log(`Successfully upserted ${totalPlayersUpserted} total player profiles into Supabase.`);
