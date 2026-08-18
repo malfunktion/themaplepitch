@@ -1,3 +1,4 @@
+// scripts/import-thesportsdb.mjs
 import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://wsbyyvtcvyhidvijvwuo.supabase.co';
@@ -88,55 +89,92 @@ async function fetchTeamsFromAPI(league) {
   }
 }
 
-async function fetchFixturesForLeague(league, teamMap) {
+async function fetchFixturesForLeague(league, teamNameMap) {
   if (!league.idLeague) return [];
-  try {
-    const url = `https://www.thesportsdb.com/api/v1/json/${THESPORTSDB_KEY}/eventsseason.php?id=${league.idLeague}&s=2026`;
-    const res = await fetch(url, { headers: FETCH_HEADERS });
-    const contentType = res.headers.get('content-type') || '';
-    if (!res.ok || !contentType.includes('json')) {
-      return [];
-    }
-    const data = await res.json();
-    const events = data.events || data.eventsseason;
-    if (!events || !Array.isArray(events)) return [];
+  
+  const seasonsToTry = ['2026', '2025-2026'];
+  let events = [];
 
-    const formattedMatches = [];
-    for (const ev of events) {
-      const homeTeamName = ev.strHomeTeam;
-      const awayTeamName = ev.strAwayTeam;
-      
-      const homeTeamId = teamMap.get(homeTeamName?.toLowerCase());
-      const awayTeamId = teamMap.get(awayTeamName?.toLowerCase());
-
-      if (!homeTeamId || !awayTeamId) continue;
-
-      const homeScore = ev.intHomeScore !== null && ev.intHomeScore !== '' ? parseInt(ev.intHomeScore, 10) : null;
-      const awayScore = ev.intAwayScore !== null && ev.intAwayScore !== '' ? parseInt(ev.intAwayScore, 10) : null;
-      
-      let status = 'Scheduled';
-      const progress = ev.strStatus?.toLowerCase() || '';
-      if (progress.includes('ft') || progress.includes('final') || homeScore !== null) {
-        status = 'FT';
+  for (const season of seasonsToTry) {
+    try {
+      const url = `https://www.thesportsdb.com/api/v1/json/${THESPORTSDB_KEY}/eventsseason.php?id=${league.idLeague}&s=${season}`;
+      const res = await fetch(url, { headers: FETCH_HEADERS });
+      const contentType = res.headers.get('content-type') || '';
+      if (!res.ok || !contentType.includes('json')) continue;
+      const data = await res.json();
+      const fetchedEvents = data.events || data.eventsseason;
+      if (fetchedEvents && Array.isArray(fetchedEvents) && fetchedEvents.length > 0) {
+        events = fetchedEvents;
+        console.log(`Successfully fetched ${events.length} fixtures for ${league.name} using season ${season}`);
+        break;
       }
-
-      formattedMatches.push({
-        external_id: ev.idEvent,
-        competition: league.name,
-        home_team_id: homeTeamId,
-        away_team_id: awayTeamId,
-        home_score: homeScore,
-        away_score: awayScore,
-        status: status,
-        match_date: ev.dateEvent || null,
-      });
+    } catch (err) {
+      // Try next season format
     }
+  }
 
-    return formattedMatches;
-  } catch (err) {
-    console.error(`Error fetching fixtures for ${league.name}:`, err.message);
+  if (events.length === 0) {
+    console.log(`No events found for ${league.name} across tested seasons.`);
     return [];
   }
+
+  const formattedMatches = [];
+  for (const ev of events) {
+    const homeTeamName = ev.strHomeTeam || '';
+    const awayTeamName = ev.strAwayTeam || '';
+    
+    // 1. Exact lowercase match
+    let homeTeamId = teamNameMap.get(homeTeamName.toLowerCase());
+    let awayTeamId = teamNameMap.get(awayTeamName.toLowerCase());
+
+    // 2. Slug / fuzzy fallback matching
+    if (!homeTeamId) {
+      const homeSlug = slugify(homeTeamName);
+      for (const [name, id] of teamNameMap.entries()) {
+        if (slugify(name) === homeSlug || homeTeamName.toLowerCase().includes(name) || name.includes(homeTeamName.toLowerCase())) {
+          homeTeamId = id;
+          break;
+        }
+      }
+    }
+
+    if (!awayTeamId) {
+      const awaySlug = slugify(awayTeamName);
+      for (const [name, id] of teamNameMap.entries()) {
+        if (slugify(name) === awaySlug || awayTeamName.toLowerCase().includes(name) || name.includes(awayTeamName.toLowerCase())) {
+          awayTeamId = id;
+          break;
+        }
+      }
+    }
+
+    if (!homeTeamId || !awayTeamId) {
+      console.warn(`[Mapping Warning] Skipping fixture: Could not match teams ["${homeTeamName}" vs "${awayTeamName}"] in database for ${league.name}`);
+      continue;
+    }
+
+    const homeScore = ev.intHomeScore !== null && ev.intHomeScore !== '' ? parseInt(ev.intHomeScore, 10) : null;
+    const awayScore = ev.intAwayScore !== null && ev.intAwayScore !== '' ? parseInt(ev.intAwayScore, 10) : null;
+    
+    let status = 'Scheduled';
+    const progress = ev.strStatus?.toLowerCase() || '';
+    if (progress.includes('ft') || progress.includes('final') || (homeScore !== null && awayScore !== null)) {
+      status = 'FT';
+    }
+
+    formattedMatches.push({
+      external_id: String(ev.idEvent),
+      competition: league.name,
+      home_team_id: homeTeamId,
+      away_team_id: awayTeamId,
+      home_score: homeScore,
+      away_score: awayScore,
+      status: status,
+      match_date: ev.dateEvent || null,
+    });
+  }
+
+  return formattedMatches;
 }
 
 async function fetchRosterForTeam(team) {
@@ -209,7 +247,7 @@ async function runImportSequence() {
   // Fetch and insert fixtures/matches for standings support
   let totalMatchesUpserted = 0;
   for (const league of LEAGUES) {
-    console.log(`Fetching fixtures for ${league.name} (Season 2026)...`);
+    console.log(`Fetching fixtures for ${league.name}...`);
     const matches = await fetchFixturesForLeague(league, teamNameMap);
     if (matches.length > 0) {
       const { data: insertedMatches, error: matchErr } = await supabase
