@@ -1,6 +1,9 @@
 // src/app/stats/page.tsx
 'use client';
 
+// Note: Revalidation settings for Next.js App Router
+export const revalidate = 60;
+
 import React, { useMemo, useState, useEffect } from 'react';
 import Link from 'next/link';
 import SidebarStack from '@/components/sidebar/SidebarStack';
@@ -9,7 +12,6 @@ import type { StandingsRow } from '@/lib/types';
 import { getCplStandings, getNslStandings } from '@/lib/data/standings';
 
 type Gender = 'MEN' | 'WOMEN';
-
 type ViewMode =
   | 'OVERVIEW'
   | 'PLAYERS'
@@ -289,10 +291,8 @@ export default function StatsHubPage() {
   const [dbPlayers, setDbPlayers] = useState<any[]>([]);
   const [dbTeams, setDbTeams] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
-
   const [standings, setStandings] = useState<StandingsRow[]>([]);
   const [nslStandings, setNslStandings] = useState<StandingsRow[]>([]);
-
   const [comparePlayerA, setComparePlayerA] = useState<ComparePlayer | null>(null);
   const [comparePlayerB, setComparePlayerB] = useState<ComparePlayer | null>(null);
 
@@ -309,7 +309,7 @@ export default function StatsHubPage() {
   useEffect(() => {
     async function fetchDatabaseData() {
       try {
-        const res = await fetch('/api/stats', { cache: 'no-store' });
+        const res = await fetch('/api/stats', { cache: 'default' });
         if (res.ok) {
           const json = await res.json();
           if (json.players) setDbPlayers(json.players);
@@ -347,7 +347,6 @@ export default function StatsHubPage() {
     });
   }, [activePlayers, programGender]);
 
-  // Dynamic calculations directly from live Supabase records
   const computedGoldenBoot = useMemo<PlayerRow[]>(() => {
     const source = filteredPlayers.length > 0 ? filteredPlayers : activePlayers;
     const sorted = [...source].sort((a: any, b: any) => (b.goals ?? 0) - (a.goals ?? 0));
@@ -417,7 +416,6 @@ export default function StatsHubPage() {
     });
   }, [activePlayers]);
 
-  // DYNAMIC: Discipline monitor computed directly from database
   const computedDiscipline = useMemo(() => {
     const source = filteredPlayers.length > 0 ? filteredPlayers : activePlayers;
     const sorted = [...source].sort((a: any, b: any) => {
@@ -439,7 +437,6 @@ export default function StatsHubPage() {
     });
   }, [filteredPlayers, activePlayers]);
 
-  // DYNAMIC: Team of the Week selected from top-rated DB players
   const computedTeamOfWeek = useMemo(() => {
     const source = filteredPlayers.length > 0 ? filteredPlayers : activePlayers;
     const sorted = [...source].sort((a: any, b: any) => (b.rating ?? 0) - (a.rating ?? 0));
@@ -457,7 +454,6 @@ export default function StatsHubPage() {
     });
   }, [filteredPlayers, activePlayers]);
 
-  // DYNAMIC: Records & Milestones aggregated live from Supabase
   const computedRecords = useMemo(() => {
     const topScorer = [...activePlayers].sort((a: any, b: any) => (b.goals ?? 0) - (a.goals ?? 0))[0];
     const topAssister = [...activePlayers].sort((a: any, b: any) => (b.assists ?? 0) - (a.assists ?? 0))[0];
@@ -559,7 +555,6 @@ export default function StatsHubPage() {
               </div>
             </nav>
           </header>
-
           <ComparePanel
             playerA={comparePlayerA}
             playerB={comparePlayerB}
@@ -568,7 +563,6 @@ export default function StatsHubPage() {
               setComparePlayerB(null);
             }}
           />
-
           {(showOverview || showPlayers) && (
             <>
               <section className="grid grid-cols-2 xl:grid-cols-4 gap-3">
@@ -622,7 +616,6 @@ export default function StatsHubPage() {
               </div>
             </>
           )}
-
           {showPlayers && (
             <DataTable
               title={programGender === 'MEN' ? 'CPL & MEN DATABASE LEADERS' : 'NSL & WOMEN DATABASE LEADERS'}
@@ -630,7 +623,6 @@ export default function StatsHubPage() {
               onAddToCompare={handleAddToCompare}
             />
           )}
-
           {showTeams && (
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
               <DataTable
@@ -643,7 +635,6 @@ export default function StatsHubPage() {
               />
             </div>
           )}
-
           {showAbroad && (
             <DataTable
               title="GLOBAL CANADIAN PERFORMANCE STREAM"
@@ -651,7 +642,6 @@ export default function StatsHubPage() {
               onAddToCompare={handleAddToCompare}
             />
           )}
-
           {showCollegiate && (
             <DataTable
               title={`COLLEGIATE PLAYER STREAM // ${programGender}`}
@@ -659,7 +649,6 @@ export default function StatsHubPage() {
               onAddToCompare={handleAddToCompare}
             />
           )}
-
           {showProvincial && (
             <div className="grid grid-cols-1 md:grid-cols-2 gap-5">
               <section className="bg-card border border-border rounded-sm p-4">
@@ -713,10 +702,8 @@ export default function StatsHubPage() {
               </section>
             </div>
           )}
-
           {(showOverview || showPlayers) && (
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
-              {/* RESTORED: Discipline Monitor (Dynamic from DB) */}
               <section className="bg-card border border-border rounded-sm overflow-hidden">
                 <div className="p-4 border-b border-border">
                   <span className="text-[9px] font-mono tracking-widest text-charcoal-soft">
@@ -761,8 +748,6 @@ export default function StatsHubPage() {
                   )}
                 </div>
               </section>
-
-              {/* RESTORED: Historical Database Records (Dynamic from DB) */}
               <section className="bg-card border border-border rounded-sm overflow-hidden">
                 <div className="p-4 border-b border-border">
                   <span className="text-[9px] font-mono tracking-widest text-charcoal-soft">
@@ -775,129 +760,4 @@ export default function StatsHubPage() {
                 <div className="p-3">
                   {computedRecords.map((r) => (
                     <div key={r.label} className="py-2 border-b border-border/40">
-                      <div className="text-[8px] font-mono uppercase tracking-wider text-charcoal-soft">
-                        {r.label}
-                      </div>
-                      <div className="text-[10px] font-mono font-bold text-charcoal mt-0.5">
-                        {r.value}
-                      </div>
-                    </div>
-                  ))}
-                </div>
-              </section>
-            </div>
-          )}
-
-          {showOverview && (
-            /* RESTORED: Team of the Week (Dynamic from DB) */
-            <section className="bg-card border border-border rounded-sm overflow-hidden">
-              <div className="p-4 border-b border-border flex items-center justify-between">
-                <div>
-                  <span className="text-[9px] font-mono tracking-widest text-charcoal-soft">
-                    EDITOR&apos;S INDEX
-                  </span>
-                  <h2 className="text-sm font-mono font-bold text-charcoal mt-1">
-                    ALL-CANADIAN TEAM OF THE WEEK
-                  </h2>
-                </div>
-                <span className="text-[9px] font-mono border border-border px-2 py-1 text-charcoal-soft">
-                  TOP RATED DB
-                </span>
-              </div>
-              <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                {computedTeamOfWeek.map((p) => (
-                  <Link
-                    key={p.playerId}
-                    href={`/players/${p.slug}`}
-                    prefetch={false}
-                    className="border border-border/60 bg-surface/40 hover:border-crimson rounded-sm p-2 flex items-center gap-2 transition-colors"
-                  >
-                    <span className="w-7 h-7 bg-border rounded-sm flex items-center justify-center text-[8px] font-bold shrink-0">
-                      {p.initials}
-                    </span>
-                    <div className="min-w-0">
-                      <div className="text-[10px] font-mono font-bold truncate hover:text-crimson">
-                        {p.name}
-                      </div>
-                      <div className="text-[8px] font-mono text-charcoal-soft truncate">
-                        {p.club} {'// '}
-                        {p.league}
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </section>
-          )}
-        </main>
-
-        <aside className="lg:col-span-4 flex flex-col gap-5">
-          <div className="bg-card border border-border rounded-sm p-4">
-            <div className="flex items-center justify-between mb-3">
-              <span className="text-[9px] font-mono tracking-widest text-charcoal-soft">
-                DATA INTEGRITY
-              </span>
-              <span className="text-[8px] font-mono text-crimson">
-                SUPABASE LIVE
-              </span>
-            </div>
-            <div className="space-y-2 text-[9px] font-mono text-charcoal-soft">
-              <div className="flex justify-between">
-                <span>SEASON</span>
-                <b className="text-charcoal">{season}</b>
-              </div>
-              <div className="flex justify-between">
-                <span>PROGRAM</span>
-                <b className="text-charcoal">{programGender}</b>
-              </div>
-              <div className="flex justify-between">
-                <span>DB PLAYERS</span>
-                <b className="text-charcoal">{activePlayers.length}</b>
-              </div>
-              <div className="flex justify-between">
-                <span>DB CLUBS</span>
-                <b className="text-charcoal">{activeTeams.length}</b>
-              </div>
-            </div>
-          </div>
-          <SidebarStack standings={standings} nslStandings={nslStandings} />
-        </aside>
-      </div>
-    </div>
-  );
-}
-
-function provStatsStatsHeading(prov: 'ON' | 'QC' | 'BC' | 'AB') {
-  switch (prov) {
-    case 'ON': return 'LEAGUE1 ONTARIO';
-    case 'QC': return 'LIGUE1 QUÉBEC';
-    case 'BC': return 'LEAGUE1 BC';
-    case 'AB': return 'LEAGUE1 ALBERTA';
-  }
-}
-
-function getProvincialScorers(prov: 'ON' | 'QC' | 'BC' | 'AB') {
-  switch (prov) {
-    case 'ON': return [{ name: 'Emil Nielsen', club: 'Simcoe County Rovers', goals: 16 }];
-    case 'QC': return [{ name: 'Adama Konte', club: 'CS Saint-Laurent', goals: 13 }];
-    case 'BC': return [{ name: 'Connor Douglas', club: 'TSS Rovers', goals: 12 }];
-    case 'AB': return [{ name: 'Ezekiel Adebisi', club: 'Calgary Foothills', goals: 11 }];
-  }
-}
-
-function getProvincialStandings(prov: 'ON' | 'QC' | 'BC' | 'AB') {
-  switch (prov) {
-    case 'ON': return [{ pos: 1, club: 'Vaughan Azzurri', pts: 42, gd: '+21' }];
-    case 'QC': return [{ pos: 1, club: 'CS Saint-Laurent', pts: 39, gd: '+18' }];
-    case 'BC': return [{ pos: 1, club: 'TSS Rovers', pts: 36, gd: '+16' }];
-    case 'AB': return [
-      { pos: 1, club: 'Calgary Foothills', pts: 34, gd: '+34' },
-      { pos: 2, club: 'Cavalry U21', pts: 31, gd: '+11' },
-      { pos: 3, club: 'Edmonton Scottish', pts: 26, gd: '+3' },
-      { pos: 4, club: 'St. Albert Impact', pts: 21, gd: '-2' },
-      { pos: 5, club: 'Calgary Wild Pro-Am', pts: 18, gd: '-5' },
-      { pos: 6, club: 'Edmonton BTB', pts: 14, gd: '-8' },
-      { pos: 7, club: 'Cavalry U21 B', pts: 10, gd: '-12' },
-    ];
-  }
-}
+                      <div className="
