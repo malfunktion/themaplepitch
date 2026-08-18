@@ -13,10 +13,16 @@ const supabase = createClient(
 export const revalidate = 3600;
 
 export async function generateStaticParams() {
-  const { data: players } = await supabase.from('players').select('external_id');
-  return (players || [])
-    .filter((p) => typeof p?.external_id === 'string' && p.external_id.trim().length > 0)
-    .map((p) => ({ slug: p.external_id }));
+  const { data: players } = await supabase.from('players').select('id, external_id, slug');
+  const params: { slug: string }[] = [];
+
+  (players || []).forEach((p) => {
+    if (p.slug) params.push({ slug: String(p.slug) });
+    if (p.external_id && p.external_id !== p.slug) params.push({ slug: String(p.external_id) });
+    if (p.id) params.push({ slug: String(p.id) });
+  });
+
+  return params;
 }
 
 function safeFormatDate(dateVal: any): string {
@@ -30,7 +36,12 @@ function safeFormatDate(dateVal: any): string {
   }
 }
 
-async function getPlayerData(slug: string) {
+async function getPlayerData(slugParam: string) {
+  const isNumeric = !isNaN(Number(slugParam));
+  const flexQuery = isNumeric
+    ? `id.eq.${slugParam},slug.eq.${slugParam},external_id.eq.${slugParam}`
+    : `slug.eq.${slugParam},external_id.eq.${slugParam}`;
+
   const { data: player } = await supabase
     .from('players')
     .select(`
@@ -42,7 +53,7 @@ async function getPlayerData(slug: string) {
         logo_url
       )
     `)
-    .eq('external_id', slug)
+    .or(flexQuery)
     .maybeSingle();
 
   if (!player) return null;
@@ -90,12 +101,12 @@ export async function generateMetadata({
   return {
     title,
     description,
-    alternates: { canonical: `/players/${player.external_id}` },
+    alternates: { canonical: `/players/${player.slug || player.external_id || player.id}` },
     openGraph: {
       type: 'profile',
       title,
       description,
-      url: `/players/${player.external_id}`,
+      url: `/players/${player.slug || player.external_id || player.id}`,
     },
     twitter: {
       card: 'summary_large_image',
