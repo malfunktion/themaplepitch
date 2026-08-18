@@ -6,6 +6,11 @@ import Link from 'next/link';
 import { getCplStandings, getNslStandings } from '@/lib/data/standings';
 import type { StandingsRow } from '@/lib/types';
 
+type ExtendedStandingsRow = StandingsRow & {
+  slug?: string;
+  external_id?: string;
+};
+
 function slugify(name: string) {
   if (!name) return '';
   return name
@@ -23,11 +28,9 @@ export default function ProLeaguesTracker({ league = 'CPL' }: { league?: 'CPL' |
   const [dbPlayers, setDbPlayers] = useState<any[]>([]);
 
   useEffect(() => {
-    // Fetch live standings from Supabase
     getCplStandings().then((data) => setCplStandings(data || []));
     getNslStandings().then((data) => setNslStandings(data || []));
 
-    // Fetch live players from API
     fetch('/api/stats', { cache: 'no-store' })
       .then((res) => res.json())
       .then((data) => {
@@ -38,7 +41,6 @@ export default function ProLeaguesTracker({ league = 'CPL' }: { league?: 'CPL' |
 
   const currentStandings = activeLeague === 'CPL' ? cplStandings : nslStandings;
 
-  // Filter players by league
   const leaguePlayers = useMemo(() => {
     return dbPlayers.filter((p) => {
       const pLeague = String(p.league || '').toUpperCase();
@@ -47,36 +49,26 @@ export default function ProLeaguesTracker({ league = 'CPL' }: { league?: 'CPL' |
     });
   }, [dbPlayers, activeLeague]);
 
-  // Golden Boot (Top Goals)
   const goldenBoot = useMemo(() => {
     return [...leaguePlayers]
       .sort((a, b) => (b.goals ?? 0) - (a.goals ?? 0))
       .slice(0, 5)
-      .map((p, idx, arr) => {
+      .map((p, _idx, arr) => {
         const maxGoals = arr[0]?.goals || 1;
         const widthPct = Math.max(20, Math.round(((p.goals ?? 0) / maxGoals) * 100));
         return { ...p, width: `${widthPct}%` };
       });
   }, [leaguePlayers]);
 
-  // Assists
   const assistLeaders = useMemo(() => {
     return [...leaguePlayers]
       .sort((a, b) => (b.assists ?? 0) - (a.assists ?? 0))
       .slice(0, 5)
-      .map((p, idx, arr) => {
+      .map((p, _idx, arr) => {
         const maxAst = arr[0]?.assists || 1;
         const widthPct = Math.max(20, Math.round(((p.assists ?? 0) / maxAst) * 100));
         return { ...p, width: `${widthPct}%` };
       });
-  }, [leaguePlayers]);
-
-  // Goalkeepers / Rating Leaders
-  const topPerformers = useMemo(() => {
-    return [...leaguePlayers]
-      .sort((a, b) => (b.rating ?? 0) - (a.rating ?? 0))
-      .slice(0, 5)
-      .map((p) => ({ ...p, width: `${Math.min(100, Math.round(((p.rating ?? 7) / 10) * 100))}%` }));
   }, [leaguePlayers]);
 
   const halfIndex = Math.ceil(currentStandings.length / 2);
@@ -84,7 +76,7 @@ export default function ProLeaguesTracker({ league = 'CPL' }: { league?: 'CPL' |
   const rightStandings = currentStandings.slice(halfIndex);
 
   const PLAYOFF_LINE = 4;
-  const renderStandingsRow = (team: StandingsRow) => {
+  const renderStandingsRow = (team: ExtendedStandingsRow) => {
     const teamRoute = team.slug || team.external_id || slugify(team.clubName);
     return (
       <div key={team.id || team.clubName}>
@@ -122,7 +114,6 @@ export default function ProLeaguesTracker({ league = 'CPL' }: { league?: 'CPL' |
 
   return (
     <div className="col-span-4 row-span-6 bg-card border border-border p-4 flex flex-col gap-4 text-charcoal dark:text-white shadow-sm">
-      {/* HEADER WITH TOGGLE */}
       <div className="flex justify-between items-center border-b border-border pb-2">
         <h2 className="text-charcoal dark:text-white font-black text-sm tracking-widest uppercase">
           PRO LEAGUES TRACKER
@@ -148,7 +139,6 @@ export default function ProLeaguesTracker({ league = 'CPL' }: { league?: 'CPL' |
       </div>
 
       <div className="grid grid-cols-2 grid-rows-[auto_1fr] gap-4 h-full">
-        {/* ROW 1: LEAGUE STANDINGS */}
         <div className="col-span-2 overflow-x-auto border-b border-border pb-4">
           {currentStandings.length === 0 ? (
             <div className="py-6 text-center text-xs font-mono text-charcoal-soft">
@@ -179,7 +169,6 @@ export default function ProLeaguesTracker({ league = 'CPL' }: { league?: 'CPL' |
           )}
         </div>
 
-        {/* ROW 2: GOLDEN BOOT & ASSISTS */}
         <div className="flex flex-col gap-2 border-r border-border pr-4">
           <h3 className="text-neutral-500 text-[10px] font-bold uppercase tracking-widest border-b border-border pb-1 font-mono">
             Golden Boot Race
