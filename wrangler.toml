@@ -33,7 +33,7 @@ NEXT_PUBLIC_SANITY_PROJECT_ID = "uvf97j3d"
 NEXT_PUBLIC_SANITY_DATASET = "production"
 NEXT_PUBLIC_SANITY_API_VERSION = "2026-08-01"
 
-# Rate Limiter Binding (FIX: Must be 'name', not 'binding')
+# Cloudflare Workers Rate Limiting
 [[ratelimits]]
 name = "API_RATE_LIMITER"
 namespace_id = "1001"
@@ -41,11 +41,3 @@ namespace_id = "1001"
 [ratelimits.simple]
 limit = 60
 period = 60
-
-# Production Environment Override
-[env.production]
-name = "maplepitch-prod"
-routes = [
-  { pattern = "themaplepitch.ca", custom_domain = true },
-  { pattern = "www.themaplepitch.ca", custom_domain = true }
-]
