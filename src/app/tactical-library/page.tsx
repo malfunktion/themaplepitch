@@ -1,6 +1,6 @@
 import HubHeader from '@/components/entity/HubHeader';
 import SourceStamp from '@/components/entity/SourceStamp';
-import { wireItems } from '@/lib/data/wire';
+import { wireItems } from '@/lib/data/demo';
 
 function safeFormatDate(dateVal: any): string {
   if (!dateVal) return 'TBD';
