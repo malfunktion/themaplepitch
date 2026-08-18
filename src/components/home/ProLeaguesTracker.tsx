@@ -21,8 +21,10 @@ function slugify(name: string) {
     .replace(/(^-|-$)/g, '');
 }
 
-export default function ProLeaguesTracker({ league = 'CPL' }: { league?: 'CPL' | 'NSL' }) {
-  const [activeLeague, setActiveLeague] = useState<'CPL' | 'NSL'>(league);
+export default function ProLeaguesTracker() {
+  const [gender, setGender] = useState<'men' | 'women'>('men');
+  const [scope, setScope] = useState<'ALL' | 'ABROAD' | 'DOMESTIC'>('ALL');
+
   const [cplStandings, setCplStandings] = useState<StandingsRow[]>([]);
   const [nslStandings, setNslStandings] = useState<StandingsRow[]>([]);
   const [dbPlayers, setDbPlayers] = useState<any[]>([]);
@@ -39,19 +41,37 @@ export default function ProLeaguesTracker({ league = 'CPL' }: { league?: 'CPL' |
       .catch((err) => console.error('Failed to fetch players for tracker:', err));
   }, []);
 
-  const currentStandings = activeLeague === 'CPL' ? cplStandings : nslStandings;
+  const currentStandings = gender === 'men' ? cplStandings : nslStandings;
+  const domesticLabel = gender === 'men' ? 'CPL' : 'NSL';
 
-  const leaguePlayers = useMemo(() => {
+  // Filter players by Gender and Scope
+  const filteredPlayers = useMemo(() => {
     return dbPlayers.filter((p) => {
+      const pGender = p.gender ? String(p.gender).toLowerCase() : 'men';
       const pLeague = String(p.league || '').toUpperCase();
-      if (activeLeague === 'CPL') return pLeague.includes('CPL') || p.gender === 'men';
-      return pLeague.includes('NSL') || p.gender === 'women';
+
+      // 1. Gender Filter
+      if (gender === 'men') {
+        if (pGender !== 'men' && !pLeague.includes('CPL') && !pLeague.includes('CANMNT')) return false;
+      } else {
+        if (pGender !== 'women' && !pLeague.includes('NSL') && !pLeague.includes('CANWNT')) return false;
+      }
+
+      // 2. Scope Filter (ALL / ABROAD / DOMESTIC)
+      if (scope === 'DOMESTIC') {
+        return pLeague.includes(domesticLabel);
+      }
+      if (scope === 'ABROAD') {
+        return !pLeague.includes('CPL') && !pLeague.includes('NSL');
+      }
+
+      return true; // ALL
     });
-  }, [dbPlayers, activeLeague]);
+  }, [dbPlayers, gender, scope, domesticLabel]);
 
   // 1. Golden Boot
   const goldenBoot = useMemo(() => {
-    return [...leaguePlayers]
+    return [...filteredPlayers]
       .sort((a, b) => (b.goals ?? 0) - (a.goals ?? 0))
       .slice(0, 5)
       .map((p, _idx, arr) => {
@@ -59,11 +79,11 @@ export default function ProLeaguesTracker({ league = 'CPL' }: { league?: 'CPL' |
         const widthPct = Math.max(20, Math.round(((p.goals ?? 0) / maxGoals) * 100));
         return { ...p, width: `${widthPct}%` };
       });
-  }, [leaguePlayers]);
+  }, [filteredPlayers]);
 
-  // 2. Avg Goals / Match (Derived ratio based on goals)
+  // 2. Avg Goals / Match Ratio
   const avgGoals = useMemo(() => {
-    return [...leaguePlayers]
+    return [...filteredPlayers]
       .filter((p) => (p.goals ?? 0) > 0)
       .sort((a, b) => (b.goals ?? 0) - (a.goals ?? 0))
       .slice(0, 5)
@@ -77,11 +97,11 @@ export default function ProLeaguesTracker({ league = 'CPL' }: { league?: 'CPL' |
           whiteWidth: `${100 - redPct}%`,
         };
       });
-  }, [leaguePlayers]);
+  }, [filteredPlayers]);
 
-  // 3. Assists
+  // 3. Assist Leaders
   const assistLeaders = useMemo(() => {
-    return [...leaguePlayers]
+    return [...filteredPlayers]
       .sort((a, b) => (b.assists ?? 0) - (a.assists ?? 0))
       .slice(0, 5)
       .map((p, _idx, arr) => {
@@ -89,12 +109,12 @@ export default function ProLeaguesTracker({ league = 'CPL' }: { league?: 'CPL' |
         const widthPct = Math.max(20, Math.round(((p.assists ?? 0) / maxAst) * 100));
         return { ...p, width: `${widthPct}%` };
       });
-  }, [leaguePlayers]);
+  }, [filteredPlayers]);
 
-  // 4. Clean Sheets (Goalkeepers sorted by rating/clean sheets)
+  // 4. Clean Sheets
   const cleanSheets = useMemo(() => {
-    const keepers = leaguePlayers.filter((p) => p.position === 'GK');
-    const pool = keepers.length > 0 ? keepers : leaguePlayers;
+    const keepers = filteredPlayers.filter((p) => p.position === 'GK');
+    const pool = keepers.length > 0 ? keepers : filteredPlayers;
     return [...pool]
       .sort((a, b) => (b.clean_sheets ?? b.rating ?? 0) - (a.clean_sheets ?? a.rating ?? 0))
       .slice(0, 5)
@@ -104,7 +124,7 @@ export default function ProLeaguesTracker({ league = 'CPL' }: { league?: 'CPL' |
         const widthPct = Math.max(20, Math.round((val / maxCs) * 100));
         return { ...p, stat: val, width: `${widthPct}%` };
       });
-  }, [leaguePlayers]);
+  }, [filteredPlayers]);
 
   const halfIndex = Math.ceil(currentStandings.length / 2);
   const leftStandings = currentStandings.slice(0, halfIndex);
@@ -149,38 +169,84 @@ export default function ProLeaguesTracker({ league = 'CPL' }: { league?: 'CPL' |
 
   return (
     <div className="col-span-4 row-span-6 bg-card border border-border p-4 flex flex-col gap-4 text-charcoal dark:text-white shadow-sm">
-      {/* HEADER WITH TOGGLE */}
-      <div className="flex justify-between items-center border-b border-border pb-2">
-        <h2 className="text-charcoal dark:text-white font-black text-sm tracking-widest uppercase">
-          PRO LEAGUES TRACKER
-        </h2>
-        <div className="flex bg-surface border border-border rounded-sm p-0.5 text-[9px] font-mono font-bold">
-          <button
-            onClick={() => setActiveLeague('CPL')}
-            className={`px-3 py-1 rounded-sm transition-colors ${
-              activeLeague === 'CPL' ? 'bg-crimson text-white' : 'text-neutral-500 hover:text-charcoal'
-            }`}
-          >
-            CPL
-          </button>
-          <button
-            onClick={() => setActiveLeague('NSL')}
-            className={`px-3 py-1 rounded-sm transition-colors ${
-              activeLeague === 'NSL' ? 'bg-crimson text-white' : 'text-neutral-500 hover:text-charcoal'
-            }`}
-          >
-            NSL
-          </button>
+      {/* HEADER WITH DUAL TOGGLES */}
+      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center border-b border-border pb-3 gap-2">
+        <div>
+          <span className="text-[9px] font-mono text-crimson font-bold uppercase tracking-widest block">
+            GLOBAL TELEMETRY
+          </span>
+          <h2 className="text-charcoal dark:text-white font-black text-sm tracking-widest uppercase">
+            CANADIAN PLAYER TRACKER
+          </h2>
+        </div>
+
+        <div className="flex items-center gap-2 flex-wrap">
+          {/* PRIMARY TOGGLE: MEN / WOMEN */}
+          <div className="flex bg-surface border border-border rounded-sm p-0.5 text-[9px] font-mono font-bold">
+            <button
+              onClick={() => setGender('men')}
+              className={`px-2.5 py-1 rounded-sm transition-colors uppercase ${
+                gender === 'men' ? 'bg-crimson text-white' : 'text-neutral-500 hover:text-charcoal'
+              }`}
+            >
+              MEN
+            </button>
+            <button
+              onClick={() => setGender('women')}
+              className={`px-2.5 py-1 rounded-sm transition-colors uppercase ${
+                gender === 'women' ? 'bg-crimson text-white' : 'text-neutral-500 hover:text-charcoal'
+              }`}
+            >
+              WOMEN
+            </button>
+          </div>
+
+          {/* SECONDARY TOGGLE: ALL / ABROAD / CPL or NSL */}
+          <div className="flex bg-neutral-100 dark:bg-card border border-border rounded-sm p-0.5 text-[9px] font-mono font-bold">
+            <button
+              onClick={() => setScope('ALL')}
+              className={`px-2 py-1 rounded-sm transition-colors ${
+                scope === 'ALL'
+                  ? 'bg-neutral-800 text-white dark:bg-neutral-200 dark:text-black'
+                  : 'text-neutral-500 hover:text-charcoal'
+              }`}
+            >
+              ALL
+            </button>
+            <button
+              onClick={() => setScope('ABROAD')}
+              className={`px-2 py-1 rounded-sm transition-colors ${
+                scope === 'ABROAD'
+                  ? 'bg-neutral-800 text-white dark:bg-neutral-200 dark:text-black'
+                  : 'text-neutral-500 hover:text-charcoal'
+              }`}
+            >
+              ABROAD
+            </button>
+            <button
+              onClick={() => setScope('DOMESTIC')}
+              className={`px-2 py-1 rounded-sm transition-colors ${
+                scope === 'DOMESTIC'
+                  ? 'bg-neutral-800 text-white dark:bg-neutral-200 dark:text-black'
+                  : 'text-neutral-500 hover:text-charcoal'
+              }`}
+            >
+              {domesticLabel}
+            </button>
+          </div>
         </div>
       </div>
 
-      {/* FULL 3-ROW GRID RESTORED */}
+      {/* 3-ROW GRID */}
       <div className="grid grid-cols-2 grid-rows-[auto_1fr_1fr] gap-4 h-full">
-        {/* ROW 1: LEAGUE STANDINGS */}
+        {/* ROW 1: LEAGUE STANDINGS (CPL for Men, NSL for Women) */}
         <div className="col-span-2 overflow-x-auto border-b border-border pb-4">
+          <div className="text-[9px] font-mono text-charcoal-soft mb-2 font-bold">
+            {domesticLabel} DOMESTIC STANDINGS
+          </div>
           {currentStandings.length === 0 ? (
-            <div className="py-6 text-center text-xs font-mono text-charcoal-soft">
-              LOADING {activeLeague} STANDINGS...
+            <div className="py-4 text-center text-xs font-mono text-charcoal-soft">
+              LOADING {domesticLabel} STANDINGS...
             </div>
           ) : (
             <div className="grid grid-cols-2 gap-4 min-w-[420px]">
@@ -210,7 +276,7 @@ export default function ProLeaguesTracker({ league = 'CPL' }: { league?: 'CPL' |
         {/* ROW 2: GOLDEN BOOT & AVG GOALS */}
         <div className="flex flex-col gap-2 border-r border-border pr-4">
           <h3 className="text-neutral-500 text-[10px] font-bold uppercase tracking-widest border-b border-border pb-1 font-mono">
-            Golden Boot Race
+            Golden Boot Race ({scope})
           </h3>
           {goldenBoot.length === 0 ? (
             <div className="text-[10px] font-mono text-charcoal-soft py-2">No player goals logged</div>
