@@ -30,7 +30,9 @@ type RawNewsWireDoc = {
 // time like "3:45:12 PM") in later edits, so re-fixing it again.
 function formatRelativeTimestamp(iso: string | undefined): string {
   if (!iso) return 'RECENT';
-  const diffMs = Date.now() - new Date(iso).getTime();
+  const parsed = new Date(iso).getTime();
+  if (isNaN(parsed)) return 'RECENT';
+  const diffMs = Date.now() - parsed;
   const minutes = Math.round(diffMs / 60000);
   if (minutes < 1) return 'JUST NOW';
   if (minutes < 60) return `${minutes}M AGO`;
