@@ -282,18 +282,8 @@ export default function StatsHubPage() {
   const [dbTeams, setDbTeams] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
-  // Standings state with initial mock fallback so it never flashes blank/zeroes on hydration
-  const [standings, setStandings] = useState<StandingsRow[]>([
-    { rank: 1, club: 'Forge FC', played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 38 },
-    { rank: 2, club: 'Cavalry FC', played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 35 },
-    { rank: 3, club: 'Atlético Ottawa', played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 32 },
-    { rank: 4, club: 'Pacific FC', played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 28 },
-    { rank: 5, club: 'York United FC', played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 26 },
-    { rank: 6, club: 'Vancouver FC', played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 24 },
-    { rank: 7, club: 'HFX Wanderers FC', played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 22 },
-    { rank: 8, club: 'Valour FC', played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 18 },
-  ] as StandingsRow[]);
-  
+  // Standings start empty to rely exclusively on true async data resolution
+  const [standings, setStandings] = useState<StandingsRow[]>([]);
   const [nslStandings, setNslStandings] = useState<StandingsRow[]>([]);
 
   // Compare tool state
@@ -330,14 +320,10 @@ export default function StatsHubPage() {
 
   useEffect(() => {
     getCplStandings().then((data) => {
-      if (data && data.length > 0) {
-        setStandings(data);
-      }
+      if (data) setStandings(data);
     });
     getNslStandings().then((data) => {
-      if (data && data.length > 0) {
-        setNslStandings(data);
-      }
+      if (data) setNslStandings(data);
     });
   }, []);
 
@@ -935,4 +921,4 @@ function getProvincialStandings(prov: 'ON' | 'QC' | 'BC' | 'AB') {
       { pos: 7, club: 'Cavalry U21 B', pts: 10, gd: '-12' },
     ];
   }
-}
+                }
