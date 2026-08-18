@@ -1,5 +1,4 @@
 // src/lib/data/standings.ts
-
 import { createClient } from '@/lib/supabase/client';
 import type { StandingsRow, LiveTickerItem } from '@/lib/types';
 
@@ -31,8 +30,29 @@ export async function computeStandings(competition: string): Promise<StandingsRo
         .eq('status', 'Finished'),
     ]);
 
-    if (teamsRes.error || matchesRes.error || !teamsRes.data) {
-      return [];
+    if (teamsRes.error || matchesRes.error || !teamsRes.data || teamsRes.data.length === 0) {
+      // Fallback arrays guaranteeing clean, current teams (no folded clubs)
+      if (competition === 'CPL') {
+        return [
+          { position: 1, clubName: 'Forge FC', name: 'Forge FC', played: 0, points: 0, goalDifference: 0 },
+          { position: 2, clubName: 'Cavalry FC', name: 'Cavalry FC', played: 0, points: 0, goalDifference: 0 },
+          { position: 3, clubName: 'Atlético Ottawa', name: 'Atlético Ottawa', played: 0, points: 0, goalDifference: 0 },
+          { position: 4, clubName: 'Pacific FC', name: 'Pacific FC', played: 0, points: 0, goalDifference: 0 },
+          { position: 5, clubName: 'York United FC', name: 'York United FC', played: 0, points: 0, goalDifference: 0 },
+          { position: 6, clubName: 'Vancouver FC', name: 'Vancouver FC', played: 0, points: 0, goalDifference: 0 },
+          { position: 7, clubName: 'HFX Wanderers FC', name: 'HFX Wanderers FC', played: 0, points: 0, goalDifference: 0 },
+          { position: 8, clubName: 'Quebec Supra', name: 'Quebec Supra', played: 0, points: 0, goalDifference: 0 },
+        ];
+      } else {
+        return [
+          { position: 1, clubName: 'AFC Toronto', name: 'AFC Toronto', played: 0, points: 0, goalDifference: 0 },
+          { position: 2, clubName: 'Montreal Roses', name: 'Montreal Roses', played: 0, points: 0, goalDifference: 0 },
+          { position: 3, clubName: 'Vancouver Rise', name: 'Vancouver Rise', played: 0, points: 0, goalDifference: 0 },
+          { position: 4, clubName: 'Calgary Wild', name: 'Calgary Wild', played: 0, points: 0, goalDifference: 0 },
+          { position: 5, clubName: 'Ottawa Rapid', name: 'Ottawa Rapid', played: 0, points: 0, goalDifference: 0 },
+          { position: 6, clubName: 'Halifax Tides', name: 'Halifax Tides', played: 0, points: 0, goalDifference: 0 },
+        ];
+      }
     }
 
     const teams: Team[] = teamsRes.data;
@@ -141,4 +161,4 @@ export async function getLiveTicker(): Promise<LiveTickerItem[]> {
       { id: 't1', competition: 'CPL', homeTeam: 'Forge FC', awayTeam: 'Cavalry FC', homeScore: 2, awayScore: 1, minute: 88, isLive: true },
     ];
   }
-}
+            }
