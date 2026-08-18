@@ -48,10 +48,10 @@ function normalizePosition(pos) {
   return 'CM';
 }
 
-const LEAGUES = [
-  { name: 'CPL', idLeague: '4353', gender: 'men' },
-  { name: 'NSL', idLeague: null, gender: 'women' },
-  { name: 'Canadian Championship', idLeague: '4559', gender: 'men' },
+const LEAGUES = [  
+  { name: 'CPL', idLeague: '4820', gender: 'men' },  
+  { name: 'NSL', idLeague: '5602', gender: 'women' },  
+  { name: 'Canadian Championship', idLeague: '5922', gender: 'men' },  
   { name: 'MLS', idLeague: '4346', gender: 'men' },
 ];
 
