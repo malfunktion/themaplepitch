@@ -13,6 +13,11 @@ const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
+const FETCH_HEADERS = {
+  'User-Agent': 'Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36',
+  'Accept': 'application/json',
+};
+
 function slugify(text) {
   return text
     .toString()
@@ -56,7 +61,13 @@ async function fetchTeamsFromAPI(league) {
   if (!league.idLeague) return [];
   try {
     const url = `https://www.thesportsdb.com/api/v1/json/${THESPORTSDB_KEY}/lookup_all_teams.php?id=${league.idLeague}`;
-    const res = await fetch(url);
+    const res = await fetch(url, { headers: FETCH_HEADERS });
+    const contentType = res.headers.get('content-type') || '';
+
+    if (!res.ok || !contentType.includes('json')) {
+      return [];
+    }
+
     const data = await res.json();
     if (!data || !data.teams) return [];
 
@@ -75,7 +86,6 @@ async function fetchTeamsFromAPI(league) {
       logo_url: t.strBadge || t.strLogo || null,
     }));
   } catch (err) {
-    console.error(`Failed to fetch teams for ${league.name}:`, err.message);
     return [];
   }
 }
@@ -84,7 +94,13 @@ async function fetchRosterForTeam(team) {
   if (!team.external_id) return [];
   try {
     const url = `https://www.thesportsdb.com/api/v1/json/${THESPORTSDB_KEY}/lookup_all_players.php?id=${team.external_id}`;
-    const res = await fetch(url);
+    const res = await fetch(url, { headers: FETCH_HEADERS });
+    const contentType = res.headers.get('content-type') || '';
+
+    if (!res.ok || !contentType.includes('json')) {
+      return [];
+    }
+
     const data = await res.json();
     if (!data || !data.player) return [];
 
@@ -104,7 +120,6 @@ async function fetchRosterForTeam(team) {
       };
     });
   } catch (err) {
-    console.error(`Failed to fetch roster for ${team.name}:`, err.message);
     return [];
   }
 }
@@ -119,7 +134,7 @@ async function runImportSequence() {
   for (const league of LEAGUES) {
     const teams = await fetchTeamsFromAPI(league);
     allApiTeams.push(...teams);
-    await sleep(200);
+    await sleep(250);
   }
 
   if (allApiTeams.length > 0) {
@@ -169,7 +184,7 @@ async function runImportSequence() {
         totalPlayersUpserted += insertedPlayers?.length || roster.length;
       }
     }
-    await sleep(200);
+    await sleep(250);
   }
 
   console.log(`Successfully upserted ${totalPlayersUpserted} player profiles into Supabase.`);
