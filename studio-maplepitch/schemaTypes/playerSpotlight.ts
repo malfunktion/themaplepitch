@@ -13,7 +13,7 @@ export default defineType({
     }),
     defineField({
       name: 'slug',
-      title: 'Player Slug (Database Key)',
+      title: 'Player Slug',
       type: 'slug',
       options: { source: 'name', maxLength: 96 },
       validation: (Rule) => Rule.required(),
@@ -57,7 +57,7 @@ export default defineType({
     }),
     defineField({
       name: 'isFeatured',
-      title: 'Active in Current Weekly Spotlight',
+      title: 'Active in Weekly Spotlight',
       type: 'boolean',
       initialValue: true,
     }),
