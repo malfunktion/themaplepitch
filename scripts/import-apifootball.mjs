@@ -1,5 +1,5 @@
 // scripts/import-apifootball.mjs
-// Pulls team and match history across a multi-season array from API-Football and upserts into Supabase.
+// Pulls team, match history, and squad rosters across multi-seasons from API-Football and upserts into Supabase.
 
 import { createClient } from '@supabase/supabase-js';
 
@@ -18,18 +18,37 @@ const API_BASE = 'https://v3.football.api-sports.io';
 // Target Leagues with an array of seasons to max out historical data retrieval
 const TARGET_LEAGUES = [
   { id: 659, code: 'CPL', gender: 'men', seasons: [2022, 2023, 2024] },
-  { id: 12606, code: 'NSL', gender: 'women', seasons: [2024] } // Adjust seasons as NSL data availability expands
+  { id: 12606, code: 'NSL', gender: 'women', seasons: [2024] }
 ];
 
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 function slugify(name) {
+  if (!name) return '';
   return name
     .toLowerCase()
     .normalize('NFD')
     .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '');
+}
+
+function normalizePosition(pos) {
+  if (!pos) return 'CM';
+  const p = pos.toLowerCase();
+  if (p.includes('goalkeeper') || p.includes('keeper')) return 'GK';
+  if (p.includes('centre-back') || p.includes('central defender')) return 'CB';
+  if (p.includes('left-back') || p.includes('left back')) return 'LB';
+  if (p.includes('right-back') || p.includes('right back')) return 'RB';
+  if (p.includes('defender')) return 'CB';
+  if (p.includes('defensive midfield')) return 'CDM';
+  if (p.includes('attacking midfield')) return 'CAM';
+  if (p.includes('midfield')) return 'CM';
+  if (p.includes('right wing')) return 'RW';
+  if (p.includes('left wing')) return 'LW';
+  if (p.includes('winger')) return 'RW';
+  if (p.includes('forward') || p.includes('striker')) return 'ST';
+  return 'CM';
 }
 
 // Franchise-rename normalization keeps historical continuity correct
@@ -86,7 +105,7 @@ async function importTeams() {
             logo_url: t.logo || null,
             youtube_search_tag: null,
             slug: slugify(displayName),
-            external_id: extId,
+            external_id: t.id ? String(t.id) : extId, // Store API team ID as external_id for squad mapping
           });
         }
       } catch (err) {
@@ -112,15 +131,21 @@ async function importTeams() {
   console.log(`Successfully upserted ${uniqueRows.length} unique teams into Supabase.`);
 }
 
-async function getTeamIdMap() {
-  const { data, error } = await supabase.from('teams').select('id, external_id');
+async function getTeamsFromDb() {
+  const { data, error } = await supabase.from('teams').select('id, external_id, name, league');
   if (error) throw new Error(`Teams lookup failed: ${error.message}`);
-  return new Map(data.map((t) => [t.external_id, t.id]));
+  return data;
 }
 
-async function importFixtures(teamIdMap) {
+async function importFixtures(teams) {
   const initialRows = [];
   let skipped = 0;
+  
+  // Create a map matching slugified names back to database internal UUIDs
+  const teamIdMap = new Map();
+  teams.forEach(t => {
+    teamIdMap.set(slugify(`${t.league}-${t.name}`), t.id);
+  });
 
   for (const leagueConfig of TARGET_LEAGUES) {
     for (const season of leagueConfig.seasons) {
@@ -178,14 +203,69 @@ async function importFixtures(teamIdMap) {
 
   const { error } = await supabase.from('matches').upsert(uniqueRows, { onConflict: 'match_date,home_team_id,away_team_id' });
   if (error) throw new Error(`Matches upsert failed: ${error.message}`);
-  console.log(`Upserted ${uniqueRows.length} total matches across all seasons. Skipped ${skipped} unmatched teams.`);
+  console.log(`Upserted ${uniqueRows.length} total matches. Skipped ${skipped} unmatched teams.`);
+}
+
+async function importPlayers(teams) {
+  console.log('Importing player rosters from API-Football squads...');
+  let totalPlayersUpserted = 0;
+
+  for (const team of teams) {
+    // If external_id is numeric, it maps directly to API-Football team ID
+    const apiTeamId = team.external_id;
+    if (!apiTeamId || isNaN(Number(apiTeamId))) continue;
+
+    try {
+      console.log(`Fetching squad for team: ${team.name} (API ID: ${apiTeamId})`);
+      const squadData = await fetchApiFootball(`/players/squads?team=${apiTeamId}`);
+      
+      if (!squadData || squadData.length === 0 || !squadData[0].players) {
+        continue;
+      }
+
+      const roster = squadData[0].players.map((p) => {
+        const pSlug = `${slugify(p.name)}-${p.id || Math.floor(Math.random() * 10000)}`;
+        return {
+          external_id: pSlug,
+          name: p.name,
+          league: team.league || 'Domestic',
+          gender: team.league === 'NSL' ? 'women' : 'men',
+          position: normalizePosition(p.position),
+          goals: 0,
+          assists: 0,
+          rating: 7.0,
+          current_team_id: team.id,
+          nationality: 'Canada', // Default or parse if available
+        };
+      });
+
+      if (roster.length > 0) {
+        const { data: inserted, error: playerErr } = await supabase
+          .from('players')
+          .upsert(roster, { onConflict: 'external_id' })
+          .select('id');
+
+        if (playerErr) {
+          console.error(`Error upserting roster for ${team.name}:`, playerErr.message);
+        } else {
+          totalPlayersUpserted += inserted?.length || roster.length;
+        }
+      }
+    } catch (err) {
+      console.warn(`Warning: Could not fetch squad for ${team.name}: ${err.message}`);
+    }
+    await sleep(250);
+  }
+
+  console.log(`Successfully upserted ${totalPlayersUpserted} total player profiles into Supabase.`);
 }
 
 async function main() {
   await importTeams();
-  const teamIdMap = await getTeamIdMap();
-  await importFixtures(teamIdMap);
-  console.log('Multi-season API-Football import complete!');
+  const dbTeams = await getTeamsFromDb();
+  await importFixtures(dbTeams);
+  await importPlayers(dbTeams);
+  console.log('Multi-season API-Football full pipeline complete!');
 }
 
 main().catch((err) => {
