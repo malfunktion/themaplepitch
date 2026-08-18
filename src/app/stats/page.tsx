@@ -1,3 +1,4 @@
+// src/app/stats/page.tsx
 'use client';
 
 import React, { useMemo, useState, useEffect } from 'react';
@@ -8,6 +9,7 @@ import type { StandingsRow } from '@/lib/types';
 import { getCplStandings, getNslStandings } from '@/lib/data/standings';
 
 type Gender = 'MEN' | 'WOMEN';
+
 type ViewMode =
   | 'OVERVIEW'
   | 'PLAYERS'
@@ -211,7 +213,6 @@ function DataTable({
                 const playerClub = p.clubName || p.club || 'Pro Club';
                 const playerLeague = p.competitionName || p.competition || p.league || 'Pro';
                 const statSummary = p.goals ? `${p.goals} G` : p.ga || 'Active';
-
                 return (
                   <tr
                     key={`${title}-${idx}`}
@@ -281,6 +282,20 @@ export default function StatsHubPage() {
   const [dbTeams, setDbTeams] = useState<any[]>([]);
   const [isLoading, setIsLoading] = useState(true);
 
+  // Standings state with initial mock fallback so it never flashes blank/zeroes on hydration
+  const [standings, setStandings] = useState<StandingsRow[]>([
+    { rank: 1, club: 'Forge FC', played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 38 },
+    { rank: 2, club: 'Cavalry FC', played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 35 },
+    { rank: 3, club: 'Atlético Ottawa', played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 32 },
+    { rank: 4, club: 'Pacific FC', played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 28 },
+    { rank: 5, club: 'York United FC', played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 26 },
+    { rank: 6, club: 'Vancouver FC', played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 24 },
+    { rank: 7, club: 'HFX Wanderers FC', played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 22 },
+    { rank: 8, club: 'Valour FC', played: 0, wins: 0, draws: 0, losses: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 18 },
+  ] as StandingsRow[]);
+  
+  const [nslStandings, setNslStandings] = useState<StandingsRow[]>([]);
+
   // Compare tool state
   const [comparePlayerA, setComparePlayerA] = useState<ComparePlayer | null>(null);
   const [comparePlayerB, setComparePlayerB] = useState<ComparePlayer | null>(null);
@@ -291,7 +306,7 @@ export default function StatsHubPage() {
     } else if (!comparePlayerB || comparePlayerB.playerId === player.playerId) {
       setComparePlayerB(player);
     } else {
-      setComparePlayerA(player); // Rotate if both full
+      setComparePlayerA(player);
     }
   };
 
@@ -311,6 +326,19 @@ export default function StatsHubPage() {
       }
     }
     fetchDatabaseData();
+  }, []);
+
+  useEffect(() => {
+    getCplStandings().then((data) => {
+      if (data && data.length > 0) {
+        setStandings(data);
+      }
+    });
+    getNslStandings().then((data) => {
+      if (data && data.length > 0) {
+        setNslStandings(data);
+      }
+    });
   }, []);
 
   const activePlayers = dbPlayers;
@@ -368,14 +396,6 @@ export default function StatsHubPage() {
   const currentRecords = programGender === 'MEN' ? menRecords : womenRecords;
   const currentCollegiate = programGender === 'MEN' ? menCollegiateStream : womenCollegiateStream;
 
-  const [standings, setStandings] = useState<StandingsRow[]>([]);
-  const [nslStandings, setNslStandings] = useState<StandingsRow[]>([]);
-
-  useEffect(() => {
-    getCplStandings().then(setStandings);
-    getNslStandings().then(setNslStandings);
-  }, []);
-
   const provincialScorers = getProvincialScorers(provStatsProvince);
   const provincialStandings = getProvincialStandings(provStatsProvince);
 
@@ -414,7 +434,6 @@ export default function StatsHubPage() {
                 </span>
               </div>
             </div>
-
             <div className="p-3 border-b border-border bg-surface/40 flex flex-col sm:flex-row gap-2">
               <div className="flex items-center gap-1 bg-card border border-border p-1 rounded-sm w-full sm:w-auto">
                 {(['MEN', 'WOMEN'] as Gender[]).map((gender) => (
@@ -452,7 +471,6 @@ export default function StatsHubPage() {
                 <option>ABROAD</option>
               </select>
             </div>
-
             <nav
               aria-label="Statistics sections"
               className="overflow-x-auto border-b border-border"
@@ -510,7 +528,6 @@ export default function StatsHubPage() {
                   detail="LIVE STANDINGS"
                 />
               </section>
-
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
                 <Leaderboard
                   title="Golden Boot"
