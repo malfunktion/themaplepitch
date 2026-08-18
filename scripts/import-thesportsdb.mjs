@@ -2,10 +2,8 @@
 import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://wsbyyvtcvyhidvijvwuo.supabase.co';
-const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SUPABASE_URL ? process.env.SERVICE_ROLE_KEY : null;
-const THESPORTSDB_KEY = process.env.THESPORTSDB_KEY || '123';
-
 const activeServiceKey = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SERVICE_ROLE_KEY;
+const THESPORTSDB_KEY = process.env.THESPORTSDB_KEY || '123';
 
 if (!activeServiceKey) {
   console.error('Error: SUPABASE_SERVICE_ROLE_KEY environment variable is missing.');
@@ -156,7 +154,6 @@ async function runImportSequence() {
     await sleep(300);
   }
 
-  // Deduplicate teams by slug to prevent ON CONFLICT DO UPDATE duplicate row errors
   const uniqueTeamsMap = new Map();
   allApiTeams.forEach((t) => uniqueTeamsMap.set(t.slug, t));
   const uniqueTeams = Array.from(uniqueTeamsMap.values());
@@ -187,7 +184,7 @@ async function runImportSequence() {
   });
 
   let totalMatchesUpserted = 0;
-  for (const league of LEAGues) {
+  for (const league of LEAGUES) { // Fixed typo here from LEAGues to LEAGUES
     console.log(`Fetching fixtures for ${league.name}...`);
     const matches = await fetchFixturesForLeague(league, teamNameMap);
     if (matches.length > 0) {
@@ -207,7 +204,7 @@ async function runImportSequence() {
   console.log(`Successfully synced ${totalMatchesUpserted} match fixtures into Supabase.`);
 
   console.log('Populating professional player rosters & telemetry...');
-  const firstNames = ['Liam', 'Noah', 'Lucas', 'Oliver', 'Benjamin', 'Mason', 'Ethan', 'Alexander', 'Lucas', 'Daniel', 'Aiden', 'Matthew', 'Logan', 'David', 'Joseph', 'Gabriel', 'Samuel', 'Anthony', 'John', 'Dylan'];
+  const firstNames = ['Liam', 'Noah', 'Lucas', 'Oliver', 'Benjamin', 'Mason', 'Ethan', 'Alexander', 'Daniel', 'Aiden', 'Matthew', 'Logan', 'David', 'Joseph', 'Gabriel', 'Samuel', 'Anthony', 'John', 'Dylan'];
   const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Miller', 'Davis', 'Wilson', 'Anderson', 'Taylor', 'Thomas', 'Moore', 'Jackson', 'Martin', 'Lee', 'Perez', 'Thompson', 'White', 'Harris', 'Clark'];
   const positions = ['GK', 'CB', 'LB', 'RB', 'CM', 'CAM', 'RW', 'LW', 'ST'];
 
