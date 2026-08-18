@@ -13,10 +13,16 @@ const supabase = createClient(
 export const revalidate = 3600;
 
 export async function generateStaticParams() {
-  const { data: teams } = await supabase.from('teams').select('slug');
-  return (teams || [])
-    .filter((t) => typeof t?.slug === 'string' && t.slug.trim().length > 0)
-    .map((t) => ({ slug: t.slug }));
+  const { data: teams } = await supabase.from('teams').select('id, slug, external_id');
+  const params: { slug: string }[] = [];
+
+  (teams || []).forEach((t) => {
+    if (t.slug) params.push({ slug: String(t.slug) });
+    if (t.external_id && t.external_id !== t.slug) params.push({ slug: String(t.external_id) });
+    if (t.id) params.push({ slug: String(t.id) });
+  });
+
+  return params;
 }
 
 function safeFormatDate(dateVal: any): string {
@@ -30,11 +36,16 @@ function safeFormatDate(dateVal: any): string {
   }
 }
 
-async function getTeamData(slug: string) {
+async function getTeamData(slugParam: string) {
+  const isNumeric = !isNaN(Number(slugParam));
+  const flexQuery = isNumeric
+    ? `id.eq.${slugParam},slug.eq.${slugParam},external_id.eq.${slugParam}`
+    : `slug.eq.${slugParam},external_id.eq.${slugParam}`;
+
   const { data: team } = await supabase
     .from('teams')
     .select('*')
-    .eq('slug', slug)
+    .or(flexQuery)
     .maybeSingle();
 
   if (!team) return null;
@@ -80,12 +91,12 @@ export async function generateMetadata({
   return {
     title,
     description,
-    alternates: { canonical: `/teams/${team.slug}` },
+    alternates: { canonical: `/teams/${team.slug || team.external_id || team.id}` },
     openGraph: {
       type: 'website',
       title,
       description,
-      url: `/teams/${team.slug}`,
+      url: `/teams/${team.slug || team.external_id || team.id}`,
     },
     twitter: {
       card: 'summary_large_image',
@@ -114,19 +125,26 @@ export default async function TeamProfilePage({ params }: { params: Promise<{ sl
       <div className="grid gap-6 lg:grid-cols-3">
         <section className="lg:col-span-2 space-y-6">
           <div className="border border-border p-5 bg-card">
-            <div className="text-[10px] font-mono uppercase text-crimson mb-3">Active Roster ({players.length})</div>
+            <div className="text-[10px] font-mono uppercase text-crimson mb-3">
+              Active Roster ({players.length})
+            </div>
             {players.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {players.map((p: any) => (
-                  <Link
-                    key={p.id}
-                    href={`/players/${p.external_id || p.id}`}
-                    className="border border-border/60 p-3 flex justify-between items-center hover:border-crimson transition-colors text-xs"
-                  >
-                    <span className="font-bold">{p.name}</span>
-                    <span className="font-mono text-charcoal-soft uppercase">{p.position || 'CM'}</span>
-                  </Link>
-                ))}
+                {players.map((p: any) => {
+                  const playerRouteParam = p.slug || p.external_id || p.id;
+                  return (
+                    <Link
+                      key={p.id}
+                      href={`/players/${playerRouteParam}`}
+                      className="border border-border/60 p-3 flex justify-between items-center hover:border-crimson transition-colors text-xs"
+                    >
+                      <span className="font-bold">{p.name}</span>
+                      <span className="font-mono text-charcoal-soft uppercase">
+                        {p.position || 'CM'}
+                      </span>
+                    </Link>
+                  );
+                })}
               </div>
             ) : (
               <div className="text-xs text-charcoal-soft">No active roster loaded in vault.</div>
@@ -134,7 +152,9 @@ export default async function TeamProfilePage({ params }: { params: Promise<{ sl
           </div>
 
           <div className="border border-border p-5 bg-card">
-            <div className="text-[10px] font-mono uppercase text-crimson mb-3">Fixtures &amp; Results</div>
+            <div className="text-[10px] font-mono uppercase text-crimson mb-3">
+              Fixtures &amp; Results
+            </div>
             {matches.length > 0 ? (
               <div className="divide-y divide-border text-xs">
                 {matches.map((m: any) => {
@@ -145,8 +165,12 @@ export default async function TeamProfilePage({ params }: { params: Promise<{ sl
                   return (
                     <div key={m.id} className="py-2.5 flex justify-between items-center">
                       <span>{safeFormatDate(m.match_date)}</span>
-                      <span>{homeName || 'Home'} vs {awayName || 'Away'}</span>
-                      <span className="font-mono uppercase text-charcoal-soft">{m.stage || 'Match'}</span>
+                      <span>
+                        {homeName || 'Home'} vs {awayName || 'Away'}
+                      </span>
+                      <span className="font-mono uppercase text-charcoal-soft">
+                        {m.stage || 'Match'}
+                      </span>
                     </div>
                   );
                 })}
@@ -180,4 +204,3 @@ export default async function TeamProfilePage({ params }: { params: Promise<{ sl
     </>
   );
 }
-
