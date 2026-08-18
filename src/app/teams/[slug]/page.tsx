@@ -1,3 +1,4 @@
+// src/app/teams/[slug]/page.tsx
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
@@ -38,9 +39,11 @@ function safeFormatDate(dateVal: any): string {
 
 async function getTeamData(slugParam: string) {
   const isNumeric = !isNaN(Number(slugParam));
+  
+  // Fuzzy query checks exact slug/external_id/id AND partial slug matching (e.g. 'forge-fc' matching 'cpl-forge-fc')
   const flexQuery = isNumeric
     ? `id.eq.${slugParam},slug.eq.${slugParam},external_id.eq.${slugParam}`
-    : `slug.eq.${slugParam},external_id.eq.${slugParam}`;
+    : `slug.eq.${slugParam},external_id.eq.${slugParam},slug.ilike.%${slugParam}%`;
 
   const { data: team } = await supabase
     .from('teams')
@@ -204,3 +207,4 @@ export default async function TeamProfilePage({ params }: { params: Promise<{ sl
     </>
   );
 }
+
