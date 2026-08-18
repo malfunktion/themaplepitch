@@ -1,31 +1,3 @@
-import { createClient } from '@/lib/supabase/client';
-import type { StandingsRow, LiveTickerItem } from '@/lib/types';
-
-type Match = {
-  home_team_id: number;
-  away_team_id: number;
-  home_score?: number;
-  away_score?: number;
-  status?: string;
-  competition?: string;
-};
-
-const supabase = createClient();
-
-function matchesLeague(teamLeague: string | null | undefined, targetLeague: string): boolean {
-  if (!teamLeague) return false;
-  const normalized = teamLeague.toUpperCase();
-  const target = targetLeague.toUpperCase();
-
-  if (target === 'CPL') {
-    return normalized.includes('CPL') || normalized.includes('CANADIAN PREMIER LEAGUE');
-  }
-  if (target === 'NSL') {
-    return normalized.includes('NSL') || normalized.includes('NORTHERN SUPER LEAGUE');
-  }
-  return normalized === target;
-}
-
 export async function computeStandings(competition: string): Promise<StandingsRow[]> {
   try {
     // 1. Fetch live imported teams directly from Supabase
@@ -48,10 +20,20 @@ export async function computeStandings(competition: string): Promise<StandingsRo
     // 2. Fetch matches from database
     const { data: matchesData } = await supabase.from('matches').select('*');
 
+    const targetUpper = competition.toUpperCase();
+
     const matches: Match[] = (matchesData || []).filter((m: any) => {
-      const comp = m.competition || m.competition_id || '';
-      const isFinished = (m.status || '').toLowerCase() === 'finished' || (m.status || '').toLowerCase() === 'ft';
-      return isFinished && matchesLeague(String(comp), competition);
+      const comp = String(m.competition || m.competition_id || '').toUpperCase();
+      const status = (m.status || '').toLowerCase();
+      
+      // Accept standard finished statuses from API-Football (FT, AET, PEN, finished)
+      const isFinished = status === 'finished' || status === 'ft' || status === 'aet' || status === 'pen';
+      
+      // Check if it matches text name OR if it matches numeric ID conventions if applicable
+      const matchesComp = comp.includes(targetUpper) || 
+                          comp === (targetUpper === 'CPL' ? '491' : comp); // Adjust ID mapping if needed
+
+      return isFinished && matchesComp;
     });
 
     const statsMap: Record<number, { played: number; won: number; drawn: number; lost: number; gf: number; ga: number; pts: number }> = {};
@@ -129,33 +111,3 @@ export async function computeStandings(competition: string): Promise<StandingsRo
   }
 }
 
-export async function getCplStandings(): Promise<StandingsRow[]> {
-  return computeStandings('CPL');
-}
-
-export async function getNslStandings(): Promise<StandingsRow[]> {
-  return computeStandings('NSL');
-}
-
-export async function getLiveTicker(): Promise<LiveTickerItem[]> {
-  try {
-    const { data, error } = await supabase.from('matches').select('*').limit(6);
-
-    if (error || !data || data.length === 0) {
-      return [];
-    }
-
-    return data.map((m: any, idx: number) => ({
-      id: String(m.id || idx),
-      competition: m.competition || 'CPL',
-      homeTeam: m.home_team_name || 'Home Team',
-      awayTeam: m.away_team_name || 'Away Team',
-      homeScore: m.home_score || 0,
-      awayScore: m.away_score || 0,
-      minute: m.status === 'Live' ? 75 : null,
-      isLive: m.status === 'Live',
-    }));
-  } catch (err) {
-    return [];
-  }
-}
