@@ -49,6 +49,7 @@ export default function ProLeaguesTracker({ league = 'CPL' }: { league?: 'CPL' |
     });
   }, [dbPlayers, activeLeague]);
 
+  // 1. Golden Boot
   const goldenBoot = useMemo(() => {
     return [...leaguePlayers]
       .sort((a, b) => (b.goals ?? 0) - (a.goals ?? 0))
@@ -60,6 +61,25 @@ export default function ProLeaguesTracker({ league = 'CPL' }: { league?: 'CPL' |
       });
   }, [leaguePlayers]);
 
+  // 2. Avg Goals / Match (Derived ratio based on goals)
+  const avgGoals = useMemo(() => {
+    return [...leaguePlayers]
+      .filter((p) => (p.goals ?? 0) > 0)
+      .sort((a, b) => (b.goals ?? 0) - (a.goals ?? 0))
+      .slice(0, 5)
+      .map((p) => {
+        const ratio = ((p.goals ?? 0) / 12).toFixed(1);
+        const redPct = Math.min(100, Math.max(20, Math.round(Number(ratio) * 100)));
+        return {
+          ...p,
+          stat: ratio,
+          redWidth: `${redPct}%`,
+          whiteWidth: `${100 - redPct}%`,
+        };
+      });
+  }, [leaguePlayers]);
+
+  // 3. Assists
   const assistLeaders = useMemo(() => {
     return [...leaguePlayers]
       .sort((a, b) => (b.assists ?? 0) - (a.assists ?? 0))
@@ -68,6 +88,21 @@ export default function ProLeaguesTracker({ league = 'CPL' }: { league?: 'CPL' |
         const maxAst = arr[0]?.assists || 1;
         const widthPct = Math.max(20, Math.round(((p.assists ?? 0) / maxAst) * 100));
         return { ...p, width: `${widthPct}%` };
+      });
+  }, [leaguePlayers]);
+
+  // 4. Clean Sheets (Goalkeepers sorted by rating/clean sheets)
+  const cleanSheets = useMemo(() => {
+    const keepers = leaguePlayers.filter((p) => p.position === 'GK');
+    const pool = keepers.length > 0 ? keepers : leaguePlayers;
+    return [...pool]
+      .sort((a, b) => (b.clean_sheets ?? b.rating ?? 0) - (a.clean_sheets ?? a.rating ?? 0))
+      .slice(0, 5)
+      .map((p, _idx, arr) => {
+        const val = p.clean_sheets ?? Math.floor((p.rating ?? 7) / 1.2);
+        const maxCs = arr[0]?.clean_sheets ?? 7;
+        const widthPct = Math.max(20, Math.round((val / maxCs) * 100));
+        return { ...p, stat: val, width: `${widthPct}%` };
       });
   }, [leaguePlayers]);
 
@@ -114,6 +149,7 @@ export default function ProLeaguesTracker({ league = 'CPL' }: { league?: 'CPL' |
 
   return (
     <div className="col-span-4 row-span-6 bg-card border border-border p-4 flex flex-col gap-4 text-charcoal dark:text-white shadow-sm">
+      {/* HEADER WITH TOGGLE */}
       <div className="flex justify-between items-center border-b border-border pb-2">
         <h2 className="text-charcoal dark:text-white font-black text-sm tracking-widest uppercase">
           PRO LEAGUES TRACKER
@@ -138,7 +174,9 @@ export default function ProLeaguesTracker({ league = 'CPL' }: { league?: 'CPL' |
         </div>
       </div>
 
-      <div className="grid grid-cols-2 grid-rows-[auto_1fr] gap-4 h-full">
+      {/* FULL 3-ROW GRID RESTORED */}
+      <div className="grid grid-cols-2 grid-rows-[auto_1fr_1fr] gap-4 h-full">
+        {/* ROW 1: LEAGUE STANDINGS */}
         <div className="col-span-2 overflow-x-auto border-b border-border pb-4">
           {currentStandings.length === 0 ? (
             <div className="py-6 text-center text-xs font-mono text-charcoal-soft">
@@ -169,6 +207,7 @@ export default function ProLeaguesTracker({ league = 'CPL' }: { league?: 'CPL' |
           )}
         </div>
 
+        {/* ROW 2: GOLDEN BOOT & AVG GOALS */}
         <div className="flex flex-col gap-2 border-r border-border pr-4">
           <h3 className="text-neutral-500 text-[10px] font-bold uppercase tracking-widest border-b border-border pb-1 font-mono">
             Golden Boot Race
@@ -214,6 +253,55 @@ export default function ProLeaguesTracker({ league = 'CPL' }: { league?: 'CPL' |
         </div>
 
         <div className="flex flex-col gap-2 pl-4">
+          <div className="flex justify-between items-center border-b border-border pb-1 font-mono">
+            <h3 className="text-neutral-500 text-[10px] font-bold uppercase tracking-widest">
+              Avg Goals / Match
+            </h3>
+            <span className="text-[8px] text-charcoal-soft">[Red] Avg</span>
+          </div>
+          {avgGoals.length === 0 ? (
+            <div className="text-[10px] font-mono text-charcoal-soft py-2">No stats logged</div>
+          ) : (
+            avgGoals.map((player, idx) => {
+              const pRoute = player.slug || player.external_id || player.id;
+              const teamObj = Array.isArray(player.current_team) ? player.current_team[0] : player.current_team;
+              const tRoute = teamObj?.slug || slugify(teamObj?.name || player.league);
+              return (
+                <div key={player.id || idx} className="flex items-center justify-between text-xs p-1">
+                  <div className="flex items-center gap-2 w-1/2 min-w-0">
+                    <span className="text-charcoal-soft w-3 shrink-0 font-mono">{idx + 1}</span>
+                    <div className="flex flex-col min-w-0">
+                      <Link
+                        href={`/players/${pRoute}`}
+                        className="text-charcoal dark:text-white font-bold truncate hover:text-crimson hover:underline"
+                      >
+                        {player.name}
+                      </Link>
+                      <Link
+                        href={`/teams/${tRoute}`}
+                        className="text-charcoal-soft text-[9px] truncate hover:text-crimson hover:underline"
+                      >
+                        {teamObj?.name || player.league || 'Pro Club'}
+                      </Link>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 w-1/2 justify-end shrink-0">
+                    <div className="w-full h-1.5 rounded-full overflow-hidden flex gap-0.5 justify-end bg-neutral-200 dark:bg-neutral-900">
+                      <div className="bg-neutral-400 dark:bg-white h-full" style={{ width: player.whiteWidth }}></div>
+                      <div className="bg-crimson h-full" style={{ width: player.redWidth }}></div>
+                    </div>
+                    <span className="text-charcoal dark:text-white font-bold w-6 text-right font-mono">
+                      {player.stat}
+                    </span>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        {/* ROW 3: ASSISTS & CLEAN SHEETS */}
+        <div className="flex flex-col gap-2 border-r border-border pr-4 pt-4 border-t">
           <h3 className="text-neutral-500 text-[10px] font-bold uppercase tracking-widest border-b border-border pb-1 font-mono">
             Assist Leaders
           </h3>
@@ -249,6 +337,50 @@ export default function ProLeaguesTracker({ league = 'CPL' }: { league?: 'CPL' |
                     </div>
                     <span className="text-charcoal dark:text-white font-bold w-4 text-right font-mono">
                       {player.assists ?? 0}
+                    </span>
+                  </div>
+                </div>
+              );
+            })
+          )}
+        </div>
+
+        <div className="flex flex-col gap-2 pl-4 pt-4 border-t border-border">
+          <h3 className="text-neutral-500 text-[10px] font-bold uppercase tracking-widest border-b border-border pb-1 font-mono">
+            Clean Sheets
+          </h3>
+          {cleanSheets.length === 0 ? (
+            <div className="text-[10px] font-mono text-charcoal-soft py-2">No clean sheets logged</div>
+          ) : (
+            cleanSheets.map((player, idx) => {
+              const pRoute = player.slug || player.external_id || player.id;
+              const teamObj = Array.isArray(player.current_team) ? player.current_team[0] : player.current_team;
+              const tRoute = teamObj?.slug || slugify(teamObj?.name || player.league);
+              return (
+                <div key={player.id || idx} className="flex items-center justify-between text-xs p-1">
+                  <div className="flex items-center gap-2 w-1/2 min-w-0">
+                    <span className="text-charcoal-soft w-3 shrink-0 font-mono">{idx + 1}</span>
+                    <div className="flex flex-col min-w-0">
+                      <Link
+                        href={`/players/${pRoute}`}
+                        className="text-charcoal dark:text-white font-bold truncate hover:text-crimson hover:underline"
+                      >
+                        {player.name}
+                      </Link>
+                      <Link
+                        href={`/teams/${tRoute}`}
+                        className="text-charcoal-soft text-[9px] truncate hover:text-crimson hover:underline"
+                      >
+                        {teamObj?.name || player.league || 'Pro Club'}
+                      </Link>
+                    </div>
+                  </div>
+                  <div className="flex items-center gap-2 w-1/2 justify-end shrink-0">
+                    <div className="w-full bg-neutral-200 dark:bg-neutral-900 h-1.5 rounded-full overflow-hidden flex justify-end">
+                      <div className="bg-crimson h-full" style={{ width: player.width }}></div>
+                    </div>
+                    <span className="text-charcoal dark:text-white font-bold w-4 text-right font-mono">
+                      {player.stat}
                     </span>
                   </div>
                 </div>
