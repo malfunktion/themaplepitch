@@ -15,7 +15,7 @@ export const revalidate = 3600;
 export async function generateStaticParams() {
   const { data: teams } = await supabase.from('teams').select('slug');
   return (teams || [])
-    .filter((t) => typeof t.slug === 'string' && t.slug.trim().length > 0)
+    .filter((t) => typeof t?.slug === 'string' && t.slug.trim().length > 0)
     .map((t) => ({ slug: t.slug }));
 }
 
@@ -35,7 +35,7 @@ async function getTeamData(slug: string) {
     .from('teams')
     .select('*')
     .eq('slug', slug)
-    .single();
+    .maybeSingle();
 
   if (!team) return null;
 
@@ -74,8 +74,8 @@ export async function generateMetadata({
   }
 
   const { team } = data;
-  const title = `${team.name} | The Maple Pitch`;
-  const description = `${team.name} club hub, roster, fixtures, and telemetry on The Maple Pitch.`;
+  const title = `${team.name || 'Team'} | The Maple Pitch`;
+  const description = `${team.name || 'Club'} hub, roster, fixtures, and telemetry on The Maple Pitch.`;
 
   return {
     title,
@@ -108,7 +108,7 @@ export default async function TeamProfilePage({ params }: { params: Promise<{ sl
       <HubHeader
         eyebrow={`Club Hub // ${team.league || 'Canada'}`}
         title={(team.name || 'Team').toUpperCase()}
-        description={`Official club dossier, active roster, and competition schedule for ${team.name}.`}
+        description={`Official club dossier, active roster, and competition schedule for ${team.name || 'Club'}.`}
       />
 
       <div className="grid gap-6 lg:grid-cols-3">
