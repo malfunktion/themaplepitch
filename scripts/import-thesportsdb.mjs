@@ -41,12 +41,12 @@ const CANADIAN_MLS_TEAMS = [
 ];
 
 const TARGET_LEAGUES = [
-  { id: 4820, code: 'CPL', gender: 'men', whitelistedTeams: CPL_TEAMS, season: '2025-2026' },
-  { id: 5602, code: 'NSL', gender: 'women', whitelistedTeams: NSL_TEAMS, season: '2025-2026' },
+  { id: 4820, code: 'CPL', gender: 'men', whitelistedTeams: CPL_TEAMS, season: '2026' },
+  { id: 5602, code: 'NSL', gender: 'women', whitelistedTeams: NSL_TEAMS, season: '2026' },
   { id: 5922, code: 'Canadian Championship', gender: 'men', whitelistedTeams: [...CPL_TEAMS, ...CANADIAN_MLS_TEAMS], season: '2026' },
-  { id: 4346, code: 'MLS', gender: 'men', whitelistedTeams: CANADIAN_MLS_TEAMS, season: '2026' },
-  { id: 4521, code: 'NWSL', gender: 'women', whitelistedTeams: [], season: '2026' }
+  { id: 4346, code: 'MLS', gender: 'men', whitelistedTeams: CANADIAN_MLS_TEAMS, season: '2026' }
 ];
+
 
 function slugify(name) {
   return name
