@@ -1,6 +1,8 @@
+// src/components/home/PlayerDatabaseSpotlights.tsx
 'use client';
 
 import React, { useState } from 'react';
+import Link from 'next/link';
 
 interface Player {
   id: string;
@@ -9,6 +11,16 @@ interface Player {
   club: string;
   vitals: string;
   tag: string;
+}
+
+function slugify(name: string) {
+  if (!name) return '';
+  return name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
 }
 
 const menPlayers: Player[] = [
@@ -65,31 +77,51 @@ export default function PlayerDatabaseSpotlights() {
         </div>
       </div>
 
-      {/* Responsive Wrapper: Horizontal touch swipe carousel on mobile, 4x2 grid on desktop */}
+      {/* Responsive Wrapper */}
       <div className="flex sm:grid overflow-x-auto sm:overflow-x-visible snap-x snap-mandatory sm:grid-cols-2 lg:grid-cols-4 gap-4 pb-4 sm:pb-0 scrollbar-none">
-        {players.map((player) => (
-          <div
-            key={player.id}
-            className="min-w-[260px] sm:min-w-0 w-[260px] sm:w-auto flex-shrink-0 snap-start bg-surface border border-border p-4 flex flex-col justify-between hover:border-crimson transition-colors group"
-          >
-            <div>
-              <div className="flex justify-between items-center mb-3">
-                <span className="text-[10px] font-mono bg-crimson/10 dark:bg-crimson/20 text-crimson px-2 py-0.5 border border-crimson/20 dark:border-crimson/30">
-                  {player.tag}
-                </span>
-                <span className="text-[10px] font-mono text-neutral-500 dark:text-zinc-500">{player.vitals}</span>
+        {players.map((player) => {
+          const playerSlug = slugify(player.name);
+          const clubSlug = slugify(player.club);
+
+          return (
+            <div
+              key={player.id}
+              className="min-w-[260px] sm:min-w-0 w-[260px] sm:w-auto flex-shrink-0 snap-start bg-surface border border-border p-4 flex flex-col justify-between hover:border-crimson transition-colors group"
+            >
+              <div>
+                <div className="flex justify-between items-center mb-3">
+                  <span className="text-[10px] font-mono bg-crimson/10 dark:bg-crimson/20 text-crimson px-2 py-0.5 border border-crimson/20 dark:border-crimson/30">
+                    {player.tag}
+                  </span>
+                  <span className="text-[10px] font-mono text-neutral-500 dark:text-zinc-500">{player.vitals}</span>
+                </div>
+                <h3 className="text-sm font-bold tracking-tight text-charcoal dark:text-white">
+                  <Link
+                    href={`/players/${playerSlug}`}
+                    className="hover:text-crimson transition-colors block truncate"
+                  >
+                    {player.name}
+                  </Link>
+                </h3>
+                <p className="text-xs font-mono text-neutral-600 dark:text-zinc-400 mt-1">{player.position}</p>
               </div>
-              <h3 className="text-sm font-bold tracking-tight text-charcoal dark:text-white group-hover:text-crimson dark:group-hover:text-crimson transition-colors">
-                {player.name}
-              </h3>
-              <p className="text-xs font-mono text-neutral-600 dark:text-zinc-400 mt-1">{player.position}</p>
+              <div className="mt-4 pt-3 border-t border-border flex justify-between items-center text-[11px] font-mono text-neutral-600 dark:text-zinc-400">
+                <Link
+                  href={`/teams/${clubSlug}`}
+                  className="hover:text-crimson hover:underline truncate mr-2"
+                >
+                  {player.club}
+                </Link>
+                <Link
+                  href={`/players/${playerSlug}`}
+                  className="text-crimson font-bold hover:underline shrink-0"
+                >
+                  DOSSIER ➔
+                </Link>
+              </div>
             </div>
-            <div className="mt-4 pt-3 border-t border-border flex justify-between items-center text-[11px] font-mono text-neutral-600 dark:text-zinc-400">
-              <span>{player.club}</span>
-              <span className="text-crimson dark:text-crimson">DOSSIER ➔</span>
-            </div>
-          </div>
-        ))}
+          );
+        })}
       </div>
     </section>
   );
