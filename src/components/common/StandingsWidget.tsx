@@ -1,4 +1,4 @@
-// src/app/components/common/StandingsWidget.tsx
+// src/components/common/StandingsWidget.tsx
 'use client';
 
 import React, { useState } from 'react';
@@ -11,12 +11,21 @@ interface StandingsWidgetProps {
   cplStandings?: StandingsRow[];
   nslStandings?: StandingsRow[];
   defaultTab?: 'CPL' | 'NSL';
-  // Allows different pages to pass custom footer links or filter states
   footerAction?: {
     label: string;
     href: string;
   };
-  compact?: boolean; // True for sidebar, false for main grid
+  compact?: boolean;
+}
+
+function slugify(name: string) {
+  if (!name) return '';
+  return name
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '')
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/(^-|-$)/g, '');
 }
 
 export default function StandingsWidget({
@@ -72,23 +81,31 @@ export default function StandingsWidget({
           </thead>
           <tbody className="divide-y divide-neutral-200 dark:divide-neutral-900/40 text-[11px]">
             {currentStandings && currentStandings.length > 0 ? (
-              currentStandings.map((row, idx) => (
-                <tr key={idx} className="group hover:bg-neutral-50 dark:hover:bg-neutral-900/20 transition-colors">
-                  <td className="py-2 px-1 text-center font-mono font-bold text-neutral-400 group-hover:text-crimson">
-                    {row.position || idx + 1}
-                  </td>
-                  <td className="py-2 px-1 font-bold truncate max-w-[120px]" title={row.clubName}>
-                    {row.clubName}
-                  </td>
-                  {!compact && (
-                    <td className="py-2 px-1 text-center font-mono text-neutral-500">{row.played ?? 0}</td>
-                  )}
-                  <td className="py-2 px-1 text-center font-mono text-neutral-500">
-                    {(row.goalDifference ?? 0) > 0 ? `+${row.goalDifference}` : row.goalDifference ?? 0}
-                  </td>
-                  <td className="py-2 px-1 text-right font-mono font-bold">{row.points ?? 0}</td>
-                </tr>
-              ))
+              currentStandings.map((row: any, idx) => {
+                const teamSlug = row.slug || row.teamSlug || slugify(row.clubName || 'team');
+                return (
+                  <tr key={idx} className="group hover:bg-neutral-50 dark:hover:bg-neutral-900/20 transition-colors">
+                    <td className="py-2 px-1 text-center font-mono font-bold text-neutral-400 group-hover:text-crimson">
+                      {row.position || idx + 1}
+                    </td>
+                    <td className="py-2 px-1 font-bold truncate max-w-[120px]" title={row.clubName}>
+                      <Link
+                        href={`/teams/${teamSlug}`}
+                        className="hover:text-crimson hover:underline transition-colors block truncate"
+                      >
+                        {row.clubName}
+                      </Link>
+                    </td>
+                    {!compact && (
+                      <td className="py-2 px-1 text-center font-mono text-neutral-500">{row.played ?? 0}</td>
+                    )}
+                    <td className="py-2 px-1 text-center font-mono text-neutral-500">
+                      {(row.goalDifference ?? 0) > 0 ? `+${row.goalDifference}` : row.goalDifference ?? 0}
+                    </td>
+                    <td className="py-2 px-1 text-right font-mono font-bold">{row.points ?? 0}</td>
+                  </tr>
+                );
+              })
             ) : (
               <tr>
                 <td colSpan={compact ? 4 : 5} className="py-6 text-center text-xs text-neutral-500 font-mono italic">
@@ -100,7 +117,6 @@ export default function StandingsWidget({
         </table>
       </div>
 
-      {/* Customizable Footer Links / State Actions */}
       {footerAction && (
         <div className="pt-2 border-t border-border flex justify-end">
           <Link
