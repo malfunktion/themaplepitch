@@ -218,7 +218,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
       </div>
 
       <div className="mt-6">
-        <SourceStamp source={"TheSportsDB Automated Vault Sync" as any} />
+        <SourceStamp source={{ name: 'TheSportsDB Automated Vault Sync', accessedAt: new Date().toISOString() }} />
       </div>
     </>
   );
