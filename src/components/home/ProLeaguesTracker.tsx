@@ -44,7 +44,7 @@ export default function ProLeaguesTracker() {
   const currentStandings = gender === 'men' ? cplStandings : nslStandings;
   const domesticLabel = gender === 'men' ? 'CPL' : 'NSL';
 
-  // Filter players by Gender and Scope
+  // Filter players by Gender and Scope (MLS, Europe, and global leagues grouped under ABROAD)
   const filteredPlayers = useMemo(() => {
     return dbPlayers.filter((p) => {
       const pGender = p.gender ? String(p.gender).toLowerCase() : 'men';
@@ -57,17 +57,23 @@ export default function ProLeaguesTracker() {
         if (pGender !== 'women' && !pLeague.includes('NSL') && !pLeague.includes('CANWNT')) return false;
       }
 
-      // 2. Scope Filter (ALL / ABROAD / DOMESTIC)
+      // 2. Domestic Classification (strictly domestic CPL / NSL)
+      const isDomestic = gender === 'men'
+        ? pLeague.includes('CPL') || pLeague.includes('CANADIAN PREMIER LEAGUE')
+        : pLeague.includes('NSL') || pLeague.includes('NORTHERN SUPER LEAGUE');
+
+      // 3. Scope Filter
       if (scope === 'DOMESTIC') {
-        return pLeague.includes(domesticLabel);
+        return isDomestic;
       }
       if (scope === 'ABROAD') {
-        return !pLeague.includes('CPL') && !pLeague.includes('NSL');
+        // Excludes domestic CPL/NSL — MLS (Toronto FC, CF Montréal, Vancouver, etc.) + European/Global clubs land here
+        return !isDomestic;
       }
 
       return true; // ALL
     });
-  }, [dbPlayers, gender, scope, domesticLabel]);
+  }, [dbPlayers, gender, scope]);
 
   // 1. Golden Boot
   const goldenBoot = useMemo(() => {
@@ -201,7 +207,7 @@ export default function ProLeaguesTracker() {
             </button>
           </div>
 
-          {/* SECONDARY TOGGLE: ALL / ABROAD / CPL or NSL */}
+          {/* SECONDARY TOGGLE: ALL / ABROAD (INCL. MLS) / CPL or NSL */}
           <div className="flex bg-neutral-100 dark:bg-card border border-border rounded-sm p-0.5 text-[9px] font-mono font-bold">
             <button
               onClick={() => setScope('ALL')}
@@ -220,6 +226,7 @@ export default function ProLeaguesTracker() {
                   ? 'bg-neutral-800 text-white dark:bg-neutral-200 dark:text-black'
                   : 'text-neutral-500 hover:text-charcoal'
               }`}
+              title="Includes MLS, European & Global Leagues"
             >
               ABROAD
             </button>
@@ -241,7 +248,7 @@ export default function ProLeaguesTracker() {
       <div className="grid grid-cols-2 grid-rows-[auto_1fr_1fr] gap-4 h-full">
         {/* ROW 1: LEAGUE STANDINGS (CPL for Men, NSL for Women) */}
         <div className="col-span-2 overflow-x-auto border-b border-border pb-4">
-          <div className="text-[9px] font-mono text-charcoal-soft mb-2 font-bold">
+          <div className="text-[9px] font-mono text-charcoal-soft mb-2 font-bold uppercase">
             {domesticLabel} DOMESTIC STANDINGS
           </div>
           {currentStandings.length === 0 ? (
