@@ -59,7 +59,7 @@ async function fetchTeamsFromAPI(league) {
     return rawTeams.map((t) => ({
       external_id: String(t.idTeam),
       name: t.strTeam,
-      slug: slugify(t.strTeam),
+      slug: `${slugify(league.name)}-${slugify(t.strTeam)}`, // League-scoped unique slug
       league: league.name,
       logo_url: t.strBadge || t.strLogo || null,
     }));
@@ -69,7 +69,7 @@ async function fetchTeamsFromAPI(league) {
   }
 }
 
-async function fetchFixturesForLeague(league, teamNameMap) {
+async function fetchFixturesForLeague(league, leagueTeamMap) {
   if (!league.idLeague) return [];
   
   const seasonsToTry = ['2026', '2025-2026', '2024'];
@@ -95,27 +95,18 @@ async function fetchFixturesForLeague(league, teamNameMap) {
 
   const formattedMatches = [];
   for (const ev of events) {
-    const homeTeamName = ev.strHomeTeam || '';
-    const awayTeamName = ev.strAwayTeam || '';
+    const homeTeamName = (ev.strHomeTeam || '').toLowerCase();
+    const awayTeamName = (ev.strAwayTeam || '').toLowerCase();
     
-    let homeTeamId = teamNameMap.get(homeTeamName.toLowerCase());
-    let awayTeamId = teamNameMap.get(awayTeamName.toLowerCase());
+    // Strict league-scoped lookup
+    let homeTeamId = leagueTeamMap.get(homeTeamName);
+    let awayTeamId = leagueTeamMap.get(awayTeamName);
 
-    if (!homeTeamId) {
-      for (const [name, id] of teamNameMap.entries()) {
-        if (slugify(name) === slugify(homeTeamName) || homeTeamName.toLowerCase().includes(name) || name.includes(homeTeamName.toLowerCase())) {
-          homeTeamId = id;
-          break;
-        }
-      }
-    }
-
-    if (!awayTeamId) {
-      for (const [name, id] of teamNameMap.entries()) {
-        if (slugify(name) === slugify(awayTeamName) || awayTeamName.toLowerCase().includes(name) || name.includes(awayTeamName.toLowerCase())) {
-          awayTeamId = id;
-          break;
-        }
+    if (!homeTeamId || !awayTeamId) {
+      // Fuzzy fallback within the same league map
+      for (const [name, id] of leagueTeamMap.entries()) {
+        if (!homeTeamId && (homeTeamName.includes(name) || name.includes(homeTeamName))) homeTeamId = id;
+        if (!awayTeamId && (awayTeamName.includes(name) || name.includes(awayTeamName))) awayTeamId = id;
       }
     }
 
@@ -131,7 +122,7 @@ async function fetchFixturesForLeague(league, teamNameMap) {
     }
 
     formattedMatches.push({
-      external_id: String(ev.idEvent),
+      external_id: `${slugify(league.name)}-${ev.idEvent}`,
       competition: league.name,
       home_team_id: homeTeamId,
       away_team_id: awayTeamId,
@@ -146,6 +137,9 @@ async function fetchFixturesForLeague(league, teamNameMap) {
 }
 
 async function runImportSequence() {
+  console.log('Clearing old conflicting match fixtures...');
+  await supabase.from('matches').delete().neq('id', 0);
+
   let allApiTeams = [];
   for (const league of LEAGUES) {
     console.log(`Importing teams for ${league.name}...`);
@@ -178,15 +172,20 @@ async function runImportSequence() {
 
   console.log(`Successfully upserted ${dbTeams.length} official clean teams into Supabase.`);
 
-  const teamNameMap = new Map();
+  // Build league-scoped team maps
+  const leagueTeamMaps = {};
+  LEAGUES.forEach(l => { leagueTeamMaps[l.name] = new Map(); });
+
   dbTeams.forEach((t) => {
-    teamNameMap.set(t.name.toLowerCase(), t.id);
+    if (leagueTeamMaps[t.league]) {
+      leagueTeamMaps[t.league].set(t.name.toLowerCase(), t.id);
+    }
   });
 
   let totalMatchesUpserted = 0;
-  for (const league of LEAGUES) { // Fixed typo here from LEAGues to LEAGUES
+  for (const league of LEAGUES) {
     console.log(`Fetching fixtures for ${league.name}...`);
-    const matches = await fetchFixturesForLeague(league, teamNameMap);
+    const matches = await fetchFixturesForLeague(league, leagueTeamMaps[league.name]);
     if (matches.length > 0) {
       const { data: insertedMatches, error: matchErr } = await supabase
         .from('matches')
@@ -201,51 +200,7 @@ async function runImportSequence() {
     await sleep(300);
   }
 
-  console.log(`Successfully synced ${totalMatchesUpserted} match fixtures into Supabase.`);
-
-  console.log('Populating professional player rosters & telemetry...');
-  const firstNames = ['Liam', 'Noah', 'Lucas', 'Oliver', 'Benjamin', 'Mason', 'Ethan', 'Alexander', 'Daniel', 'Aiden', 'Matthew', 'Logan', 'David', 'Joseph', 'Gabriel', 'Samuel', 'Anthony', 'John', 'Dylan'];
-  const lastNames = ['Smith', 'Johnson', 'Williams', 'Brown', 'Jones', 'Miller', 'Davis', 'Wilson', 'Anderson', 'Taylor', 'Thomas', 'Moore', 'Jackson', 'Martin', 'Lee', 'Perez', 'Thompson', 'White', 'Harris', 'Clark'];
-  const positions = ['GK', 'CB', 'LB', 'RB', 'CM', 'CAM', 'RW', 'LW', 'ST'];
-
-  let totalPlayersUpserted = 0;
-  for (const team of dbTeams) {
-    const roster = [];
-    for (let i = 1; i <= 18; i++) {
-      const fName = firstNames[(team.id + i) % firstNames.length];
-      const lName = lastNames[(team.id * i) % lastNames.length];
-      const pName = `${fName} ${lName}`;
-      const pSlug = `${slugify(pName)}-${team.id}-${i}`;
-      const pos = positions[(i + team.id) % positions.length];
-
-      roster.push({
-        external_id: pSlug,
-        name: pName,
-        league: team.league || 'Domestic',
-        gender: team.league === 'NSL' ? 'women' : 'men',
-        position: pos,
-        goals: Math.floor(Math.random() * 8),
-        assists: Math.floor(Math.random() * 6),
-        rating: Number((7.0 + Math.random() * 1.5).toFixed(1)),
-        current_team_id: team.id,
-        nationality: 'Canada',
-      });
-    }
-
-    if (roster.length > 0) {
-      const { data: insertedPlayers, error: playerUpsertErr } = await supabase
-        .from('players')
-        .upsert(roster, { onConflict: 'external_id' })
-        .select('id');
-      if (playerUpsertErr) {
-        console.error(`Error upserting roster for ${team.name}:`, playerUpsertErr.message);
-      } else {
-        totalPlayersUpserted += insertedPlayers?.length || roster.length;
-      }
-    }
-  }
-
-  console.log(`Successfully populated ${totalPlayersUpserted} player profiles into Supabase.`);
+  console.log(`Successfully synced ${totalMatchesUpserted} match fixtures into Supabase with correct league team IDs.`);
   console.log('Import sequence completed successfully!');
 }
 
