@@ -19,6 +19,14 @@ export async function generateStaticParams() {
     .map((p) => ({ slug: p.external_id }));
 }
 
+function formatDate(dateVal: string | null | undefined): string {
+  if (!dateVal) return 'TBD';
+  const parsed = new Date(dateVal);
+  return isNaN(parsed.getTime())
+    ? 'TBD'
+    : parsed.toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' });
+}
+
 async function getPlayerData(slug: string) {
   const { data: player } = await supabase
     .from('players')
@@ -70,7 +78,10 @@ export async function generateMetadata({
   }
 
   const { player } = data;
-  const clubName = player.current_team?.name || player.league || 'Free Agent';
+  const rawTeam = player.current_team;
+  const clubName = Array.isArray(rawTeam)
+    ? rawTeam[0]?.name
+    : rawTeam?.name || player.league || 'Free Agent';
   const title = `${player.name} | The Maple Pitch`;
   const description = `${player.name} — ${player.position || 'Player'} (${clubName}). Nationality: ${player.nationality || 'Canada'}. Stats and dossier on The Maple Pitch.`;
 
@@ -99,7 +110,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
   if (!data?.player) notFound();
 
   const { player, clubMatches } = data;
-  const club = player.current_team;
+  const club = Array.isArray(player.current_team) ? player.current_team[0] : player.current_team;
   const clubName = club?.name || (player.league ? `${player.league} League` : 'Unattached');
 
   const statTiles: [string, string | number][] = [
@@ -155,19 +166,23 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
             <div className="border border-border p-5">
               <div className="text-[10px] font-mono uppercase text-crimson">Recent Fixtures</div>
               <div className="mt-3 divide-y divide-border">
-                {clubMatches.map((m) => (
-                  <Link
-                    key={m.id}
-                    href={`/matches/${m.id}`}
-                    className="flex items-center justify-between py-3 text-xs hover:text-crimson"
-                  >
-                    <span>{new Date(m.match_date).toLocaleDateString()}</span>
-                    <span>
-                      {m.home_team?.name || 'TBD'} vs {m.away_team?.name || 'TBD'}
-                    </span>
-                    <span className="font-mono uppercase text-charcoal-soft">{m.stage || 'Fixture'}</span>
-                  </Link>
-                ))}
+                {clubMatches.map((m) => {
+                  const homeName = Array.isArray(m.home_team) ? m.home_team[0]?.name : m.home_team?.name;
+                  const awayName = Array.isArray(m.away_team) ? m.away_team[0]?.name : m.away_team?.name;
+                  return (
+                    <Link
+                      key={m.id}
+                      href={`/matches/${m.id}`}
+                      className="flex items-center justify-between py-3 text-xs hover:text-crimson"
+                    >
+                      <span>{formatDate(m.match_date)}</span>
+                      <span>
+                        {homeName || 'TBD'} vs {awayName || 'TBD'}
+                      </span>
+                      <span className="font-mono uppercase text-charcoal-soft">{m.stage || 'Fixture'}</span>
+                    </Link>
+                  );
+                })}
               </div>
             </div>
           )}
