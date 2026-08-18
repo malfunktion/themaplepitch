@@ -15,16 +15,19 @@ export const revalidate = 3600;
 export async function generateStaticParams() {
   const { data: teams } = await supabase.from('teams').select('slug');
   return (teams || [])
-    .filter((t) => t.slug)
+    .filter((t) => Boolean(t.slug))
     .map((t) => ({ slug: t.slug }));
 }
 
-function formatDate(dateVal: string | null | undefined): string {
+function safeFormatDate(dateVal: any): string {
   if (!dateVal) return 'TBD';
-  const parsed = new Date(dateVal);
-  return isNaN(parsed.getTime())
-    ? 'TBD'
-    : parsed.toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' });
+  try {
+    const parsed = new Date(dateVal);
+    if (isNaN(parsed.getTime())) return 'TBD';
+    return parsed.toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' });
+  } catch {
+    return 'TBD';
+  }
 }
 
 async function getTeamData(slug: string) {
@@ -48,7 +51,6 @@ async function getTeamData(slug: string) {
         away_team:teams!away_team_id(name, slug)
       `)
       .or(`home_team_id.eq.${team.id},away_team_id.eq.${team.id}`)
-      .order('match_date', { ascending: false })
       .limit(8),
   ]);
 
@@ -105,7 +107,7 @@ export default async function TeamProfilePage({ params }: { params: Promise<{ sl
     <>
       <HubHeader
         eyebrow={`Club Hub // ${team.league || 'Canada'}`}
-        title={team.name.toUpperCase()}
+        title={(team.name || 'Team').toUpperCase()}
         description={`Official club dossier, active roster, and competition schedule for ${team.name}.`}
       />
 
@@ -115,7 +117,7 @@ export default async function TeamProfilePage({ params }: { params: Promise<{ sl
             <div className="text-[10px] font-mono uppercase text-crimson mb-3">Active Roster ({players.length})</div>
             {players.length > 0 ? (
               <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {players.map((p) => (
+                {players.map((p: any) => (
                   <Link
                     key={p.id}
                     href={`/players/${p.external_id || p.id}`}
@@ -142,7 +144,7 @@ export default async function TeamProfilePage({ params }: { params: Promise<{ sl
                   const awayName = awayTeam?.name;
                   return (
                     <div key={m.id} className="py-2.5 flex justify-between items-center">
-                      <span>{formatDate(m.match_date)}</span>
+                      <span>{safeFormatDate(m.match_date)}</span>
                       <span>{homeName || 'Home'} vs {awayName || 'Away'}</span>
                       <span className="font-mono uppercase text-charcoal-soft">{m.stage || 'Match'}</span>
                     </div>
