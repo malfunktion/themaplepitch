@@ -7,5 +7,7 @@ export const DATASET = {
 };
 
 export function formatUpdatedAt(iso: string) {
-  return new Intl.DateTimeFormat('en-CA', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'America/Toronto' }).format(new Date(iso));
+  const parsed = new Date(iso);
+  if (isNaN(parsed.getTime())) return 'UNKNOWN';
+  return new Intl.DateTimeFormat('en-CA', { dateStyle: 'medium', timeStyle: 'short', timeZone: 'America/Toronto' }).format(parsed);
 }
