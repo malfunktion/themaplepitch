@@ -20,7 +20,28 @@ export type WireStory = {
   thumbnailUrl: string | null;
   publishedAt: string;
   isEditorPick: boolean;
+  timestamp?: string;
+  category?: string;
+  subCategory?: string;
+  isHero?: boolean;
+  isDataDrop?: boolean;
+  isApproved?: boolean;
+  gender?: string;
+  relatedPlayers?: string[];
 };
+
+export function mapNewsWireCategoryToLeague(category?: string): League {
+  if (!category) return "CPL";
+  const upper = category.toUpperCase();
+  if (upper.includes("NSL")) return "NSL";
+  if (upper.includes("MLS")) return "MLS";
+  if (upper.includes("MNT")) return "CanMNT";
+  if (upper.includes("WNT")) return "CanWNT";
+  if (upper.includes("PROV")) return "Provincial";
+  if (upper.includes("ABROAD")) return "Abroad";
+  if (upper.includes("TRANSFER")) return "Transfers";
+  return "CPL";
+}
 
 export type StandingsRow = {
   id?: number;
