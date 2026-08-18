@@ -1,3 +1,4 @@
+// src/app/national-teams/page.tsx
 'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
@@ -18,7 +19,7 @@ import PressRoomTranscripts from '@/components/national-teams/PressRoomTranscrip
 import type { StandingsRow } from '@/lib/types';
 import DataStatus from '@/components/layout/DataStatus';
 import { getCplStandings, getNslStandings } from '@/lib/data/standings';
-import { supabase } from '@/lib/supabase'; // Make sure your Supabase client is imported
+import { supabase } from '@/lib/supabase/client';
 
 interface SquadPlayer {
   number: number;
@@ -29,6 +30,19 @@ interface SquadPlayer {
   caps: number;
   ga: string;
   status: 'LOCKED' | 'UNTIED / DUAL-NAT' | 'INJURED';
+}
+
+interface DatabasePlayer {
+  number?: number;
+  name: string;
+  clubName?: string;
+  league?: string;
+  position?: string;
+  age?: number;
+  caps?: number;
+  goals?: number;
+  assists?: number;
+  status?: 'LOCKED' | 'UNTIED / DUAL-NAT' | 'INJURED';
 }
 
 function NationalTeamsContent() {
@@ -74,8 +88,7 @@ function NationalTeamsContent() {
         .eq('gender', activeGender.toLowerCase());
 
       if (!error && data && data.length > 0) {
-        // Map your database rows to your SquadPlayer format
-        const mappedPlayers: SquadPlayer[] = data.map((p, idx) => ({
+        const mappedPlayers: SquadPlayer[] = data.map((p: DatabasePlayer, idx: number) => ({
           number: p.number || idx + 1,
           name: p.name,
           club: p.clubName || p.league || 'International Pool',
@@ -87,7 +100,6 @@ function NationalTeamsContent() {
         }));
         setSquadPool(mappedPlayers);
       } else {
-        // Fallback or empty if DB hasn't populated yet
         setSquadPool([]);
       }
       setLoadingSquad(false);
