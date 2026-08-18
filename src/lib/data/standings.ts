@@ -31,7 +31,6 @@ export async function computeStandings(competition: string): Promise<StandingsRo
     ]);
 
     if (teamsRes.error || matchesRes.error || !teamsRes.data || teamsRes.data.length === 0) {
-      // Fallback arrays guaranteeing clean, current teams (no folded clubs)
       if (competition === 'CPL') {
         return [
           { position: 1, clubName: 'Forge FC', name: 'Forge FC', played: 0, points: 0, goalDifference: 0 },
@@ -57,7 +56,6 @@ export async function computeStandings(competition: string): Promise<StandingsRo
 
     const teams: Team[] = teamsRes.data;
     const matches: Match[] = matchesRes.data || [];
-
     const statsMap: Record<number, { played: number; won: number; drawn: number; lost: number; gf: number; ga: number; pts: number }> = {};
     
     teams.forEach((team: Team) => {
@@ -161,4 +159,4 @@ export async function getLiveTicker(): Promise<LiveTickerItem[]> {
       { id: 't1', competition: 'CPL', homeTeam: 'Forge FC', awayTeam: 'Cavalry FC', homeScore: 2, awayScore: 1, minute: 88, isLive: true },
     ];
   }
-            }
+}
