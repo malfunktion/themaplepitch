@@ -10,7 +10,6 @@ if (!SERVICE_ROLE_KEY) {
 }
 
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
-
 const sleep = (ms) => new Promise((resolve) => setTimeout(resolve, ms));
 
 const FETCH_HEADERS = {
@@ -19,6 +18,7 @@ const FETCH_HEADERS = {
 };
 
 function slugify(text) {
+  if (!text) return '';
   return text
     .toString()
     .toLowerCase()
@@ -48,10 +48,10 @@ function normalizePosition(pos) {
   return 'CM';
 }
 
-const LEAGUES = [  
-  { name: 'CPL', idLeague: '4820', gender: 'men' },  
-  { name: 'NSL', idLeague: '5602', gender: 'women' },  
-  { name: 'Canadian Championship', idLeague: '5922', gender: 'men' },  
+const LEAGUES = [
+  { name: 'CPL', idLeague: '4820', gender: 'men' },
+  { name: 'NSL', idLeague: '5602', gender: 'women' },
+  { name: 'Canadian Championship', idLeague: '5922', gender: 'men' },
   { name: 'MLS', idLeague: '4346', gender: 'men' },
 ];
 
@@ -63,21 +63,18 @@ async function fetchTeamsFromAPI(league) {
     const url = `https://www.thesportsdb.com/api/v1/json/${THESPORTSDB_KEY}/lookup_all_teams.php?id=${league.idLeague}`;
     const res = await fetch(url, { headers: FETCH_HEADERS });
     const contentType = res.headers.get('content-type') || '';
-
     if (!res.ok || !contentType.includes('json')) {
       return [];
     }
-
     const data = await res.json();
     if (!data || !data.teams) return [];
-
+    
     let rawTeams = data.teams;
     if (league.name === 'MLS') {
       rawTeams = rawTeams.filter((t) =>
         CANADIAN_MLS_TEAMS.some((cName) => t.strTeam?.toLowerCase().includes(cName.toLowerCase()))
       );
     }
-
     return rawTeams.map((t) => ({
       external_id: t.idTeam,
       name: t.strTeam,
@@ -86,6 +83,58 @@ async function fetchTeamsFromAPI(league) {
       logo_url: t.strBadge || t.strLogo || null,
     }));
   } catch (err) {
+    console.error(`Error fetching teams for ${league.name}:`, err.message);
+    return [];
+  }
+}
+
+async function fetchFixturesForLeague(league, teamMap) {
+  if (!league.idLeague) return [];
+  try {
+    const url = `https://www.thesportsdb.com/api/v1/json/${THESPORTSDB_KEY}/eventsseason.php?id=${league.idLeague}&s=2026`;
+    const res = await fetch(url, { headers: FETCH_HEADERS });
+    const contentType = res.headers.get('content-type') || '';
+    if (!res.ok || !contentType.includes('json')) {
+      return [];
+    }
+    const data = await res.json();
+    const events = data.events || data.eventsseason;
+    if (!events || !Array.isArray(events)) return [];
+
+    const formattedMatches = [];
+    for (const ev of events) {
+      const homeTeamName = ev.strHomeTeam;
+      const awayTeamName = ev.strAwayTeam;
+      
+      const homeTeamId = teamMap.get(homeTeamName?.toLowerCase());
+      const awayTeamId = teamMap.get(awayTeamName?.toLowerCase());
+
+      if (!homeTeamId || !awayTeamId) continue;
+
+      const homeScore = ev.intHomeScore !== null && ev.intHomeScore !== '' ? parseInt(ev.intHomeScore, 10) : null;
+      const awayScore = ev.intAwayScore !== null && ev.intAwayScore !== '' ? parseInt(ev.intAwayScore, 10) : null;
+      
+      let status = 'Scheduled';
+      const progress = ev.strStatus?.toLowerCase() || '';
+      if (progress.includes('ft') || progress.includes('final') || homeScore !== null) {
+        status = 'FT';
+      }
+
+      formattedMatches.push({
+        external_id: ev.idEvent,
+        competition: league.name,
+        home_team_id: homeTeamId,
+        away_team_id: awayTeamId,
+        home_score: homeScore,
+        away_score: awayScore,
+        status: status,
+        match_date: ev.dateEvent || null,
+      });
+    }
+
+    return formattedMatches;
+  } catch (err) {
+    console.error(`Error fetching fixtures for ${league.name}:`, err.message);
     return [];
   }
 }
@@ -96,14 +145,12 @@ async function fetchRosterForTeam(team) {
     const url = `https://www.thesportsdb.com/api/v1/json/${THESPORTSDB_KEY}/lookup_all_players.php?id=${team.external_id}`;
     const res = await fetch(url, { headers: FETCH_HEADERS });
     const contentType = res.headers.get('content-type') || '';
-
     if (!res.ok || !contentType.includes('json')) {
       return [];
     }
-
     const data = await res.json();
     if (!data || !data.player) return [];
-
+    
     return data.player.map((p) => {
       const pSlug = `${slugify(p.strPlayer)}-${p.idPlayer || Math.floor(Math.random() * 10000)}`;
       return {
@@ -125,13 +172,9 @@ async function fetchRosterForTeam(team) {
 }
 
 async function runImportSequence() {
-  console.log('Importing teams for CPL...');
-  console.log('Importing teams for NSL...');
-  console.log('Importing teams for Canadian Championship...');
-  console.log('Importing teams for MLS...');
-
   let allApiTeams = [];
   for (const league of LEAGUES) {
+    console.log(`Importing teams for ${league.name}...`);
     const teams = await fetchTeamsFromAPI(league);
     allApiTeams.push(...teams);
     await sleep(250);
@@ -141,7 +184,6 @@ async function runImportSequence() {
     const { error: teamUpsertErr } = await supabase
       .from('teams')
       .upsert(allApiTeams, { onConflict: 'slug' });
-
     if (teamUpsertErr) {
       console.error('Error upserting teams:', teamUpsertErr.message);
     }
@@ -158,26 +200,47 @@ async function runImportSequence() {
 
   console.log(`Successfully upserted ${dbTeams.length} official clean teams into Supabase.`);
 
-  console.log('Fetching fixtures for CPL (Season 2026)...');
-  console.log('Fetching fixtures for NSL (Season 2026)...');
-  console.log('Fetching fixtures for Canadian Championship (Season 2026)...');
-  console.log('Fetching fixtures for MLS (Season 2026)...');
-  console.log('No external match fixtures retrieved; proceeding with team and player vaults.');
+  // Build a lookup map for team names (lowercase) to database UUID/IDs
+  const teamNameMap = new Map();
+  dbTeams.forEach((t) => {
+    teamNameMap.set(t.name.toLowerCase(), t.id);
+  });
+
+  // Fetch and insert fixtures/matches for standings support
+  let totalMatchesUpserted = 0;
+  for (const league of LEAGUES) {
+    console.log(`Fetching fixtures for ${league.name} (Season 2026)...`);
+    const matches = await fetchFixturesForLeague(league, teamNameMap);
+    if (matches.length > 0) {
+      const { data: insertedMatches, error: matchErr } = await supabase
+        .from('matches')
+        .upsert(matches, { onConflict: 'external_id' })
+        .select('id');
+      if (matchErr) {
+        console.error(`Error upserting matches for ${league.name}:`, matchErr.message);
+      } else {
+        totalMatchesUpserted += insertedMatches?.length || matches.length;
+      }
+    }
+    await sleep(250);
+  }
+
+  if (totalMatchesUpserted > 0) {
+    console.log(`Successfully synced ${totalMatchesUpserted} match fixtures into Supabase.`);
+  } else {
+    console.log('No external match fixtures retrieved; proceeding with team and player vaults.');
+  }
 
   console.log('Importing core Canadian player profiles and telemetry...');
-
   let totalPlayersUpserted = 0;
-
   for (const team of dbTeams) {
     if (!team.external_id) continue;
-
     const roster = await fetchRosterForTeam(team);
     if (roster.length > 0) {
       const { data: insertedPlayers, error: playerUpsertErr } = await supabase
         .from('players')
         .upsert(roster, { onConflict: 'external_id' })
         .select('id');
-
       if (playerUpsertErr) {
         console.error(`Error upserting roster for ${team.name}:`, playerUpsertErr.message);
       } else {
