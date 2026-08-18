@@ -1,4 +1,4 @@
-// scripts/import-national-teams.mjs
+// scripts/import-teams-abroad.mjs
 import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -20,80 +20,100 @@ function slugify(name) {
     .replace(/(^-|-$)/g, '');
 }
 
-async function importNationalTeams() {
-  console.log('Importing Canadian National Teams...');
+async function importTeamsAbroad() {
+  console.log('Importing Global Clubs (Teams Abroad)...');
 
-  // 1. Upsert National Teams using 'name' and 'external_id'
-  const nationalTeams = [
+  // 1. Define international clubs where Canadian stars play
+  const globalClubs = [
     {
-      external_id: 'nat-canmnt',
-      name: 'Canada Men\'s National Team',
-      short_name: 'CanMNT',
-      league: 'National Teams',
-      gender: 'men',
+      external_id: 'club-bayern-munich',
+      name: 'Bayern Munich',
+      short_name: 'BAY',
+      league: 'Abroad',
       division_level: 'International',
-      slug: 'canmnt',
+      slug: 'bayern-munich',
     },
     {
-      external_id: 'nat-canwnt',
-      name: 'Canada Women\'s National Team',
-      short_name: 'CanWNT',
-      league: 'National Teams',
-      gender: 'women',
+      external_id: 'club-lille-osc',
+      name: 'Lille OSC',
+      short_name: 'LIL',
+      league: 'Abroad',
       division_level: 'International',
-      slug: 'canwnt',
+      slug: 'lille-osc',
+    },
+    {
+      external_id: 'club-fc-porto',
+      name: 'FC Porto',
+      short_name: 'POR',
+      league: 'Abroad',
+      division_level: 'International',
+      slug: 'fc-porto',
+    },
+    {
+      external_id: 'club-villarreal',
+      name: 'Villarreal',
+      short_name: 'VIL',
+      league: 'Abroad',
+      division_level: 'International',
+      slug: 'villarreal',
+    },
+    {
+      external_id: 'club-marseille',
+      name: 'Marseille',
+      short_name: 'OM',
+      league: 'Abroad',
+      division_level: 'International',
+      slug: 'marseille',
+    },
+    {
+      external_id: 'club-celtic-fc',
+      name: 'Celtic FC',
+      short_name: 'CEL',
+      league: 'Abroad',
+      division_level: 'International',
+      slug: 'celtic-fc',
     },
   ];
 
-  for (const team of nationalTeams) {
-    const { error } = await supabase.from('teams').upsert(team, { onConflict: 'external_id' });
+  for (const club of globalClubs) {
+    const { error } = await supabase.from('teams').upsert(club, { onConflict: 'external_id' });
     if (error) {
-      console.error(`Failed to upsert team ${team.name}:`, error.message);
+      console.error(`Failed to upsert club ${club.name}:`, error.message);
     } else {
-      console.log(`Successfully upserted: ${team.name}`);
+      console.log(`Successfully upserted global club: ${club.name}`);
     }
   }
 
-  // 2. Fetch team IDs from Supabase
+  // 2. Fetch updated team map to retrieve generated club IDs
   const { data: dbTeams, error: fetchTeamError } = await supabase
     .from('teams')
-    .select('id, short_name, external_id');
+    .select('id, name, external_id');
 
   if (fetchTeamError || !dbTeams) {
     console.error('Failed to fetch team map:', fetchTeamError);
     return;
   }
 
-  const teamMap = {};
+  const clubMap = {};
   dbTeams.forEach((t) => {
-    teamMap[t.short_name] = t.id;
+    clubMap[t.name] = t.id;
   });
 
-  // 3. Core National Team Pool
-  const nationalPool = [
-    // CanMNT
-    { name: 'Alphonso Davies', position: 'LB', league: 'Abroad', gender: 'men', teamKey: 'CanMNT', caps: 55, goals: 15 },
-    { name: 'Jonathan David', position: 'ST', league: 'Abroad', gender: 'men', teamKey: 'CanMNT', caps: 54, goals: 30 },
-    { name: 'Stephen Eustáquio', position: 'CM', league: 'Abroad', gender: 'men', teamKey: 'CanMNT', caps: 42, goals: 5 },
-    { name: 'Tajon Buchanan', position: 'RW', league: 'Abroad', gender: 'men', teamKey: 'CanMNT', caps: 40, goals: 8 },
-    { name: 'Ismaël Koné', position: 'CM', league: 'Abroad', gender: 'men', teamKey: 'CanMNT', caps: 26, goals: 3 },
-    { name: 'Alistair Johnston', position: 'RB', league: 'Abroad', gender: 'men', teamKey: 'CanMNT', caps: 48, goals: 2 },
-    { name: 'Moïse Bombito', position: 'CB', league: 'Abroad', gender: 'men', teamKey: 'CanMNT', caps: 18, goals: 1 },
-
-    // CanWNT
-    { name: 'Jessie Fleming', position: 'CM', league: 'Abroad', gender: 'women', teamKey: 'CanWNT', caps: 130, goals: 30 },
-    { name: 'Kadeisha Buchanan', position: 'CB', league: 'Abroad', gender: 'women', teamKey: 'CanWNT', caps: 130, goals: 5 },
-    { name: 'Cloé Lacasse', position: 'LW', league: 'Abroad', gender: 'women', teamKey: 'CanWNT', caps: 55, goals: 20 },
-    { name: 'Julia Grosso', position: 'CM', league: 'Abroad', gender: 'women', teamKey: 'CanWNT', caps: 60, goals: 8 },
-    { name: 'Evelyne Viens', position: 'ST', league: 'NSL', gender: 'women', teamKey: 'CanWNT', caps: 45, goals: 12 },
-    { name: 'Vanessa Gilles', position: 'CB', league: 'NSL', gender: 'women', teamKey: 'CanWNT', caps: 45, goals: 4 },
+  // 3. Players Abroad dataset mapping to their respective everyday clubs
+  const playersAbroad = [
+    { name: 'Alphonso Davies', position: 'LB', league: 'Abroad', gender: 'men', clubName: 'Bayern Munich', goals: 15, assists: 18, rating: 8.1 },
+    { name: 'Jonathan David', position: 'ST', league: 'Abroad', gender: 'men', clubName: 'Lille OSC', goals: 30, assists: 6, rating: 8.4 },
+    { name: 'Stephen Eustáquio', position: 'CM', league: 'Abroad', gender: 'men', clubName: 'FC Porto', goals: 5, assists: 11, rating: 7.8 },
+    { name: 'Tajon Buchanan', position: 'RW', league: 'Abroad', gender: 'men', clubName: 'Villarreal', goals: 8, assists: 5, rating: 7.8 },
+    { name: 'Ismaël Koné', position: 'CM', league: 'Abroad', gender: 'men', clubName: 'Marseille', goals: 3, assists: 4, rating: 7.7 },
+    { name: 'Alistair Johnston', position: 'RB', league: 'Abroad', gender: 'men', clubName: 'Celtic FC', goals: 2, assists: 6, rating: 7.9 },
   ];
 
-  console.log('Linking national team player profiles...');
+  console.log('Linking players abroad to their global club profiles...');
 
-  for (const player of nationalPool) {
+  for (const player of playersAbroad) {
     const playerSlug = slugify(player.name);
-    const targetTeamId = teamMap[player.teamKey];
+    const targetTeamId = clubMap[player.clubName];
 
     const playerPayload = {
       external_id: playerSlug,
@@ -102,25 +122,27 @@ async function importNationalTeams() {
       position: player.position,
       league: player.league,
       gender: player.gender,
-      team_id: targetTeamId,
+      team_id: targetTeamId || null,
+      goals: player.goals,
+      assists: player.assists,
+      rating: player.rating,
     };
 
-    // Upsert player profile
     const { error: upsertError } = await supabase
       .from('players')
       .upsert(playerPayload, { onConflict: 'external_id' });
 
     if (upsertError) {
-      console.error(`Failed to upsert player ${player.name}:`, upsertError.message);
+      console.error(`Failed to sync player ${player.name}:`, upsertError.message);
     } else {
-      console.log(`Successfully synced profile: ${player.name} → Team ID: ${targetTeamId || 'Unlinked'}`);
+      console.log(`Successfully linked: ${player.name} → Club: ${player.clubName} (Team ID: ${targetTeamId || 'Unlinked'})`);
     }
   }
 
-  console.log('National teams import and profile linking completed successfully!');
+  console.log('Teams Abroad import and player club linking completed successfully!');
 }
 
-importNationalTeams().catch((err) => {
-  console.error('National team import failed:', err.message);
+importTeamsAbroad().catch((err) => {
+  console.error('Teams abroad import failed:', err.message);
   process.exit(1);
 });
