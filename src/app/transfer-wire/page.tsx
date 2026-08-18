@@ -4,6 +4,7 @@ import SourceStamp from '@/components/entity/SourceStamp';
 import SidebarStack from '@/components/sidebar/SidebarStack';
 import { wireItems } from '@/lib/data/demo';
 import { standings, nslStandings } from '@/lib/data/proLeagues/proLeaguesDemo';
+import { formatUpdatedAt } from '@/lib/dataStatus';
 
 export default function TransferWire() {
   return (
@@ -20,7 +21,7 @@ export default function TransferWire() {
             .map((x) => (
               <article key={x.id} className="border border-border p-5">
                 <div className="text-[9px] font-mono uppercase text-crimson">
-                  MOVEMENT // {new Date(x.timestamp).toLocaleString('en-CA')}
+                  MOVEMENT // {formatUpdatedAt(x.timestamp)}
                 </div>
                 <h2 className="mt-1 font-black">{x.headline}</h2>
                 <p className="mt-2 text-sm text-charcoal-soft">{x.dek}</p>
