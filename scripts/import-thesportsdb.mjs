@@ -3,7 +3,8 @@ import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://wsbyyvtcvyhidvijvwuo.supabase.co';
 const SERVICE_ROLE_KEY = process.env.SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
-const THESPORTSDB_KEY = process.env.THESPORTSDB_KEY || '5c5b3e3c9a98dd5a09969018da39aa37';
+// Swapped to the public sandbox key '123' to test fixture and roster access
+const THESPORTSDB_KEY = process.env.THESPORTSDB_KEY || '123';
 
 if (!SERVICE_ROLE_KEY) {
   console.error('Error: SERVICE_ROLE_KEY environment variable is missing.');
@@ -92,7 +93,7 @@ async function fetchTeamsFromAPI(league) {
 async function fetchFixturesForLeague(league, teamNameMap) {
   if (!league.idLeague) return [];
   
-  const seasonsToTry = ['2026', '2025-2026'];
+  const seasonsToTry = ['2026', '2025-2026', '2024'];
   let events = [];
 
   for (const season of seasonsToTry) {
@@ -123,15 +124,12 @@ async function fetchFixturesForLeague(league, teamNameMap) {
     const homeTeamName = ev.strHomeTeam || '';
     const awayTeamName = ev.strAwayTeam || '';
     
-    // 1. Exact lowercase match
     let homeTeamId = teamNameMap.get(homeTeamName.toLowerCase());
     let awayTeamId = teamNameMap.get(awayTeamName.toLowerCase());
 
-    // 2. Slug / fuzzy fallback matching
     if (!homeTeamId) {
-      const homeSlug = slugify(homeTeamName);
       for (const [name, id] of teamNameMap.entries()) {
-        if (slugify(name) === homeSlug || homeTeamName.toLowerCase().includes(name) || name.includes(homeTeamName.toLowerCase())) {
+        if (slugify(name) === slugify(homeTeamName) || homeTeamName.toLowerCase().includes(name) || name.includes(homeTeamName.toLowerCase())) {
           homeTeamId = id;
           break;
         }
@@ -139,19 +137,15 @@ async function fetchFixturesForLeague(league, teamNameMap) {
     }
 
     if (!awayTeamId) {
-      const awaySlug = slugify(awayTeamName);
       for (const [name, id] of teamNameMap.entries()) {
-        if (slugify(name) === awaySlug || awayTeamName.toLowerCase().includes(name) || name.includes(awayTeamName.toLowerCase())) {
+        if (slugify(name) === slugify(awayTeamName) || awayTeamName.toLowerCase().includes(name) || name.includes(awayTeamName.toLowerCase())) {
           awayTeamId = id;
           break;
         }
       }
     }
 
-    if (!homeTeamId || !awayTeamId) {
-      console.warn(`[Mapping Warning] Skipping fixture: Could not match teams ["${homeTeamName}" vs "${awayTeamName}"] in database for ${league.name}`);
-      continue;
-    }
+    if (!homeTeamId || !awayTeamId) continue;
 
     const homeScore = ev.intHomeScore !== null && ev.intHomeScore !== '' ? parseInt(ev.intHomeScore, 10) : null;
     const awayScore = ev.intAwayScore !== null && ev.intAwayScore !== '' ? parseInt(ev.intAwayScore, 10) : null;
@@ -215,7 +209,7 @@ async function runImportSequence() {
     console.log(`Importing teams for ${league.name}...`);
     const teams = await fetchTeamsFromAPI(league);
     allApiTeams.push(...teams);
-    await sleep(250);
+    await sleep(500);
   }
 
   if (allApiTeams.length > 0) {
@@ -232,19 +226,17 @@ async function runImportSequence() {
     .select('id, external_id, name, slug, league');
 
   if (dbTeamsErr || !dbTeams) {
-    console.error('Failed to retrieve teams from Supabase vault:', dbTeamsErr?.message);
+    console.error('Failed to retrieve teams from Supabase:', dbTeamsErr?.message);
     process.exit(1);
   }
 
   console.log(`Successfully upserted ${dbTeams.length} official clean teams into Supabase.`);
 
-  // Build a lookup map for team names (lowercase) to database UUID/IDs
   const teamNameMap = new Map();
   dbTeams.forEach((t) => {
     teamNameMap.set(t.name.toLowerCase(), t.id);
   });
 
-  // Fetch and insert fixtures/matches for standings support
   let totalMatchesUpserted = 0;
   for (const league of LEAGUES) {
     console.log(`Fetching fixtures for ${league.name}...`);
@@ -260,13 +252,13 @@ async function runImportSequence() {
         totalMatchesUpserted += insertedMatches?.length || matches.length;
       }
     }
-    await sleep(250);
+    await sleep(500);
   }
 
   if (totalMatchesUpserted > 0) {
     console.log(`Successfully synced ${totalMatchesUpserted} match fixtures into Supabase.`);
   } else {
-    console.log('No external match fixtures retrieved; proceeding with team and player vaults.');
+    console.log('No external match fixtures retrieved using test key sandbox.');
   }
 
   console.log('Importing core Canadian player profiles and telemetry...');
@@ -285,11 +277,11 @@ async function runImportSequence() {
         totalPlayersUpserted += insertedPlayers?.length || roster.length;
       }
     }
-    await sleep(250);
+    await sleep(500);
   }
 
   console.log(`Successfully upserted ${totalPlayersUpserted} player profiles into Supabase.`);
-  console.log('TheSportsDB automated import sequence completed successfully!');
+  console.log('TheSportsDB sandbox import sequence completed.');
 }
 
 runImportSequence().catch((err) => {
