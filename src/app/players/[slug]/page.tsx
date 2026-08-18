@@ -15,16 +15,19 @@ export const revalidate = 3600;
 export async function generateStaticParams() {
   const { data: players } = await supabase.from('players').select('external_id');
   return (players || [])
-    .filter((p) => p.external_id)
+    .filter((p) => typeof p?.external_id === 'string' && p.external_id.trim().length > 0)
     .map((p) => ({ slug: p.external_id }));
 }
 
-function formatDate(dateVal: string | null | undefined): string {
+function safeFormatDate(dateVal: any): string {
   if (!dateVal) return 'TBD';
-  const parsed = new Date(dateVal);
-  return isNaN(parsed.getTime())
-    ? 'TBD'
-    : parsed.toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' });
+  try {
+    const parsed = new Date(dateVal);
+    if (isNaN(parsed.getTime())) return 'TBD';
+    return parsed.toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' });
+  } catch {
+    return 'TBD';
+  }
 }
 
 async function getPlayerData(slug: string) {
@@ -40,7 +43,7 @@ async function getPlayerData(slug: string) {
       )
     `)
     .eq('external_id', slug)
-    .single();
+    .maybeSingle();
 
   if (!player) return null;
 
@@ -56,7 +59,6 @@ async function getPlayerData(slug: string) {
         away_team:teams!away_team_id(name, slug)
       `)
       .or(`home_team_id.eq.${player.current_team_id},away_team_id.eq.${player.current_team_id}`)
-      .order('match_date', { ascending: false })
       .limit(6);
 
     clubMatches = matches || [];
@@ -82,8 +84,8 @@ export async function generateMetadata({
   const clubName = Array.isArray(rawTeam)
     ? rawTeam[0]?.name
     : rawTeam?.name || player.league || 'Free Agent';
-  const title = `${player.name} | The Maple Pitch`;
-  const description = `${player.name} — ${player.position || 'Player'} (${clubName}). Nationality: ${player.nationality || 'Canada'}. Stats and dossier on The Maple Pitch.`;
+  const title = `${player.name || 'Player'} | The Maple Pitch`;
+  const description = `${player.name || 'Player'} — ${player.position || 'Player'} (${clubName}). Nationality: ${player.nationality || 'Canada'}. Stats and dossier on The Maple Pitch.`;
 
   return {
     title,
@@ -126,7 +128,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
     <>
       <HubHeader
         eyebrow={`Player dossier // ${clubName}`}
-        title={player.name.toUpperCase()}
+        title={(player.name || 'Player').toUpperCase()}
         description={`${player.position || 'Player'} · ${player.nationality || 'Canada'} · Playing in ${player.league || 'Domestic'}. Live profile powered by Supabase telemetry.`}
       />
 
@@ -177,7 +179,7 @@ export default async function PlayerProfilePage({ params }: { params: Promise<{ 
                       href={`/matches/${m.id}`}
                       className="flex items-center justify-between py-3 text-xs hover:text-crimson"
                     >
-                      <span>{formatDate(m.match_date)}</span>
+                      <span>{safeFormatDate(m.match_date)}</span>
                       <span>
                         {homeName || 'TBD'} vs {awayName || 'TBD'}
                       </span>
