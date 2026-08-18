@@ -344,7 +344,7 @@ export default function StatsHubPage() {
     });
   }, [activePlayers, programGender]);
 
-  // Dynamically compute leaders strictly from database records
+  // Dynamic calculations directly from live Supabase records
   const computedGoldenBoot = useMemo<PlayerRow[]>(() => {
     const source = filteredPlayers.length > 0 ? filteredPlayers : activePlayers;
     const sorted = [...source].sort((a: any, b: any) => (b.goals ?? 0) - (a.goals ?? 0));
@@ -412,6 +412,58 @@ export default function StatsHubPage() {
         slug: p.slug || p.external_id || p.id,
       };
     });
+  }, [activePlayers]);
+
+  // DYNAMIC: Discipline monitor computed directly from database
+  const computedDiscipline = useMemo(() => {
+    const source = filteredPlayers.length > 0 ? filteredPlayers : activePlayers;
+    const sorted = [...source].sort((a: any, b: any) => {
+      const scoreB = (b.yellow_cards || 0) * 1 + (b.red_cards || 0) * 3;
+      const scoreA = (a.yellow_cards || 0) * 1 + (a.red_cards || 0) * 3;
+      return scoreB - scoreA;
+    });
+    return sorted.slice(0, 5).map((p: any, idx: number) => {
+      const teamObj = Array.isArray(p.current_team) ? p.current_team[0] : p.current_team;
+      return {
+        rank: idx + 1,
+        playerId: p.id || p.slug,
+        name: p.name || 'Player',
+        club: teamObj?.name || p.league || 'Pro Club',
+        yellows: p.yellow_cards ?? 0,
+        reds: p.red_cards ?? 0,
+        slug: p.slug || p.external_id || p.id,
+      };
+    });
+  }, [filteredPlayers, activePlayers]);
+
+  // DYNAMIC: Team of the Week selected from top-rated DB players
+  const computedTeamOfWeek = useMemo(() => {
+    const source = filteredPlayers.length > 0 ? filteredPlayers : activePlayers;
+    const sorted = [...source].sort((a: any, b: any) => (b.rating ?? 0) - (a.rating ?? 0));
+    return sorted.slice(0, 6).map((p: any) => {
+      const teamObj = Array.isArray(p.current_team) ? p.current_team[0] : p.current_team;
+      const playerName = p.name || 'Player';
+      return {
+        playerId: p.id || p.slug,
+        name: playerName,
+        club: teamObj?.name || p.league || 'Pro Club',
+        league: p.league || 'Domestic',
+        initials: playerName.split(' ').map((n: string) => n[0]).join('.'),
+        slug: p.slug || p.external_id || p.id,
+      };
+    });
+  }, [filteredPlayers, activePlayers]);
+
+  // DYNAMIC: Records & Milestones aggregated live from Supabase
+  const computedRecords = useMemo(() => {
+    const topScorer = [...activePlayers].sort((a: any, b: any) => (b.goals ?? 0) - (a.goals ?? 0))[0];
+    const topAssister = [...activePlayers].sort((a: any, b: any) => (b.assists ?? 0) - (a.assists ?? 0))[0];
+    const topRated = [...activePlayers].sort((a: any, b: any) => (b.rating ?? 0) - (a.rating ?? 0))[0];
+    return [
+      { label: 'ALL-TIME DATABASE GOAL LEADER', value: topScorer ? `${topScorer.name} — ${topScorer.goals ?? 0} Goals` : '—' },
+      { label: 'ALL-TIME DATABASE PLAYMAKER', value: topAssister ? `${topAssister.name} — ${topAssister.assists ?? 0} Assists` : '—' },
+      { label: 'HIGHEST RATED DATABASE ENTITY', value: topRated ? `${topRated.name} — ${topRated.rating ? Number(topRated.rating).toFixed(1) : '—'} RTG` : '—' },
+    ];
   }, [activePlayers]);
 
   const provincialScorers = getProvincialScorers(provStatsProvince);
@@ -657,6 +709,120 @@ export default function StatsHubPage() {
                 </div>
               </section>
             </div>
+          )}
+
+          {(showOverview || showPlayers) && (
+            <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
+              {/* RESTORED: Discipline Monitor (Dynamic from DB) */}
+              <section className="bg-card border border-border rounded-sm overflow-hidden">
+                <div className="p-4 border-b border-border">
+                  <span className="text-[9px] font-mono tracking-widest text-charcoal-soft">
+                    DISCIPLINE MONITOR
+                  </span>
+                  <h2 className="text-sm font-mono font-bold text-charcoal mt-1">
+                    CARDED LEADERS
+                  </h2>
+                </div>
+                <div className="p-3 font-mono">
+                  {computedDiscipline.length === 0 ? (
+                    <div className="py-4 text-center text-[10px] text-charcoal-soft">
+                      NO CARD DATA RECORDED
+                    </div>
+                  ) : (
+                    computedDiscipline.map((p) => (
+                      <div
+                        key={p.playerId}
+                        className="grid grid-cols-12 items-center py-2 border-b border-border/40 text-[10px]"
+                      >
+                        <span className="col-span-1 text-charcoal-soft">{p.rank}</span>
+                        <div className="col-span-7 min-w-0">
+                          <Link
+                            href={`/players/${p.slug}`}
+                            className="font-bold text-charcoal hover:text-crimson truncate block"
+                          >
+                            {p.name}
+                          </Link>
+                          <span className="font-normal text-charcoal-soft text-[8px] truncate block">
+                            {p.club}
+                          </span>
+                        </div>
+                        <span className="col-span-2 text-right text-crimson font-bold">
+                          {p.yellows} Y
+                        </span>
+                        <span className="col-span-2 text-right text-charcoal font-bold">
+                          {p.reds} R
+                        </span>
+                      </div>
+                    ))
+                  )}
+                </div>
+              </section>
+
+              {/* RESTORED: Historical Database Records (Dynamic from DB) */}
+              <section className="bg-card border border-border rounded-sm overflow-hidden">
+                <div className="p-4 border-b border-border">
+                  <span className="text-[9px] font-mono tracking-widest text-charcoal-soft">
+                    HISTORICAL DATABASE
+                  </span>
+                  <h2 className="text-sm font-mono font-bold text-charcoal mt-1">
+                    RECORDS & MILESTONES
+                  </h2>
+                </div>
+                <div className="p-3">
+                  {computedRecords.map((r) => (
+                    <div key={r.label} className="py-2 border-b border-border/40">
+                      <div className="text-[8px] font-mono uppercase tracking-wider text-charcoal-soft">
+                        {r.label}
+                      </div>
+                      <div className="text-[10px] font-mono font-bold text-charcoal mt-0.5">
+                        {r.value}
+                      </div>
+                    </div>
+                  ))}
+                </div>
+              </section>
+            </div>
+          )}
+
+          {showOverview && (
+            /* RESTORED: Team of the Week (Dynamic from DB) */
+            <section className="bg-card border border-border rounded-sm overflow-hidden">
+              <div className="p-4 border-b border-border flex items-center justify-between">
+                <div>
+                  <span className="text-[9px] font-mono tracking-widest text-charcoal-soft">
+                    EDITOR&apos;S INDEX
+                  </span>
+                  <h2 className="text-sm font-mono font-bold text-charcoal mt-1">
+                    ALL-CANADIAN TEAM OF THE WEEK
+                  </h2>
+                </div>
+                <span className="text-[9px] font-mono border border-border px-2 py-1 text-charcoal-soft">
+                  TOP RATED DB
+                </span>
+              </div>
+              <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                {computedTeamOfWeek.map((p) => (
+                  <Link
+                    key={p.playerId}
+                    href={`/players/${p.slug}`}
+                    className="border border-border/60 bg-surface/40 hover:border-crimson rounded-sm p-2 flex items-center gap-2 transition-colors"
+                  >
+                    <span className="w-7 h-7 bg-border rounded-sm flex items-center justify-center text-[8px] font-bold shrink-0">
+                      {p.initials}
+                    </span>
+                    <div className="min-w-0">
+                      <div className="text-[10px] font-mono font-bold truncate hover:text-crimson">
+                        {p.name}
+                      </div>
+                      <div className="text-[8px] font-mono text-charcoal-soft truncate">
+                        {p.club} {'// '}
+                        {p.league}
+                      </div>
+                    </div>
+                  </Link>
+                ))}
+              </div>
+            </section>
           )}
         </main>
 
