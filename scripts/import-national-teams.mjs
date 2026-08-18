@@ -3,7 +3,6 @@ import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
-const THESPORTSDB_KEY = process.env.THESPORTSDB_KEY || '5c5b3e3c9a98dd5a09969018da39aa37';
 
 if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
   console.error('Missing Supabase environment variables.');
@@ -24,11 +23,11 @@ function slugify(name) {
 async function importNationalTeams() {
   console.log('Importing Canadian National Teams...');
 
-  // 1. Upsert National Teams into the teams table
+  // 1. Upsert National Teams using 'name' (matching your existing teams schema)
   const nationalTeams = [
     {
       external_id: 'nat-canmnt',
-      team_name: 'Canada Men\'s National Team',
+      name: 'Canada Men\'s National Team',
       short_name: 'CanMNT',
       league: 'National Teams',
       gender: 'men',
@@ -37,7 +36,7 @@ async function importNationalTeams() {
     },
     {
       external_id: 'nat-canwnt',
-      team_name: 'Canada Women\'s National Team',
+      name: 'Canada Women\'s National Team',
       short_name: 'CanWNT',
       league: 'National Teams',
       gender: 'women',
@@ -49,9 +48,9 @@ async function importNationalTeams() {
   for (const team of nationalTeams) {
     const { error } = await supabase.from('teams').upsert(team, { onConflict: 'external_id' });
     if (error) {
-      console.error(`Failed to upsert team ${team.team_name}:`, error.message);
+      console.error(`Failed to upsert team ${team.name}:`, error.message);
     } else {
-      console.log(`Successfully upserted: ${team.team_name}`);
+      console.log(`Successfully upserted: ${team.name}`);
     }
   }
 
@@ -70,7 +69,7 @@ async function importNationalTeams() {
     teamMap[t.short_name] = t.id;
   });
 
-  // 3. Core National Team Players to Sync & Link
+  // 3. Core National Team Pool
   const nationalPool = [
     // CanMNT
     { name: 'Alphonso Davies', position: 'LB', league: 'Abroad', gender: 'men', teamKey: 'CanMNT', caps: 55, goals: 15 },
@@ -96,52 +95,25 @@ async function importNationalTeams() {
     const playerSlug = slugify(player.name);
     const targetTeamId = teamMap[player.teamKey];
 
-    // Check if player already exists in the database
-    const { data: existingPlayer } = await supabase
-      .from('players')
-      .select('id, metadata')
-      .eq('external_id', playerSlug)
-      .single();
-
-    const metadataPayload = {
-      national_team: player.teamKey,
-      caps: player.caps,
-      international_goals: player.goals,
+    const playerPayload = {
+      external_id: playerSlug,
+      slug: playerSlug,
+      name: player.name,
+      position: player.position,
+      league: player.league,
+      gender: player.gender,
+      team_id: targetTeamId,
     };
 
-    if (existingPlayer) {
-      // Update existing profile with national team link without duplication
-      const { error: updateError } = await supabase
-        .from('players')
-        .update({
-          team_id: targetTeamId,
-          metadata: metadataPayload,
-        })
-        .eq('id', existingPlayer.id);
+    // Upsert player profile
+    const { error: upsertError } = await supabase
+      .from('players')
+      .upsert(playerPayload, { onConflict: 'external_id' });
 
-      if (updateError) {
-        console.error(`Failed to link player ${player.name}:`, updateError.message);
-      } else {
-        console.log(`Linked existing profile: ${player.name} → ${player.teamKey}`);
-      }
+    if (upsertError) {
+      console.error(`Failed to upsert player ${player.name}:`, upsertError.message);
     } else {
-      // Insert new profile if not already present
-      const { error: insertError } = await supabase.from('players').insert({
-        external_id: playerSlug,
-        slug: playerSlug,
-        name: player.name,
-        position: player.position,
-        league: player.league,
-        gender: player.gender,
-        team_id: targetTeamId,
-        metadata: metadataPayload,
-      });
-
-      if (insertError) {
-        console.error(`Failed to insert player ${player.name}:`, insertError.message);
-      } else {
-        console.log(`Created & linked new profile: ${player.name} → ${player.teamKey}`);
-      }
+      console.log(`Successfully synced profile: ${player.name} → Team ID: ${targetTeamId || 'Unlinked'}`);
     }
   }
 
