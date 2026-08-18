@@ -15,7 +15,7 @@ export const revalidate = 3600;
 export async function generateStaticParams() {
   const { data: teams } = await supabase.from('teams').select('slug');
   return (teams || [])
-    .filter((t) => Boolean(t.slug))
+    .filter((t) => typeof t.slug === 'string' && t.slug.trim().length > 0)
     .map((t) => ({ slug: t.slug }));
 }
 
