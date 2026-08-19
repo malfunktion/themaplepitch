@@ -1,6 +1,7 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
+import { cache } from 'react';
 import HubHeader from '@/components/entity/HubHeader';
 import SourceStamp from '@/components/entity/SourceStamp';
 import { createClient } from '@supabase/supabase-js';
@@ -36,7 +37,9 @@ function safeFormatDate(dateVal: any): string {
   }
 }
 
-async function getPlayerData(slugParam: string) {
+// Wrapped in React cache() so generateMetadata and PlayerProfilePage share 
+// a single memoized request execution, eliminating duplicated CPU overhead.
+const getPlayerData = cache(async (slugParam: string) => {
   const isNumeric = !isNaN(Number(slugParam));
   const flexQuery = isNumeric
     ? `id.eq.${slugParam},slug.eq.${slugParam},external_id.eq.${slugParam}`
@@ -76,7 +79,7 @@ async function getPlayerData(slugParam: string) {
   }
 
   return { player, clubMatches };
-}
+});
 
 export async function generateMetadata({
   params,
