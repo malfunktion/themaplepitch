@@ -9,6 +9,7 @@ import TacticalBlueprint from '@/components/national-teams/TacticalBlueprint';
 import CoachingStaff from '@/components/national-teams/CoachingStaff';
 import HistoricalRecords from '@/components/national-teams/HistoricalRecords';
 import { players } from '@/lib/data/demo';
+import type { Player } from '@/lib/types';
 
 const genders = ['men', 'women'];
 
@@ -63,7 +64,7 @@ export default async function NationalGenderPage({
   const activeGenderUpper = isWomen ? 'WOMEN' : 'MEN';
 
   // Filter roster pool for demonstration / dynamic fallback
-  const roster = players.filter((p) =>
+  const roster: Player[] = (players as Player[]).filter((p) =>
     isWomen
       ? p.clubId === 'vancouver-rise' || p.clubId === 'calgary-wild' || p.position === 'GK'
       : p.clubId !== 'vancouver-rise' && p.clubId !== 'calgary-wild'
@@ -121,7 +122,7 @@ export default async function NationalGenderPage({
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
-              {roster.map((p, idx) => {
+              {roster.map((p: Player, idx: number) => {
                 const playerSlug = p.slug || slugify(p.name);
                 const tabType = label; // CANMNT or CANWNT
 
@@ -131,7 +132,7 @@ export default async function NationalGenderPage({
                     className="hover:bg-surface/50 dark:hover:bg-neutral-800/40 transition-colors"
                   >
                     <td className="py-2.5 px-2 font-mono text-xs text-charcoal-soft dark:text-neutral-500">
-                      {p.number || idx + 1}
+                      {p.number ?? idx + 1}
                     </td>
                     <td className="py-2.5 px-3 font-bold text-charcoal dark:text-white hover:text-crimson transition-colors">
                       <Link href={`/players/${playerSlug}?tab=${tabType}`} className="flex items-center gap-1">
@@ -141,7 +142,7 @@ export default async function NationalGenderPage({
                     </td>
                     <td className="py-2.5 px-3 text-xs font-mono text-crimson font-bold">{p.position}</td>
                     <td className="py-2.5 px-3 text-xs font-mono text-neutral-500 dark:text-neutral-400">
-                      {p.clubName || 'Unattached'}
+                      {p.clubName || p.club || 'Unattached'}
                     </td>
                     <td className="py-2.5 px-3 text-right text-xs font-mono text-neutral-600 dark:text-neutral-300">
                       {p.caps ?? 0}
