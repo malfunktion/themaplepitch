@@ -15,7 +15,7 @@ export default async function Header() {
         <div className="flex items-center gap-6 px-4 py-1.5 text-xs font-medium text-white dark:text-neutral-900 whitespace-nowrap">
           {ticker.map((match) => (
             <div key={match.id} className="flex items-center gap-2">
-              <span className="text-neutral-400 dark:text-neutral-500">
+              <span className="text-charcoal-soft">
                 {match.competition}
               </span>
               <span>
@@ -28,7 +28,7 @@ export default async function Header() {
                   {match.minute}&apos;
                 </span>
               ) : (
-                <span className="text-neutral-400 dark:text-neutral-500">
+                <span className="text-charcoal-soft">
                   Upcoming
                 </span>
               )}

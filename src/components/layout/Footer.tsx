@@ -6,7 +6,7 @@ import { Twitter, Instagram, Github, ArrowUpRight } from 'lucide-react';
 
 export default function Footer() {
   return (
-    <footer className="bg-[#171717] border-t border-neutral-800 text-neutral-400 font-sans text-xs mt-auto">
+    <footer className="bg-[#171717] border-t border-neutral-800 text-charcoal-soft font-sans text-xs mt-auto">
       <div className="max-w-7xl mx-auto px-4 py-12">
         {/* Top Grid: Sitemap Navigation */}
         <div className="grid grid-cols-2 md:grid-cols-4 gap-8 mb-12">
@@ -70,11 +70,11 @@ export default function Footer() {
             </Link>
             <Link href="/" className="hover:text-white transition-colors flex items-center justify-between">
               <span>Contract Radar</span>
-              <span className="text-[9px] font-mono bg-neutral-800 text-neutral-400 px-1 py-0.5 rounded">ACTIVE</span>
+              <span className="text-[9px] font-mono bg-neutral-800 text-charcoal-soft px-1 py-0.5 rounded">ACTIVE</span>
             </Link>
             <Link href="/" className="hover:text-white transition-colors flex items-center justify-between">
               <span>Dual-National Watch</span>
-              <span className="text-[9px] font-mono bg-neutral-800 text-neutral-400 px-1 py-0.5 rounded">ACTIVE</span>
+              <span className="text-[9px] font-mono bg-neutral-800 text-charcoal-soft px-1 py-0.5 rounded">ACTIVE</span>
             </Link>
             <Link href="/players" className="hover:text-white transition-colors">
               Player Database & Ratings
@@ -101,7 +101,7 @@ export default function Footer() {
             <h4 className="text-white font-mono font-bold uppercase tracking-widest text-[11px] pb-2 border-b border-neutral-800">
               The Maple Pitch
             </h4>
-            <p className="text-neutral-400 leading-relaxed text-[11px]">
+            <p className="text-charcoal-soft leading-relaxed text-[11px]">
               Independent Canadian soccer coverage, statistics, scouting tools, and pathway tracking. Demonstration data is clearly labelled while live data infrastructure is developed.
             </p>
             <Link href="/fan-hub" className="hover:text-white transition-colors">
@@ -111,13 +111,13 @@ export default function Footer() {
               State of Canadian Soccer
             </Link>
             <div className="flex items-center gap-4 mt-2">
-              <a href="https://twitter.com" target="_blank" rel="noreferrer" className="text-neutral-400 hover:text-white transition-colors">
+              <a href="https://twitter.com" target="_blank" rel="noreferrer" className="text-charcoal-soft hover:text-white transition-colors">
                 <Twitter className="w-4 h-4" />
               </a>
-              <a href="https://instagram.com" target="_blank" rel="noreferrer" className="text-neutral-400 hover:text-white transition-colors">
+              <a href="https://instagram.com" target="_blank" rel="noreferrer" className="text-charcoal-soft hover:text-white transition-colors">
                 <Instagram className="w-4 h-4" />
               </a>
-              <a href="https://github.com" target="_blank" rel="noreferrer" className="text-neutral-400 hover:text-white transition-colors">
+              <a href="https://github.com" target="_blank" rel="noreferrer" className="text-charcoal-soft hover:text-white transition-colors">
                 <Github className="w-4 h-4" />
               </a>
             </div>
@@ -126,15 +126,15 @@ export default function Footer() {
 
         {/* Bottom Bar */}
         <div className="pt-8 border-t border-neutral-800 flex flex-col sm:flex-row items-center justify-between gap-4 text-[11px] font-mono">
-          <div className="text-neutral-400">
+          <div className="text-charcoal-soft">
             © 2026 THE MAPLE PITCH // CANADIAN SOCCER INTELLIGENCE PLATFORM
           </div>
           <div className="flex items-center gap-6">
-            <Link href="/search" className="text-neutral-400 hover:text-white transition-colors">SEARCH</Link>
-            <Link href="/methodology" className="text-neutral-400 hover:text-white transition-colors">METHODOLOGY</Link>
-            <Link href="/about" className="text-neutral-400 hover:text-white transition-colors">ABOUT</Link>
-            <Link href="/players" className="text-neutral-400 hover:text-white transition-colors">PLAYERS</Link>
-            <Link href="/teams" className="text-neutral-400 hover:text-white transition-colors">TEAMS</Link>
+            <Link href="/search" className="text-charcoal-soft hover:text-white transition-colors">SEARCH</Link>
+            <Link href="/methodology" className="text-charcoal-soft hover:text-white transition-colors">METHODOLOGY</Link>
+            <Link href="/about" className="text-charcoal-soft hover:text-white transition-colors">ABOUT</Link>
+            <Link href="/players" className="text-charcoal-soft hover:text-white transition-colors">PLAYERS</Link>
+            <Link href="/teams" className="text-charcoal-soft hover:text-white transition-colors">TEAMS</Link>
             <Link href="/" className="hover:text-white transition-colors">
               HOME
             </Link>
