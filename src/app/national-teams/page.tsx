@@ -73,7 +73,8 @@ function NationalTeamsContent() {
         .select('*')
         .eq('gender', genderDb)
         .eq('squad_type', activeAge)
-        .order('rating', { ascending: false });
+        .order('rating', { ascending: false })
+        .limit(35);
 
       if (playerData) {
         setSquad(playerData as PlayerAsset[]);
