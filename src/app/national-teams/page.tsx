@@ -16,295 +16,289 @@ import HistoricalRecords from '@/components/national-teams/HistoricalRecords';
 import RegionalGrassroots from '@/components/national-teams/RegionalGrassroots';
 import FanCommunityHub from '@/components/national-teams/FanCommunityHub';
 import PressRoomTranscripts from '@/components/national-teams/PressRoomTranscripts';
+import type { StandingsRow } from '@/lib/types';
 import { getCplStandings, getNslStandings } from '@/lib/data/standings';
-import type { StandingsRow, WireStory } from '@/lib/types';
 
-interface SquadPlayer {
-  id?: number;
-  number?: number;
+interface PlayerAsset {
+  id: string | number;
   name: string;
+  position: string;
   club?: string;
   league?: string;
-  position: string;
-  age?: number;
-  caps?: number;
   rating?: number;
-  ga?: string;
-  status?: 'LOCKED' | 'UNTIED / DUAL-NAT' | 'INJURED';
-  gender?: string;
-  squad_type?: string;
+  caps?: number;
   goals?: number;
   assists?: number;
+  status?: string;
+  number?: number;
+}
+
+interface WireArticle {
+  id: string | number;
+  title: string;
+  summary?: string;
+  source?: string;
+  created_at?: string;
+  league?: string;
 }
 
 function NationalTeamsContent() {
   const searchParams = useSearchParams();
-  const urlGender = searchParams.get('gender')?.toUpperCase() as 'MEN' | 'WOMEN' | null;
+  const [activeGender, setActiveGender] = useState<'MEN' | 'WOMEN'>('MEN');
+  const [activeAge, setActiveAge] = useState<string>('SENIOR');
 
-  const [activeGender, setActiveGender] = useState<'MEN' | 'WOMEN'>(
-    urlGender === 'WOMEN' ? 'WOMEN' : 'MEN'
-  );
-  const [activeAge, setActiveAge] = useState<'SENIOR' | 'U-23' | 'U-20' | 'U-17'>('SENIOR');
-  
-  const [squadPool, setSquadPool] = useState<SquadPlayer[]>([]);
-  const [wireStories, setWireStories] = useState<WireStory[]>([]);
   const [standings, setStandings] = useState<StandingsRow[]>([]);
   const [nslStandings, setNslStandings] = useState<StandingsRow[]>([]);
-  const [loading, setLoading] = useState(true);
+  const [squad, setSquad] = useState<PlayerAsset[]>([]);
+  const [news, setNews] = useState<WireArticle[]>([]);
+  const [isLoading, setIsLoading] = useState<boolean>(true);
 
-  // Sync state if URL search param changes
+  // Load Standings
   useEffect(() => {
-    if (urlGender === 'WOMEN' || urlGender === 'MEN') {
-      setActiveGender(urlGender);
+    async function loadStandings() {
+      const cpl = await getCplStandings();
+      const nsl = await getNslStandings();
+      setStandings(cpl);
+      setNslStandings(nsl);
     }
-  }, [urlGender]);
+    loadStandings();
+  }, []);
 
-  // Fetch live standings and wire dispatches
+  // Fetch Dynamic Squad & News from Supabase based on toggles
   useEffect(() => {
-    getCplStandings().then(setStandings);
-    getNslStandings().then(setNslStandings);
+    async function fetchNationalData() {
+      setIsLoading(true);
+      const genderDb = activeGender === 'MEN' ? 'men' : 'women';
+      const nationalTag = activeGender === 'MEN' ? 'CanMNT' : 'CanWNT';
 
-    async function fetchWireDispatches() {
-      const tag = activeGender === 'WOMEN' ? 'CanWNT' : 'CanMNT';
-      const { data } = await supabase
-        .from('news_wire')
-        .select('*')
-        .or(`league.eq.${tag},gender.eq.${activeGender.toLowerCase()}`)
-        .order('published_at', { ascending: false })
-        .limit(3);
-
-      setWireStories(data || []);
-    }
-    fetchWireDispatches();
-  }, [activeGender]);
-
-  // Fetch full active national squad pool from Supabase (Increased limit to pull full roster pool)
-  useEffect(() => {
-    async function fetchNationalSquad() {
-      setLoading(true);
-      const genderDb = activeGender === 'WOMEN' ? 'women' : 'men';
-
-      const { data, error } = await supabase
+      // 1. Fetch full roster pool from Supabase (up to 50 assets to capture entire imported pool)
+      const { data: playerData, error: playerError } = await supabase
         .from('players')
         .select('*')
         .eq('gender', genderDb)
         .order('rating', { ascending: false })
-        .limit(45);
+        .limit(50);
 
-      if (error) {
-        console.error('Error fetching national squad:', error);
+      if (playerData && playerData.length > 0) {
+        setSquad(playerData as PlayerAsset[]);
       } else {
-        setSquadPool(data || []);
+        setSquad([]);
       }
-      setLoading(false);
+
+      // 2. Fetch Latest Wire News
+      const { data: newsData } = await supabase
+        .from('news_wire')
+        .select('*')
+        .or(`league.eq.${nationalTag},tags.cs.{${nationalTag}}`)
+        .order('created_at', { ascending: false })
+        .limit(3);
+
+      if (newsData) {
+        setNews(newsData as WireArticle[]);
+      }
+
+      setIsLoading(false);
     }
 
-    fetchNationalSquad();
+    fetchNationalData();
   }, [activeGender, activeAge]);
 
-  // Sort all fetched players by rating descending
-  const sortedSquad = [...squadPool].sort((a, b) => (b.rating || 0) - (a.rating || 0));
+  const activeGenderUpper = activeGender;
 
-  // Top 11 for the Tactical Pitch Matrix
-  const startingXI = sortedSquad.slice(0, 11);
-
-  // Remaining assets flow into the Substitutes & Squad Depth Pool
-  const squadDepthPool = sortedSquad.slice(11);
-
-  // Robust position grouping helper with fallback catching unassigned roles into midfielders
-  const getSubsByPosition = (posCategory: 'GK' | 'DEF' | 'MID' | 'FWD') => {
-    return squadDepthPool.filter(p => {
-      const pos = (p.position || '').toUpperCase();
-      if (posCategory === 'GK') return pos.includes('GK');
-      if (posCategory === 'DEF') return pos.includes('CB') || pos.includes('LB') || pos.includes('RB') || pos.includes('FB') || pos.includes('DEF') || pos.includes('WB') || pos.includes('BACK');
-      if (posCategory === 'FWD') return pos.includes('ST') || pos.includes('FW') || pos.includes('LW') || pos.includes('RW') || pos.includes('W') || pos.includes('CF') || pos.includes('ATT');
-      // MID gets everything else (CM, DM, AM, LM, RM, MID, or unclassified assets)
-      if (posCategory === 'MID') {
-        const isOther = pos.includes('GK') || pos.includes('CB') || pos.includes('LB') || pos.includes('RB') || pos.includes('FB') || pos.includes('DEF') || pos.includes('WB') || pos.includes('BACK') || pos.includes('ST') || pos.includes('FW') || pos.includes('LW') || pos.includes('RW') || pos.includes('W') || pos.includes('CF') || pos.includes('ATT');
-        return !isOther;
-      }
-      return false;
-    });
-  };
-
-  const activeGenderUpper = activeGender === 'WOMEN' ? 'WOMEN' : 'MEN';
-
-  if (loading) {
-    return (
-      <div className="min-h-screen bg-neutral-950 flex items-center justify-center font-mono text-neutral-500 text-xs tracking-widest uppercase">
-        SYNCING NATIONAL DOSSIER...
-      </div>
-    );
-  }
+  // Split squad into Starting XI (Top 11) and Depth Pool (The rest of the imported assets)
+  const startingXI = squad.slice(0, 11);
+  const squadDepthPool = squad.slice(11);
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-foreground py-8 px-4">
-      <div className="max-w-7xl mx-auto space-y-8">
-        
-        {/* Header & Controls */}
-        <div className="flex flex-col md:flex-row justify-between items-start md:items-center gap-4 border-b border-border/40 pb-6">
+    <div className="min-h-screen bg-neutral-950 text-neutral-100 font-mono pb-16">
+      {/* Top Header & Toggles */}
+      <div className="border-b border-neutral-800 bg-neutral-950/80 sticky top-0 z-30 backdrop-blur-md px-4 lg:px-8 py-4">
+        <div className="max-w-7xl mx-auto flex flex-col md:flex-row justify-between items-start md:items-center gap-4">
           <div>
-            <h1 className="font-mono text-xl font-bold tracking-wider uppercase">
-              CANADA {activeGender} // NATIONAL SQUAD POOL
+            <div className="flex items-center gap-2 text-xs text-neutral-400">
+              <span>CANADIAN SOCCER INTELLIGENCE</span>
+              <span>//</span>
+              <span className="text-crimson font-bold">NATIONAL DOSSIER</span>
+            </div>
+            <h1 className="text-xl lg:text-2xl font-bold tracking-tight text-white mt-1">
+              {activeGender === 'MEN' ? 'CANMNT' : 'CANWNT'} // {activeAge} COMMAND CENTER
             </h1>
-            <p className="text-xs font-mono text-neutral-400 mt-1">
-              DYNAMIC FORMATION MATRIX & SQUAD DEPTH VAULT
-            </p>
           </div>
 
-          <div className="flex items-center gap-3">
-            <div className="flex bg-neutral-900 border border-border rounded-sm p-1">
+          <div className="flex flex-wrap items-center gap-3">
+            {/* Gender Toggle */}
+            <div className="inline-flex bg-neutral-900 border border-neutral-800 rounded-sm p-0.5">
               <button
                 onClick={() => setActiveGender('MEN')}
-                className={`px-3 py-1 text-xs font-mono transition-colors ${
-                  activeGender === 'MEN' ? 'bg-crimson text-white font-bold' : 'text-neutral-400 hover:text-foreground'
+                className={`px-3 py-1 text-xs font-bold transition-colors ${
+                  activeGender === 'MEN'
+                    ? 'bg-crimson text-white shadow'
+                    : 'text-neutral-400 hover:text-white'
                 }`}
               >
-                MEN
+                [ MEN ]
               </button>
               <button
                 onClick={() => setActiveGender('WOMEN')}
-                className={`px-3 py-1 text-xs font-mono transition-colors ${
-                  activeGender === 'WOMEN' ? 'bg-crimson text-white font-bold' : 'text-neutral-400 hover:text-foreground'
+                className={`px-3 py-1 text-xs font-bold transition-colors ${
+                  activeGender === 'WOMEN'
+                    ? 'bg-crimson text-white shadow'
+                    : 'text-neutral-400 hover:text-white'
                 }`}
               >
-                WOMEN
+                [ WOMEN ]
               </button>
             </div>
-            <DataStatus />
+
+            {/* Age Toggles */}
+            <div className="inline-flex bg-neutral-900 border border-neutral-800 rounded-sm p-0.5">
+              {['SENIOR', 'U-23', 'U-20', 'U-17'].map((age) => (
+                <button
+                  key={age}
+                  onClick={() => setActiveAge(age)}
+                  className={`px-2.5 py-1 text-[11px] font-bold transition-colors ${
+                    activeAge === age
+                      ? 'bg-neutral-800 text-white border border-neutral-700'
+                      : 'text-neutral-500 hover:text-neutral-300'
+                  }`}
+                >
+                  {age}
+                </button>
+              ))}
+            </div>
           </div>
         </div>
+      </div>
 
-        {/* Age Group Bar */}
-        <div className="flex flex-wrap gap-2 pb-2">
-          {(['SENIOR', 'U-23', 'U-20', 'U-17'] as const).map((age) => (
-            <button
-              key={age}
-              onClick={() => setActiveAge(age)}
-              className={`px-3 py-1.5 font-mono text-xs rounded-sm border transition-all ${
-                activeAge === age
-                  ? 'bg-crimson text-white border-crimson font-bold'
-                  : 'bg-neutral-900 text-neutral-400 border-border hover:border-crimson/50'
-              }`}
-            >
-              {age}
-            </button>
-          ))}
-        </div>
-
+      <div className="max-w-7xl mx-auto px-4 lg:px-8 mt-6">
         <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
           
-          {/* Main 8-Column Content Feed */}
-          <div className="lg:col-span-8 space-y-8">
-
-            {/* Top Tier: Live Wire Dispatches */}
-            <div className="space-y-3">
-              <div className="flex justify-between items-center">
-                <h2 className="font-mono text-xs font-bold text-crimson tracking-wider uppercase">
-                  # {activeGender === 'WOMEN' ? 'CanWNT' : 'CanMNT'} INTELLIGENCE DISPATCHES
-                </h2>
-                <span className="text-[10px] font-mono text-neutral-500">LIVE WIRE STREAM</span>
+          {/* Main Feed Column */}
+          <div className="lg:col-span-8 flex flex-col gap-8">
+            
+            {/* 1. Top Tier: Live Wire Dispatches */}
+            <div className="bg-neutral-900/40 border border-neutral-800 p-4 rounded-sm">
+              <div className="flex items-center justify-between mb-3 border-b border-neutral-800 pb-2">
+                <h3 className="text-xs font-bold text-neutral-300 tracking-wider">
+                  LIVE PROGRAM DISPATCHES // {activeGender === 'MEN' ? '#CanMNT' : '#CanWNT'}
+                </h3>
+                <span className="text-[10px] text-crimson animate-pulse">● LIVE FEED</span>
               </div>
-              <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
-                {wireStories.length > 0 ? (
-                  wireStories.map((story) => (
-                    <div key={story.id} className="bg-neutral-900/85 border border-border/60 p-3 rounded-sm flex flex-col justify-between">
+              <div className="grid grid-cols-1 md:grid-cols-3 gap-3">
+                {news.length > 0 ? (
+                  news.map((item, idx) => (
+                    <div key={item.id || idx} className="bg-neutral-900 border border-neutral-800 p-3 rounded-sm flex flex-col justify-between">
                       <div>
-                        <span className="text-[9px] font-mono px-1.5 py-0.5 bg-crimson/10 text-crimson rounded border border-crimson/30">
-                          {story.sourceName || 'THE WIRE'}
-                        </span>
-                        <h4 className="font-mono text-xs font-bold mt-2 line-clamp-2">{story.headline}</h4>
+                        <span className="text-[9px] text-crimson font-bold block mb-1">{item.league || 'CANADA SOCCER'}</span>
+                        <h4 className="text-xs font-bold text-white leading-snug">{item.title}</h4>
                       </div>
-                      <span className="text-[9px] font-mono text-neutral-500 mt-2">{story.timestamp || 'RECENT'}</span>
+                      <span className="text-[9px] text-neutral-500 mt-3 block">{item.created_at ? new Date(item.created_at).toLocaleDateString() : 'Recent Dispatch'}</span>
                     </div>
                   ))
                 ) : (
-                  <div className="col-span-3 bg-neutral-900/50 border border-border/40 p-4 text-center font-mono text-xs text-neutral-500">
-                    No recent dispatches logged for this national program stream.
+                  <div className="col-span-3 py-6 text-center text-xs text-neutral-500">
+                    No active dispatches found for this filter.
                   </div>
                 )}
               </div>
             </div>
 
-            {/* Middle Tier: Tactical Pitch Diagram (The Starting XI) */}
-            <div className="bg-neutral-900/90 border border-border p-6 rounded-sm space-y-4">
-              <div className="flex justify-between items-center">
-                <h2 className="font-mono text-sm font-bold tracking-widest uppercase text-crimson">
-                  TOP 11 STARTING SQUAD // DYNAMIC FORMATION MATRIX
-                </h2>
-                <span className="text-xs font-mono text-neutral-500">AUTO-SORTED BY HIGHEST DB RATING</span>
+            {/* 2. Middle Tier: Tactical Pitch (Starting XI) */}
+            <div className="bg-neutral-900/60 border border-neutral-800 p-5 rounded-sm relative overflow-hidden">
+              <div className="flex items-center justify-between mb-4 border-b border-neutral-800 pb-2">
+                <h3 className="text-xs font-bold text-white tracking-wider">
+                  TOP 11 STARTING SQUAD // DYNAMIC FORMATION MATRIX (4-3-3)
+                </h3>
+                <span className="text-[10px] text-neutral-400">AUTO-SORTED BY HIGHEST DB RATING</span>
               </div>
 
-              {/* Vector Grass Field Visualization */}
-              <div className="relative w-full h-[360px] bg-emerald-950/40 border-2 border-emerald-500/30 rounded-md overflow-hidden flex flex-col justify-between p-4 shadow-inner">
+              {/* Soccer Pitch Graphic Area */}
+              <div className="relative w-full h-[380px] bg-emerald-950/30 border border-emerald-800/40 rounded-sm flex flex-col justify-between p-4 overflow-hidden">
                 {/* Field Markings */}
-                <div className="absolute inset-x-0 top-1/2 h-[1px] bg-emerald-500/25 pointer-events-none" />
-                <div className="absolute top-1/2 left-1/2 -translate-x-1/2 -translate-y-1/2 w-20 h-20 rounded-full border border-emerald-500/25 pointer-events-none" />
-                
-                {/* Tactical Rows Spread Across Pitch */}
-                <div className="flex justify-center gap-4 z-10">
-                  {startingXI.slice(9, 11).map((player, idx) => (
-                    <PlayerPitchNode key={player.id || idx} player={player} />
-                  ))}
+                <div className="absolute inset-0 pointer-events-none flex items-center justify-center">
+                  <div className="w-32 h-32 rounded-full border border-emerald-500/20" />
+                  <div className="absolute w-full h-[1px] bg-emerald-500/20" />
                 </div>
-                <div className="flex justify-around gap-2 z-10">
-                  {startingXI.slice(5, 9).map((player, idx) => (
-                    <PlayerPitchNode key={player.id || idx} player={player} />
-                  ))}
-                </div>
-                <div className="flex justify-around gap-2 z-10">
-                  {startingXI.slice(1, 5).map((player, idx) => (
-                    <PlayerPitchNode key={player.id || idx} player={player} />
-                  ))}
-                </div>
-                <div className="flex justify-center z-10">
-                  {startingXI.slice(0, 1).map((player, idx) => (
-                    <PlayerPitchNode key={player.id || idx} player={player} />
-                  ))}
-                </div>
-              </div>
-            </div>
 
-            {/* Bottom Tier: Substitutes & Squad Depth Matrix */}
-            <div className="space-y-4 pt-4 border-t border-border/40">
-              <div className="flex justify-between items-center">
-                <h2 className="font-mono text-sm font-bold tracking-widest uppercase text-neutral-300">
-                  SUBSTITUTES & SQUAD DEPTH POOL ({squadDepthPool.length} ASSETS)
-                </h2>
-                <span className="text-xs font-mono text-neutral-500">SORTED BY POSITION DEPTH</span>
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
-                {(['GK', 'DEF', 'MID', 'FWD'] as const).map((posGroup) => {
-                  const deputies = getSubsByPosition(posGroup);
-                  if (deputies.length === 0) return null;
-                  return (
-                    <div key={posGroup} className="bg-neutral-900/60 border border-border/50 p-4 rounded-sm space-y-2">
-                      <h3 className="font-mono text-xs font-bold text-crimson tracking-wider">{posGroup} DEPUTIES ({deputies.length})</h3>
-                      <div className="space-y-1.5">
-                        {deputies.map((player, idx) => (
-                          <div key={player.id || idx} className="flex justify-between items-center text-xs font-mono bg-neutral-900 p-2 rounded border border-border/30">
-                            <div>
-                              <span className="font-bold text-white">{player.name}</span>
-                              <span className="text-neutral-500 text-[10px] block">{player.club || player.league || 'Unattached'} • {player.caps || 0} caps</span>
-                            </div>
-                            <span className="text-crimson font-bold">{player.rating ? `${player.rating} RTG` : `${player.caps || 0} caps`}</span>
-                          </div>
-                        ))}
-                      </div>
+                {isLoading ? (
+                  <div className="absolute inset-0 flex items-center justify-center bg-neutral-950/80 text-xs text-neutral-400">
+                    FETCHING SQUAD TELEMETRY FROM SUPABASE...
+                  </div>
+                ) : startingXI.length > 0 ? (
+                  <>
+                    {/* Forwards Row */}
+                    <div className="flex justify-around items-center z-10">
+                      {startingXI.filter(p => p.position?.includes('ST') || p.position?.includes('FW') || p.position?.includes('RW') || p.position?.includes('LW')).slice(0, 3).map((player, i) => (
+                        <PlayerPitchNode key={player.id || i} player={player} />
+                      ))}
                     </div>
-                  );
-                })}
+
+                    {/* Midfielders Row */}
+                    <div className="flex justify-around items-center z-10">
+                      {startingXI.filter(p => p.position?.includes('CM') || p.position?.includes('AM') || p.position?.includes('DM') || p.position?.includes('LM') || p.position?.includes('RM')).slice(0, 3).map((player, i) => (
+                        <PlayerPitchNode key={player.id || i} player={player} />
+                      ))}
+                    </div>
+
+                    {/* Defenders Row */}
+                    <div className="flex justify-around items-center z-10">
+                      {startingXI.filter(p => p.position?.includes('CB') || p.position?.includes('LB') || p.position?.includes('RB') || p.position?.includes('FB')).slice(0, 4).map((player, i) => (
+                        <PlayerPitchNode key={player.id || i} player={player} />
+                      ))}
+                    </div>
+
+                    {/* Goalkeeper Row */}
+                    <div className="flex justify-center items-center z-10">
+                      {startingXI.filter(p => p.position?.includes('GK')).slice(0, 1).map((player, i) => (
+                        <PlayerPitchNode key={player.id || i} player={player} />
+                      ))}
+                    </div>
+                  </>
+                ) : (
+                  <div className="absolute inset-0 flex items-center justify-center text-xs text-neutral-500">
+                    No starting XI assets found in database for this filter.
+                  </div>
+                )}
               </div>
             </div>
 
-            {/* Complete Dossier Modules Stack */}
+            {/* 3. Bottom Tier: Substitutes & Squad Depth Pool (Full Dynamic Count) */}
+            <div className="bg-neutral-900/60 border border-neutral-800 p-5 rounded-sm">
+              <div className="flex items-center justify-between mb-4 border-b border-neutral-800 pb-2">
+                <h3 className="text-xs font-bold text-white tracking-wider">
+                  SUBSTITUTES & SQUAD DEPTH POOL ({squadDepthPool.length} ASSETS)
+                </h3>
+                <span className="text-[10px] text-neutral-400">SORTED BY POSITION DEPTH & RATING</span>
+              </div>
+
+              {squadDepthPool.length > 0 ? (
+                <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-3 max-h-[500px] overflow-y-auto pr-1">
+                  {squadDepthPool.map((player, idx) => (
+                    <div key={player.id || idx} className="bg-neutral-900 border border-neutral-800 p-3 rounded-sm flex justify-between items-center hover:border-neutral-700 transition-colors">
+                      <div>
+                        <h4 className="font-mono text-xs font-bold text-white">{player.name}</h4>
+                        <p className="text-[10px] font-mono text-neutral-400 mt-0.5">{player.club || player.league || 'Pro Club'} • <span className="text-crimson font-bold">{player.position}</span></p>
+                      </div>
+                      <span className="text-xs font-mono text-neutral-300 bg-neutral-800 px-2 py-1 rounded-sm">
+                        {player.rating ? `${Number(player.rating).toFixed(1)} RTG` : `${player.caps || 0} CAPS`}
+                      </span>
+                    </div>
+                  ))}
+                </div>
+              ) : (
+                <div className="py-8 text-center text-xs text-neutral-500">
+                  All available squad assets are currently deployed in the Starting XI or no secondary depth assets found.
+                </div>
+              )}
+            </div>
+
+            {/* Rest of Dossier Modules */}
             <TacticalBlueprint />
             <TicketPortal />
             <TourCampsCalendar />
             <HonorRoll />
             <RosterRevolution />
-            <DepthChart activeGender={activeGenderUpper} />
+            <DepthChart />
             <CoachingStaff activeGender={activeGenderUpper} />
             <HistoricalRecords activeGender={activeGenderUpper} />
             <RegionalGrassroots />
@@ -318,19 +312,18 @@ function NationalTeamsContent() {
           </div>
 
         </div>
-
       </div>
     </div>
   );
 }
 
 // Compact Pitch Node Helper Component
-function PlayerPitchNode({ player }: { player: SquadPlayer }) {
+function PlayerPitchNode({ player }: { player: PlayerAsset }) {
   return (
     <div className="flex flex-col items-center group cursor-pointer">
       <div className="bg-neutral-900/95 border border-crimson/60 group-hover:border-crimson px-2.5 py-1.5 rounded text-center shadow-lg transition-all">
         <span className="text-[10px] font-mono font-bold text-white block leading-none">{player.name}</span>
-        <span className="text-[8px] font-mono text-neutral-400 block mt-0.5">{player.position} • {player.rating ? `${player.rating} RTG` : 'PRO'}</span>
+        <span className="text-[8px] font-mono text-neutral-400 block mt-0.5">{player.position} • {player.rating ? `${Number(player.rating).toFixed(1)} RTG` : 'PRO'}</span>
       </div>
     </div>
   );
