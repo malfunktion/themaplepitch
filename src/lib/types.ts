@@ -111,6 +111,7 @@ export interface Player {
   position?: string;
   club?: string | null;
   clubName?: string | null;
+  clubId?: string | null;
   league?: League | string;
   gender?: string;
   number?: number | string | null;
@@ -125,4 +126,3 @@ export interface Player {
   vitals?: string;
   tag?: string;
 }
-
