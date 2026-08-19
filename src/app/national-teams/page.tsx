@@ -78,7 +78,7 @@ function NationalTeamsContent() {
     fetchWireDispatches();
   }, [activeGender]);
 
-  // Fetch full active national squad pool from Supabase
+  // Fetch full active national squad pool from Supabase (Increased limit to pull full roster pool)
   useEffect(() => {
     async function fetchNationalSquad() {
       setLoading(true);
@@ -89,7 +89,7 @@ function NationalTeamsContent() {
         .select('*')
         .eq('gender', genderDb)
         .order('rating', { ascending: false })
-        .limit(35);
+        .limit(45);
 
       if (error) {
         console.error('Error fetching national squad:', error);
@@ -111,14 +111,18 @@ function NationalTeamsContent() {
   // Remaining assets flow into the Substitutes & Squad Depth Pool
   const squadDepthPool = sortedSquad.slice(11);
 
-  // Helper to group substitutes securely by position category
+  // Robust position grouping helper with fallback catching unassigned roles into midfielders
   const getSubsByPosition = (posCategory: 'GK' | 'DEF' | 'MID' | 'FWD') => {
     return squadDepthPool.filter(p => {
       const pos = (p.position || '').toUpperCase();
       if (posCategory === 'GK') return pos.includes('GK');
-      if (posCategory === 'DEF') return pos.includes('CB') || pos.includes('LB') || pos.includes('RB') || pos.includes('FB') || pos.includes('DEF') || pos.includes('WB');
-      if (posCategory === 'MID') return pos.includes('CM') || pos.includes('DM') || pos.includes('AM') || pos.includes('LM') || pos.includes('RM') || pos.includes('MID');
-      if (posCategory === 'FWD') return pos.includes('ST') || pos.includes('FW') || pos.includes('LW') || pos.includes('RW') || pos.includes('W') || pos.includes('CF');
+      if (posCategory === 'DEF') return pos.includes('CB') || pos.includes('LB') || pos.includes('RB') || pos.includes('FB') || pos.includes('DEF') || pos.includes('WB') || pos.includes('BACK');
+      if (posCategory === 'FWD') return pos.includes('ST') || pos.includes('FW') || pos.includes('LW') || pos.includes('RW') || pos.includes('W') || pos.includes('CF') || pos.includes('ATT');
+      // MID gets everything else (CM, DM, AM, LM, RM, MID, or unclassified assets)
+      if (posCategory === 'MID') {
+        const isOther = pos.includes('GK') || pos.includes('CB') || pos.includes('LB') || pos.includes('RB') || pos.includes('FB') || pos.includes('DEF') || pos.includes('WB') || pos.includes('BACK') || pos.includes('ST') || pos.includes('FW') || pos.includes('LW') || pos.includes('RW') || pos.includes('W') || pos.includes('CF') || pos.includes('ATT');
+        return !isOther;
+      }
       return false;
     });
   };
@@ -276,7 +280,7 @@ function NationalTeamsContent() {
                   if (deputies.length === 0) return null;
                   return (
                     <div key={posGroup} className="bg-neutral-900/60 border border-border/50 p-4 rounded-sm space-y-2">
-                      <h3 className="font-mono text-xs font-bold text-crimson tracking-wider">{posGroup} DEPUTIES</h3>
+                      <h3 className="font-mono text-xs font-bold text-crimson tracking-wider">{posGroup} DEPUTIES ({deputies.length})</h3>
                       <div className="space-y-1.5">
                         {deputies.map((player, idx) => (
                           <div key={player.id || idx} className="flex justify-between items-center text-xs font-mono bg-neutral-900 p-2 rounded border border-border/30">
