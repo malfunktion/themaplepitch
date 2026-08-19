@@ -9,6 +9,7 @@ interface SquadPlayer {
   number?: number;
   name: string;
   club?: string;
+  league?: string; // <-- Added league property to satisfy TypeScript
   position: string;
   age?: number;
   caps?: number;
