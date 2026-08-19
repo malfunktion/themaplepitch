@@ -37,7 +37,7 @@ interface SquadPlayer {
 }
 
 function NationalTeamsContent() {
-  const [activeGender, setActiveGender] = useState<'men' | 'women'>('men');
+  const [activeGender, setActiveGender] = useState<'MEN' | 'WOMEN'>('MEN');
   const [activeAge, setActiveAge] = useState<'SENIOR' | 'U-23' | 'U-20' | 'U-17'>('SENIOR');
   const [players, setPlayers] = useState<SquadPlayer[]>([]);
   const [loading, setLoading] = useState(true);
@@ -58,14 +58,14 @@ function NationalTeamsContent() {
       const { data, error } = await supabase
         .from('players')
         .select('*')
-        .eq('gender', activeGender)
+        .eq('gender', activeGender.toLowerCase())
         .eq('squad_type', activeAge)
         .order('caps', { ascending: false })
         .limit(26); // Standard matchday squad cap
 
       if (error || !data || data.length === 0) {
         // Fallback squad pool if DB rows are not fully tagged yet
-        const fallbackSquad: SquadPlayer[] = activeGender === 'men' 
+        const fallbackSquad: SquadPlayer[] = activeGender === 'MEN' 
           ? [
               { id: '1', number: 19, name: 'Alphonso Davies', club: 'Bayern Munich', position: 'LB', age: 25, caps: 54, goals: 15, assists: 18, ga: '15/18', status: 'LOCKED', gender: 'men', squad_type: 'SENIOR' },
               { id: '2', number: 9, name: 'Jonathan David', club: 'Lille OSC', position: 'ST', age: 26, caps: 56, goals: 31, assists: 12, ga: '31/12', status: 'LOCKED', gender: 'men', squad_type: 'SENIOR' },
@@ -105,17 +105,17 @@ function NationalTeamsContent() {
             {/* Gender Toggle */}
             <div className="flex bg-neutral-900 border border-neutral-800 rounded-sm p-0.5 font-mono text-xs">
               <button
-                onClick={() => setActiveGender('men')}
+                onClick={() => setActiveGender('MEN')}
                 className={`px-3 py-1 transition-colors ${
-                  activeGender === 'men' ? 'bg-red-600 text-white font-bold' : 'text-neutral-400 hover:text-white'
+                  activeGender === 'MEN' ? 'bg-red-600 text-white font-bold' : 'text-neutral-400 hover:text-white'
                 }`}
               >
                 [ MEN ]
               </button>
               <button
-                onClick={() => setActiveGender('women')}
+                onClick={() => setActiveGender('WOMEN')}
                 className={`px-3 py-1 transition-colors ${
-                  activeGender === 'women' ? 'bg-red-600 text-white font-bold' : 'text-neutral-400 hover:text-white'
+                  activeGender === 'WOMEN' ? 'bg-red-600 text-white font-bold' : 'text-neutral-400 hover:text-white'
                 }`}
               >
                 [ WOMEN ]
@@ -149,7 +149,7 @@ function NationalTeamsContent() {
             <div className="bg-neutral-900 border border-neutral-800 p-4 rounded-sm">
               <div className="flex justify-between items-center mb-4">
                 <h2 className="text-xs font-mono text-red-500 tracking-wider uppercase font-bold">
-                  {activeGender === 'men' ? 'CANMNT' : 'CANWNT'} // {activeAge} SQUAD POOL
+                  {activeGender === 'MEN' ? 'CANMNT' : 'CANWNT'} // {activeAge} SQUAD POOL
                 </h2>
                 <span className="text-[10px] font-mono text-neutral-400">
                   {players.length} REGISTERED SQUAD ASSETS
