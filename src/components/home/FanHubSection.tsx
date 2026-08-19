@@ -142,7 +142,7 @@ export default function FanHubSection() {
             FAN HUB // COMMUNITY COMMAND
           </h2>
         </div>
-        <span className="text-[10px] text-neutral-500 dark:text-neutral-400 font-mono">CLIENT-SIDE ACTIVE</span>
+        <span className="text-[10px] text-charcoal-soft font-mono">CLIENT-SIDE ACTIVE</span>
       </div>
 
       {/* 6-Column Precise Grid Layout */}
@@ -169,7 +169,7 @@ export default function FanHubSection() {
                   className={`w-full text-left px-2 py-1 rounded-sm text-[10px] transition-colors border relative overflow-hidden flex flex-col gap-0.5 ${
                     selectedOption === opt.id 
                       ? 'border-crimson bg-crimson/10 text-charcoal dark:text-white font-bold' 
-                      : 'border-border bg-neutral-100 dark:bg-neutral-900/50 hover:border-neutral-400 dark:hover:border-neutral-700 text-neutral-700 dark:text-neutral-300'
+                      : 'border-border bg-neutral-100 dark:bg-card/50 hover:border-neutral-400 dark:hover:border-neutral-700 text-neutral-700 dark:text-neutral-300'
                   }`}
                 >
                   <div className="flex items-center justify-between relative z-10">
@@ -186,7 +186,7 @@ export default function FanHubSection() {
               ))}
             </div>
           </div>
-          <div className="text-[8px] text-neutral-500 font-mono pt-1.5 border-t border-border dark:border-border/50 flex items-center gap-1">
+          <div className="text-[8px] text-charcoal-soft font-mono pt-1.5 border-t border-border dark:border-border/50 flex items-center gap-1">
             <CheckCircle2 className="w-2.5 h-2.5 text-crimson dark:text-crimson" /> Secured via LocalStorage
           </div>
         </div>
@@ -221,7 +221,7 @@ export default function FanHubSection() {
             href="https://twitter.com" 
             target="_blank" 
             rel="noopener noreferrer"
-            className="text-[8px] text-neutral-500 dark:text-neutral-400 font-mono hover:text-crimson dark:hover:text-crimson transition-colors pt-1 border-t border-border dark:border-border/50 flex items-center justify-between"
+            className="text-[8px] text-charcoal-soft font-mono hover:text-crimson dark:hover:text-crimson transition-colors pt-1 border-t border-border dark:border-border/50 flex items-center justify-between"
           >
             <span>LIVE UPDATES</span>
             <span>→</span>
@@ -250,7 +250,7 @@ export default function FanHubSection() {
                     postUrl: photo.postUrl,
                     platform: photo.platform,
                   })}
-                  className="group relative aspect-square bg-neutral-200 dark:bg-neutral-900 rounded-sm overflow-hidden cursor-pointer border border-border hover:border-crimson transition-colors"
+                  className="group relative aspect-square bg-neutral-200 dark:bg-card rounded-sm overflow-hidden cursor-pointer border border-border hover:border-crimson transition-colors"
                 >
                   <Image
                     src={photo.thumbnail}
@@ -266,7 +266,7 @@ export default function FanHubSection() {
             </div>
           </div>
 
-          <div className="text-[8px] font-mono text-neutral-500 dark:text-neutral-400 pt-1 border-t border-border dark:border-border/50 flex items-center justify-between mt-1">
+          <div className="text-[8px] font-mono text-charcoal-soft pt-1 border-t border-border dark:border-border/50 flex items-center justify-between mt-1">
             <span>TAG #MAPLEPITCH</span>
             <span className="text-crimson dark:text-crimson">APPROVED QUEUE</span>
           </div>
@@ -284,7 +284,7 @@ export default function FanHubSection() {
             <h3 className="text-xs font-bold text-charcoal dark:text-white hover:text-crimson dark:hover:text-crimson transition-colors cursor-pointer line-clamp-1">
               Tactical Breakdown: How Jesse Marsch’s block neutralized top CONCACAF rivals
             </h3>
-            <p className="text-[10px] text-neutral-600 dark:text-neutral-400 leading-snug line-clamp-2">
+            <p className="text-[10px] text-neutral-600 dark:text-charcoal-soft leading-snug line-clamp-2">
               Comprehensive breakdown of defensive positioning, midfield compactness, and vertical transitions during the latest international window...
             </p>
           </div>
@@ -332,7 +332,7 @@ export default function FanHubSection() {
             href="https://instagram.com" 
             target="_blank" 
             rel="noopener noreferrer"
-            className="text-[8px] text-neutral-500 dark:text-neutral-400 font-mono hover:text-crimson dark:hover:text-crimson transition-colors pt-1 border-t border-border dark:border-border/50 flex items-center justify-between"
+            className="text-[8px] text-charcoal-soft font-mono hover:text-crimson dark:hover:text-crimson transition-colors pt-1 border-t border-border dark:border-border/50 flex items-center justify-between"
           >
             <span>VIEW GALLERY</span>
             <span>→</span>
@@ -350,7 +350,7 @@ export default function FanHubSection() {
 
           <div className="my-1">
             <span className="text-[10px] font-bold text-charcoal dark:text-white block tracking-tight">SUBMIT YOUR CLUB CREW</span>
-            <p className="text-[9px] text-neutral-600 dark:text-neutral-400 leading-tight line-clamp-2 mt-0.5">
+            <p className="text-[9px] text-neutral-600 dark:text-charcoal-soft leading-tight line-clamp-2 mt-0.5">
               Showcase your local supporters group on matchdays across the country.
             </p>
           </div>
@@ -372,7 +372,7 @@ export default function FanHubSection() {
               <span className="text-[10px] font-mono text-crimson dark:text-crimson font-bold uppercase tracking-widest">
                 [ {activePhoto.platform} SUBMISSION ]
               </span>
-              <span className="text-[10px] font-mono text-neutral-500 dark:text-neutral-400">{activePhoto.username}</span>
+              <span className="text-[10px] font-mono text-charcoal-soft">{activePhoto.username}</span>
             </div>
             <button 
               onClick={() => setActivePhoto(null)}

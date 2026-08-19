@@ -383,19 +383,19 @@ export default function ProvincialPyramidTracker() {
               <h2 className="text-xs font-mono tracking-widest text-charcoal dark:text-white uppercase font-bold">
                 PROVINCIAL PYRAMID
               </h2>
-              <span className="text-[10px] text-neutral-500 dark:text-neutral-400 font-mono">
+              <span className="text-[10px] text-charcoal-soft font-mono">
                 LEAGUE1 CANADA SYSTEM
               </span>
             </div>
           </div>
           
-          <div className="grid grid-cols-2 gap-1 bg-neutral-200 dark:bg-neutral-900 p-1 border border-border">
+          <div className="grid grid-cols-2 gap-1 bg-neutral-200 dark:bg-card p-1 border border-border">
             <button
               onClick={() => handleGenderChange('men')}
               className={`py-1 text-center font-mono text-xs transition-colors ${
                 gender === 'men'
                   ? 'bg-crimson text-white font-bold shadow-sm'
-                  : 'text-neutral-600 dark:text-neutral-400 hover:text-charcoal dark:hover:text-white'
+                  : 'text-neutral-600 dark:text-charcoal-soft hover:text-charcoal dark:hover:text-white'
               }`}
             >
               MEN
@@ -405,7 +405,7 @@ export default function ProvincialPyramidTracker() {
               className={`py-1 text-center font-mono text-xs transition-colors ${
                 gender === 'women'
                   ? 'bg-crimson text-white font-bold shadow-sm'
-                  : 'text-neutral-600 dark:text-neutral-400 hover:text-charcoal dark:hover:text-white'
+                  : 'text-neutral-600 dark:text-charcoal-soft hover:text-charcoal dark:hover:text-white'
               }`}
             >
               WOMEN
@@ -414,7 +414,7 @@ export default function ProvincialPyramidTracker() {
         </div>
 
         {/* PROVINCE SELECTOR */}
-        <div className="grid grid-cols-4 gap-1 bg-neutral-200 dark:bg-neutral-900 p-1 border border-border font-mono text-xs">
+        <div className="grid grid-cols-4 gap-1 bg-neutral-200 dark:bg-card p-1 border border-border font-mono text-xs">
           {(['ON', 'QC', 'BC', 'AB'] as const).map((prov) => (
             <button
               key={prov}
@@ -422,7 +422,7 @@ export default function ProvincialPyramidTracker() {
               className={`py-1 text-center transition-colors ${
                 province === prov
                   ? 'bg-white dark:bg-neutral-800 text-charcoal dark:text-white font-bold border border-border dark:border-neutral-700 shadow-sm'
-                  : 'text-neutral-600 dark:text-neutral-400 hover:text-charcoal dark:hover:text-white'
+                  : 'text-neutral-600 dark:text-charcoal-soft hover:text-charcoal dark:hover:text-white'
               }`}
             >
               {prov}
@@ -440,7 +440,7 @@ export default function ProvincialPyramidTracker() {
                 className={`font-mono text-[10px] uppercase tracking-wider whitespace-nowrap px-1 py-1 transition-colors ${
                   tier === t
                     ? 'text-crimson dark:text-crimson font-bold border-b-2 border-crimson'
-                    : 'text-neutral-500 hover:text-charcoal dark:hover:text-white'
+                    : 'text-charcoal-soft hover:text-charcoal dark:hover:text-white'
                 }`}
               >
                 {t}
@@ -469,7 +469,7 @@ export default function ProvincialPyramidTracker() {
                     </td>
                     <td className="py-1.5 font-medium text-charcoal dark:text-white truncate max-w-[130px]">{row.club}</td>
                     <td className="py-1.5 text-right font-bold text-charcoal dark:text-white">{row.pts}</td>
-                    <td className="py-1.5 text-right text-neutral-500 dark:text-neutral-400">{row.gd}</td>
+                    <td className="py-1.5 text-right text-charcoal-soft">{row.gd}</td>
                   </tr>
                 ))
               ) : (
@@ -497,7 +497,7 @@ export default function ProvincialPyramidTracker() {
       <section className="bg-card border border-border p-4 flex flex-col gap-3 text-charcoal dark:text-white font-mono shadow-sm">
         <div className="flex justify-between items-center border-b border-border pb-2">
           <h2 className="text-xs tracking-widest text-charcoal dark:text-white uppercase font-bold">
-            MEDICAL WARD <span className="text-[10px] text-neutral-500 dark:text-neutral-400 font-normal ml-2">L1 {province} SIDELINED</span>
+            MEDICAL WARD <span className="text-[10px] text-charcoal-soft font-normal ml-2">L1 {province} SIDELINED</span>
           </h2>
           <span className="text-xs font-bold text-crimson">+</span>
         </div>
@@ -511,7 +511,7 @@ export default function ProvincialPyramidTracker() {
                 </div>
                 <div className="flex items-center gap-1.5">
                   <span className="text-crimson font-bold">+</span>
-                  <span className="text-[10px] text-neutral-600 dark:text-neutral-400">{p.return}</span>
+                  <span className="text-[10px] text-neutral-600 dark:text-charcoal-soft">{p.return}</span>
                 </div>
               </div>
             ))
@@ -525,7 +525,7 @@ export default function ProvincialPyramidTracker() {
       <section className="bg-card border border-border p-4 flex flex-col gap-3 text-charcoal dark:text-white font-mono shadow-sm">
         <div className="flex justify-between items-center border-b border-border pb-2">
           <div className="flex items-center gap-2">
-            <svg className="w-4 h-4 text-neutral-500 dark:text-neutral-400 shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
+            <svg className="w-4 h-4 text-charcoal-soft shrink-0" fill="none" stroke="currentColor" viewBox="0 0 24 24" xmlns="http://www.w3.org/2000/svg">
               <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={1.5} d="M8 7V3m8 4V3m-9 8h10M5 21h14a2 2 0 002-2V7a2 2 0 002-2H5a2 2 0 00-2 2v12a2 2 0 002 2z" />
             </svg>
             <h2 className="text-xs tracking-widest text-charcoal dark:text-white uppercase font-bold">
@@ -536,16 +536,16 @@ export default function ProvincialPyramidTracker() {
         </div>
         {provincialFixture ? (
           <div className="bg-surface border border-border p-3.5 flex flex-col gap-3">
-            <div className="flex justify-between items-center text-[10px] text-neutral-500 dark:text-neutral-400 border-b border-border dark:border-border/60 pb-1.5">
+            <div className="flex justify-between items-center text-[10px] text-charcoal-soft border-b border-border dark:border-border/60 pb-1.5">
               <span className="font-bold text-charcoal dark:text-neutral-300">L1 {province} SHOWCASE</span>
               <span className="text-crimson dark:text-crimson font-bold">{provincialFixture.time}</span>
             </div>
-            <div className="flex items-center justify-between bg-neutral-100 dark:bg-neutral-900/60 p-2 border border-border dark:border-border/80">
+            <div className="flex items-center justify-between bg-neutral-100 dark:bg-card/60 p-2 border border-border dark:border-border/80">
               <div className="flex-1 min-w-0">
                 <div className="text-xs font-bold text-charcoal dark:text-white truncate">{provincialFixture.homeTeam}</div>
                 <div className="text-[9px] text-charcoal-soft truncate">{provincialFixture.homeCity}</div>
               </div>
-              <div className="px-2 text-[10px] font-bold text-neutral-400 dark:text-neutral-500 shrink-0">VS</div>
+              <div className="px-2 text-[10px] font-bold text-charcoal-soft shrink-0">VS</div>
               <div className="flex-1 min-w-0 text-right">
                 <div className="text-xs font-bold text-charcoal dark:text-white truncate">{provincialFixture.awayTeam}</div>
                 <div className="text-[9px] text-charcoal-soft truncate">{provincialFixture.awayCity}</div>

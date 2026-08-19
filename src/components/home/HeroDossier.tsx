@@ -40,7 +40,7 @@ export default function HeroDossier({ story }: HeroDossierProps) {
           <h2 className="text-xl lg:text-2xl font-bold text-charcoal dark:text-white tracking-tight leading-snug mb-2 group-hover:text-crimson dark:group-hover:text-crimson transition-colors">
             {story.headline}
           </h2>
-          <p className="text-xs lg:text-sm text-neutral-600 dark:text-neutral-400 font-sans line-clamp-2 mb-4">
+          <p className="text-xs lg:text-sm text-neutral-600 dark:text-charcoal-soft font-sans line-clamp-2 mb-4">
             {story.summary}
           </p>
           <div className="flex items-center text-xs font-mono font-semibold text-crimson dark:text-crimson group-hover:underline">

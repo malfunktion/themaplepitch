@@ -149,7 +149,7 @@ export default function SidebarXFeedWidget() {
             <p className="text-[11px] text-neutral-300 dark:text-neutral-300 leading-snug line-clamp-3 mb-2">
               {tweet.content}
             </p>
-            <div className="flex items-center justify-between text-[9px] font-mono text-neutral-400 pt-1 border-t border-border dark:border-border/50">
+            <div className="flex items-center justify-between text-[9px] font-mono text-charcoal-soft pt-1 border-t border-border dark:border-border/50">
               <span>💬 {tweet.retweets} &nbsp; 🔄 {tweet.likes}</span>
               <ExternalLink className="w-2.5 h-2.5 text-charcoal-soft group-hover:text-crimson transition-colors" />
             </div>

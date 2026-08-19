@@ -34,7 +34,7 @@ export default function DualNationalRadar() {
       {/* Header: Stacked cleanly to prevent horizontal overflow */}
       <div className="flex flex-col gap-2 mb-3 border-b border-border pb-2.5">
         <div className="flex items-center justify-between">
-          <h3 className="text-[11px] tracking-widest font-bold text-neutral-500 dark:text-neutral-400 uppercase flex items-center gap-1.5">
+          <h3 className="text-[11px] tracking-widest font-bold text-charcoal-soft uppercase flex items-center gap-1.5">
             <Target className="w-3.5 h-3.5 text-crimson dark:text-crimson flex-shrink-0" />
             Eligibility Watch
           </h3>
@@ -47,7 +47,7 @@ export default function DualNationalRadar() {
               className={`flex-1 text-[10px] tracking-widest font-bold py-1 rounded-sm text-center transition-colors ${
                 gender === g 
                   ? 'bg-crimson text-white shadow-sm' 
-                  : 'text-neutral-500 hover:text-charcoal dark:hover:text-white'
+                  : 'text-charcoal-soft hover:text-charcoal dark:hover:text-white'
               }`}
             >
               [ {g} ]
@@ -61,7 +61,7 @@ export default function DualNationalRadar() {
         {activeList.map((prospect) => (
           <div 
             key={prospect.id} 
-            className="group flex justify-between items-center py-1 px-1.5 hover:bg-neutral-100 dark:hover:bg-neutral-900 rounded-sm transition-colors cursor-pointer border border-transparent hover:border-border"
+            className="group flex justify-between items-center py-1 px-1.5 hover:bg-neutral-100 dark:hover:bg-card rounded-sm transition-colors cursor-pointer border border-transparent hover:border-border"
           >
             <div className="flex flex-col min-w-0 pr-2">
               <span className="text-xs font-bold text-charcoal dark:text-neutral-200 group-hover:text-crimson dark:group-hover:text-crimson transition-colors truncate">
@@ -76,7 +76,7 @@ export default function DualNationalRadar() {
                 prospect.status === 'UNTIED' 
                   ? 'border-crimson/20 dark:border-crimson/40 text-crimson bg-crimson/10 dark:bg-crimson/20' :
                 prospect.status === 'MONITORING' 
-                  ? 'border-border text-neutral-500 dark:text-neutral-400' :
+                  ? 'border-border text-charcoal-soft' :
                 'border-border text-neutral-600 dark:text-neutral-300'
               }`}>
                 {prospect.status}

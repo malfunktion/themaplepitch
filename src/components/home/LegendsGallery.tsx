@@ -23,7 +23,7 @@ export default function LegendsGallery() {
         {legends.map((legend) => (
           <div key={legend.id} className="group flex cursor-pointer flex-col gap-2">
             {/* Image Placeholder */}
-            <div className="aspect-square w-full bg-surface dark:bg-neutral-900 transition-colors group-hover:bg-neutral-200 dark:group-hover:bg-neutral-800 flex items-center justify-center text-xs text-neutral-500 dark:text-neutral-500 group-hover:text-charcoal dark:group-hover:text-white border border-border font-mono">
+            <div className="aspect-square w-full bg-surface dark:bg-card transition-colors group-hover:bg-neutral-200 dark:group-hover:bg-neutral-800 flex items-center justify-center text-xs text-charcoal-soft group-hover:text-charcoal dark:group-hover:text-white border border-border font-mono">
               [ ARCHIVE IMG ]
             </div>
             
@@ -34,7 +34,7 @@ export default function LegendsGallery() {
               <h3 className="text-sm font-black uppercase leading-tight text-charcoal dark:text-white group-hover:text-crimson dark:group-hover:text-crimson transition-colors">
                 {legend.name}
               </h3>
-              <span className="mt-0.5 text-xs font-medium text-neutral-600 dark:text-neutral-400">
+              <span className="mt-0.5 text-xs font-medium text-neutral-600 dark:text-charcoal-soft">
                 {legend.accolade}
               </span>
             </div>

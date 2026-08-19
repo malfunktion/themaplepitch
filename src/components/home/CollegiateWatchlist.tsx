@@ -32,13 +32,13 @@ export default function CollegiateWatchlist() {
               [ COLLEGIATE WATCHLIST ]
             </h3>
           </div>
-          <div className="flex bg-neutral-900 border border-neutral-800 p-0.5 rounded-sm">
+          <div className="flex bg-card border border-neutral-800 p-0.5 rounded-sm">
             {(['MEN', 'WOMEN'] as const).map((g) => (
               <button
                 key={g}
                 onClick={() => setGender(g)}
                 className={`px-2 py-0.5 text-[9px] font-mono font-bold rounded-sm transition-colors ${
-                  gender === g ? 'bg-red-600 text-white' : 'text-neutral-400 hover:text-white'
+                  gender === g ? 'bg-red-600 text-white' : 'text-charcoal-soft hover:text-white'
                 }`}
               >
                 {g}
@@ -52,7 +52,7 @@ export default function CollegiateWatchlist() {
             <div key={idx} className="py-2.5 flex items-center justify-between text-xs font-mono">
               <div>
                 <p className="font-bold text-neutral-100">{player.name}</p>
-                <p className="text-[9px] text-neutral-400">{player.school} • {player.league}</p>
+                <p className="text-[9px] text-charcoal-soft">{player.school} • {player.league}</p>
               </div>
               <span className="text-red-500 font-bold">{player.stats}</span>
             </div>

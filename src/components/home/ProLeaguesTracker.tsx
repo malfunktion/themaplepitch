@@ -160,7 +160,7 @@ export default function ProLeaguesTracker({ league }: ProLeaguesTrackerProps = {
               {team.clubName}
             </Link>
           </div>
-          <span className="text-neutral-500 text-center font-mono">{team.played ?? 0}</span>
+          <span className="text-charcoal-soft text-center font-mono">{team.played ?? 0}</span>
           <span className="text-charcoal dark:text-white font-bold text-center font-mono">
             {team.points ?? 0}
           </span>
@@ -197,7 +197,7 @@ export default function ProLeaguesTracker({ league }: ProLeaguesTrackerProps = {
             <button
               onClick={() => setGender('men')}
               className={`px-2.5 py-1 rounded-sm transition-colors uppercase ${
-                gender === 'men' ? 'bg-crimson text-white' : 'text-neutral-500 hover:text-charcoal dark:hover:text-white'
+                gender === 'men' ? 'bg-crimson text-white' : 'text-charcoal-soft hover:text-charcoal dark:hover:text-white'
               }`}
             >
               MEN
@@ -205,7 +205,7 @@ export default function ProLeaguesTracker({ league }: ProLeaguesTrackerProps = {
             <button
               onClick={() => setGender('women')}
               className={`px-2.5 py-1 rounded-sm transition-colors uppercase ${
-                gender === 'women' ? 'bg-crimson text-white' : 'text-neutral-500 hover:text-charcoal dark:hover:text-white'
+                gender === 'women' ? 'bg-crimson text-white' : 'text-charcoal-soft hover:text-charcoal dark:hover:text-white'
               }`}
             >
               WOMEN
@@ -219,7 +219,7 @@ export default function ProLeaguesTracker({ league }: ProLeaguesTrackerProps = {
               className={`px-2 py-1 rounded-sm transition-colors ${
                 scope === 'ALL'
                   ? 'bg-neutral-800 text-white dark:bg-neutral-200 dark:text-black'
-                  : 'text-neutral-500 hover:text-charcoal dark:hover:text-white'
+                  : 'text-charcoal-soft hover:text-charcoal dark:hover:text-white'
               }`}
             >
               ALL
@@ -229,7 +229,7 @@ export default function ProLeaguesTracker({ league }: ProLeaguesTrackerProps = {
               className={`px-2 py-1 rounded-sm transition-colors ${
                 scope === 'ABROAD'
                   ? 'bg-neutral-800 text-white dark:bg-neutral-200 dark:text-black'
-                  : 'text-neutral-500 hover:text-charcoal dark:hover:text-white'
+                  : 'text-charcoal-soft hover:text-charcoal dark:hover:text-white'
               }`}
               title="Includes MLS, European & Global Leagues"
             >
@@ -240,7 +240,7 @@ export default function ProLeaguesTracker({ league }: ProLeaguesTrackerProps = {
               className={`px-2 py-1 rounded-sm transition-colors ${
                 scope === 'DOMESTIC'
                   ? 'bg-neutral-800 text-white dark:bg-neutral-200 dark:text-black'
-                  : 'text-neutral-500 hover:text-charcoal dark:hover:text-white'
+                  : 'text-charcoal-soft hover:text-charcoal dark:hover:text-white'
               }`}
             >
               {domesticLabel}
@@ -253,17 +253,17 @@ export default function ProLeaguesTracker({ league }: ProLeaguesTrackerProps = {
       <div className="grid grid-cols-1 md:grid-cols-2 grid-rows-[auto_1fr_1fr] gap-4 h-full">
         {/* ROW 1: LEAGUE STANDINGS */}
         <div className="col-span-1 md:col-span-2 overflow-x-auto border-b border-border pb-4">
-          <div className="text-[9px] font-mono text-charcoal-soft dark:text-neutral-400 mb-2 font-bold uppercase">
+          <div className="text-[9px] font-mono text-charcoal-soft mb-2 font-bold uppercase">
             {domesticLabel} DOMESTIC STANDINGS
           </div>
           {currentStandings.length === 0 ? (
-            <div className="py-4 text-center text-xs font-mono text-charcoal-soft dark:text-neutral-400">
+            <div className="py-4 text-center text-xs font-mono text-charcoal-soft">
               LOADING {domesticLabel} STANDINGS...
             </div>
           ) : (
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 min-w-[320px]">
               <div className="flex flex-col gap-1">
-                <div className="grid grid-cols-[20px_1fr_20px_20px] text-[10px] text-charcoal-soft dark:text-neutral-400 font-bold tracking-wider mb-1 px-1 font-mono">
+                <div className="grid grid-cols-[20px_1fr_20px_20px] text-[10px] text-charcoal-soft font-bold tracking-wider mb-1 px-1 font-mono">
                   <span>#</span>
                   <span>CLUB</span>
                   <span className="text-center">P</span>
@@ -273,7 +273,7 @@ export default function ProLeaguesTracker({ league }: ProLeaguesTrackerProps = {
               </div>
 
               <div className="flex flex-col gap-1">
-                <div className="grid grid-cols-[20px_1fr_20px_20px] text-[10px] text-charcoal-soft dark:text-neutral-400 font-bold tracking-wider mb-1 px-1 font-mono">
+                <div className="grid grid-cols-[20px_1fr_20px_20px] text-[10px] text-charcoal-soft font-bold tracking-wider mb-1 px-1 font-mono">
                   <span>#</span>
                   <span>CLUB</span>
                   <span className="text-center">P</span>
@@ -287,11 +287,11 @@ export default function ProLeaguesTracker({ league }: ProLeaguesTrackerProps = {
 
         {/* ROW 2: GOLDEN BOOT & AVG GOALS */}
         <div className="flex flex-col gap-2 border-b md:border-b-0 md:border-r border-border pb-4 md:pb-0 md:pr-4">
-          <h3 className="text-neutral-500 text-[10px] font-bold uppercase tracking-widest border-b border-border pb-1 font-mono">
+          <h3 className="text-charcoal-soft text-[10px] font-bold uppercase tracking-widest border-b border-border pb-1 font-mono">
             Golden Boot Race ({scope})
           </h3>
           {goldenBoot.length === 0 ? (
-            <div className="text-[10px] font-mono text-charcoal-soft dark:text-neutral-400 py-2">
+            <div className="text-[10px] font-mono text-charcoal-soft py-2">
               No player goals logged
             </div>
           ) : (
@@ -302,7 +302,7 @@ export default function ProLeaguesTracker({ league }: ProLeaguesTrackerProps = {
               return (
                 <div key={player.id || idx} className="flex items-center justify-between text-xs p-1">
                   <div className="flex items-center gap-2 w-1/2 min-w-0">
-                    <span className="text-charcoal-soft dark:text-neutral-400 w-3 shrink-0 font-mono">{idx + 1}</span>
+                    <span className="text-charcoal-soft w-3 shrink-0 font-mono">{idx + 1}</span>
                     <div className="flex flex-col min-w-0">
                       <Link
                         href={`/players/${pRoute}`}
@@ -312,14 +312,14 @@ export default function ProLeaguesTracker({ league }: ProLeaguesTrackerProps = {
                       </Link>
                       <Link
                         href={`/teams/${tRoute}`}
-                        className="text-charcoal-soft dark:text-neutral-400 text-[9px] truncate hover:text-crimson hover:underline"
+                        className="text-charcoal-soft text-[9px] truncate hover:text-crimson hover:underline"
                       >
                         {teamObj?.name || player.league || 'Pro Club'}
                       </Link>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 w-1/2 justify-end shrink-0">
-                    <div className="w-full bg-neutral-200 dark:bg-neutral-900 h-1.5 rounded-full overflow-hidden flex justify-end">
+                    <div className="w-full bg-neutral-200 dark:bg-card h-1.5 rounded-full overflow-hidden flex justify-end">
                       <div className="bg-crimson h-full" style={{ width: player.width }}></div>
                     </div>
                     <span className="text-charcoal dark:text-white font-bold w-4 text-right font-mono">
@@ -334,13 +334,13 @@ export default function ProLeaguesTracker({ league }: ProLeaguesTrackerProps = {
 
         <div className="flex flex-col gap-2 md:pl-4 pb-4 md:pb-0">
           <div className="flex justify-between items-center border-b border-border pb-1 font-mono">
-            <h3 className="text-neutral-500 text-[10px] font-bold uppercase tracking-widest">
+            <h3 className="text-charcoal-soft text-[10px] font-bold uppercase tracking-widest">
               Avg Goals / Match
             </h3>
-            <span className="text-[8px] text-charcoal-soft dark:text-neutral-400">[Red] Avg</span>
+            <span className="text-[8px] text-charcoal-soft">[Red] Avg</span>
           </div>
           {avgGoals.length === 0 ? (
-            <div className="text-[10px] font-mono text-charcoal-soft dark:text-neutral-400 py-2">
+            <div className="text-[10px] font-mono text-charcoal-soft py-2">
               No stats logged
             </div>
           ) : (
@@ -351,7 +351,7 @@ export default function ProLeaguesTracker({ league }: ProLeaguesTrackerProps = {
               return (
                 <div key={player.id || idx} className="flex items-center justify-between text-xs p-1">
                   <div className="flex items-center gap-2 w-1/2 min-w-0">
-                    <span className="text-charcoal-soft dark:text-neutral-400 w-3 shrink-0 font-mono">{idx + 1}</span>
+                    <span className="text-charcoal-soft w-3 shrink-0 font-mono">{idx + 1}</span>
                     <div className="flex flex-col min-w-0">
                       <Link
                         href={`/players/${pRoute}`}
@@ -361,14 +361,14 @@ export default function ProLeaguesTracker({ league }: ProLeaguesTrackerProps = {
                       </Link>
                       <Link
                         href={`/teams/${tRoute}`}
-                        className="text-charcoal-soft dark:text-neutral-400 text-[9px] truncate hover:text-crimson hover:underline"
+                        className="text-charcoal-soft text-[9px] truncate hover:text-crimson hover:underline"
                       >
                         {teamObj?.name || player.league || 'Pro Club'}
                       </Link>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 w-1/2 justify-end shrink-0">
-                    <div className="w-full h-1.5 rounded-full overflow-hidden flex gap-0.5 justify-end bg-neutral-200 dark:bg-neutral-900">
+                    <div className="w-full h-1.5 rounded-full overflow-hidden flex gap-0.5 justify-end bg-neutral-200 dark:bg-card">
                       <div className="bg-neutral-400 dark:bg-white h-full" style={{ width: player.whiteWidth }}></div>
                       <div className="bg-crimson h-full" style={{ width: player.redWidth }}></div>
                     </div>
@@ -384,11 +384,11 @@ export default function ProLeaguesTracker({ league }: ProLeaguesTrackerProps = {
 
         {/* ROW 3: ASSISTS & CLEAN SHEETS */}
         <div className="flex flex-col gap-2 border-r-0 md:border-r border-border pr-0 md:pr-4 pt-4 border-t">
-          <h3 className="text-neutral-500 text-[10px] font-bold uppercase tracking-widest border-b border-border pb-1 font-mono">
+          <h3 className="text-charcoal-soft text-[10px] font-bold uppercase tracking-widest border-b border-border pb-1 font-mono">
             Assist Leaders
           </h3>
           {assistLeaders.length === 0 ? (
-            <div className="text-[10px] font-mono text-charcoal-soft dark:text-neutral-400 py-2">
+            <div className="text-[10px] font-mono text-charcoal-soft py-2">
               No assists logged
             </div>
           ) : (
@@ -399,7 +399,7 @@ export default function ProLeaguesTracker({ league }: ProLeaguesTrackerProps = {
               return (
                 <div key={player.id || idx} className="flex items-center justify-between text-xs p-1">
                   <div className="flex items-center gap-2 w-1/2 min-w-0">
-                    <span className="text-charcoal-soft dark:text-neutral-400 w-3 shrink-0 font-mono">{idx + 1}</span>
+                    <span className="text-charcoal-soft w-3 shrink-0 font-mono">{idx + 1}</span>
                     <div className="flex flex-col min-w-0">
                       <Link
                         href={`/players/${pRoute}`}
@@ -409,14 +409,14 @@ export default function ProLeaguesTracker({ league }: ProLeaguesTrackerProps = {
                       </Link>
                       <Link
                         href={`/teams/${tRoute}`}
-                        className="text-charcoal-soft dark:text-neutral-400 text-[9px] truncate hover:text-crimson hover:underline"
+                        className="text-charcoal-soft text-[9px] truncate hover:text-crimson hover:underline"
                       >
                         {teamObj?.name || player.league || 'Pro Club'}
                       </Link>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 w-1/2 justify-end shrink-0">
-                    <div className="w-full bg-neutral-200 dark:bg-neutral-900 h-1.5 rounded-full overflow-hidden flex justify-end">
+                    <div className="w-full bg-neutral-200 dark:bg-card h-1.5 rounded-full overflow-hidden flex justify-end">
                       <div className="bg-crimson h-full" style={{ width: player.width }}></div>
                     </div>
                     <span className="text-charcoal dark:text-white font-bold w-4 text-right font-mono">
@@ -430,11 +430,11 @@ export default function ProLeaguesTracker({ league }: ProLeaguesTrackerProps = {
         </div>
 
         <div className="flex flex-col gap-2 md:pl-4 pt-4 border-t border-border">
-          <h3 className="text-neutral-500 text-[10px] font-bold uppercase tracking-widest border-b border-border pb-1 font-mono">
+          <h3 className="text-charcoal-soft text-[10px] font-bold uppercase tracking-widest border-b border-border pb-1 font-mono">
             Clean Sheets
           </h3>
           {cleanSheets.length === 0 ? (
-            <div className="text-[10px] font-mono text-charcoal-soft dark:text-neutral-400 py-2">
+            <div className="text-[10px] font-mono text-charcoal-soft py-2">
               No clean sheets logged
             </div>
           ) : (
@@ -445,7 +445,7 @@ export default function ProLeaguesTracker({ league }: ProLeaguesTrackerProps = {
               return (
                 <div key={player.id || idx} className="flex items-center justify-between text-xs p-1">
                   <div className="flex items-center gap-2 w-1/2 min-w-0">
-                    <span className="text-charcoal-soft dark:text-neutral-400 w-3 shrink-0 font-mono">{idx + 1}</span>
+                    <span className="text-charcoal-soft w-3 shrink-0 font-mono">{idx + 1}</span>
                     <div className="flex flex-col min-w-0">
                       <Link
                         href={`/players/${pRoute}`}
@@ -455,14 +455,14 @@ export default function ProLeaguesTracker({ league }: ProLeaguesTrackerProps = {
                       </Link>
                       <Link
                         href={`/teams/${tRoute}`}
-                        className="text-charcoal-soft dark:text-neutral-400 text-[9px] truncate hover:text-crimson hover:underline"
+                        className="text-charcoal-soft text-[9px] truncate hover:text-crimson hover:underline"
                       >
                         {teamObj?.name || player.league || 'Pro Club'}
                       </Link>
                     </div>
                   </div>
                   <div className="flex items-center gap-2 w-1/2 justify-end shrink-0">
-                    <div className="w-full bg-neutral-200 dark:bg-neutral-900 h-1.5 rounded-full overflow-hidden flex justify-end">
+                    <div className="w-full bg-neutral-200 dark:bg-card h-1.5 rounded-full overflow-hidden flex justify-end">
                       <div className="bg-crimson h-full" style={{ width: player.width }}></div>
                     </div>
                     <span className="text-charcoal dark:text-white font-bold w-4 text-right font-mono">

@@ -73,7 +73,7 @@ export default function PlayerDatabaseSpotlights({
           <button
             onClick={() => setActiveTab('men')}
             className={`px-3 py-1 text-xs font-mono uppercase transition-colors ${
-              activeTab === 'men' ? 'bg-crimson text-white font-bold shadow-sm' : 'text-neutral-600 dark:text-zinc-400 hover:text-charcoal dark:hover:text-white'
+              activeTab === 'men' ? 'bg-crimson text-white font-bold shadow-sm' : 'text-neutral-600 dark:text-charcoal-soft hover:text-charcoal dark:hover:text-white'
             }`}
           >
             [ MEN ]
@@ -81,7 +81,7 @@ export default function PlayerDatabaseSpotlights({
           <button
             onClick={() => setActiveTab('women')}
             className={`px-3 py-1 text-xs font-mono uppercase transition-colors ${
-              activeTab === 'women' ? 'bg-crimson text-white font-bold shadow-sm' : 'text-neutral-600 dark:text-zinc-400 hover:text-charcoal dark:hover:text-white'
+              activeTab === 'women' ? 'bg-crimson text-white font-bold shadow-sm' : 'text-neutral-600 dark:text-charcoal-soft hover:text-charcoal dark:hover:text-white'
             }`}
           >
             [ WOMEN ]
@@ -104,7 +104,7 @@ export default function PlayerDatabaseSpotlights({
                   <span className="text-[10px] font-mono bg-crimson/10 dark:bg-crimson/20 text-crimson px-2 py-0.5 border border-crimson/20 dark:border-crimson/30">
                     {player.tag}
                   </span>
-                  <span className="text-[10px] font-mono text-neutral-500 dark:text-zinc-500">{player.vitals}</span>
+                  <span className="text-[10px] font-mono text-charcoal-soft">{player.vitals}</span>
                 </div>
                 <h3 className="text-sm font-bold tracking-tight text-charcoal dark:text-white">
                   <Link
@@ -114,9 +114,9 @@ export default function PlayerDatabaseSpotlights({
                     {player.name}
                   </Link>
                 </h3>
-                <p className="text-xs font-mono text-neutral-600 dark:text-zinc-400 mt-1">{player.position}</p>
+                <p className="text-xs font-mono text-neutral-600 dark:text-charcoal-soft mt-1">{player.position}</p>
               </div>
-              <div className="mt-4 pt-3 border-t border-border flex justify-between items-center text-[11px] font-mono text-neutral-600 dark:text-zinc-400">
+              <div className="mt-4 pt-3 border-t border-border flex justify-between items-center text-[11px] font-mono text-neutral-600 dark:text-charcoal-soft">
                 <Link
                   href={`/teams/${clubRoute}`}
                   className="hover:text-crimson hover:underline truncate mr-2"

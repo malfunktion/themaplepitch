@@ -33,7 +33,7 @@ export default function SidebarRumourMill() {
       {/* Header: Stacked cleanly to prevent horizontal overflow */}
       <div className="flex flex-col gap-2 mb-3 border-b border-border pb-2.5">
         <div className="flex items-center justify-between">
-          <h3 className="text-[11px] tracking-widest font-bold text-neutral-500 dark:text-neutral-400 uppercase flex items-center gap-1.5">
+          <h3 className="text-[11px] tracking-widest font-bold text-charcoal-soft uppercase flex items-center gap-1.5">
             <Radio className="w-3.5 h-3.5 text-crimson flex-shrink-0" />
             Transfer Ticker
           </h3>
@@ -44,7 +44,7 @@ export default function SidebarRumourMill() {
               key={g}
               onClick={() => setGender(g)}
               className={`flex-1 text-[10px] tracking-widest font-bold py-1 rounded-sm text-center transition-colors ${
-                gender === g ? 'bg-crimson text-white shadow-sm' : 'text-neutral-600 dark:text-neutral-500 hover:text-charcoal dark:hover:text-white'
+                gender === g ? 'bg-crimson text-white shadow-sm' : 'text-neutral-600 dark:text-charcoal-soft hover:text-charcoal dark:hover:text-white'
               }`}
             >
               [ {g} ]
@@ -61,11 +61,11 @@ export default function SidebarRumourMill() {
               <span className={`text-[9px] tracking-widest font-bold whitespace-nowrap ${
                 item.type === 'OFFICIAL' ? 'text-green-600 dark:text-green-500' :
                 item.type === 'RUMOUR' ? 'text-crimson dark:text-crimson' :
-                'text-neutral-500 dark:text-neutral-400'
+                'text-charcoal-soft'
               }`}>
                 {item.type}
               </span>
-              <span className="text-[8px] font-mono text-neutral-400 dark:text-neutral-600 whitespace-nowrap">{item.time}</span>
+              <span className="text-[8px] font-mono text-charcoal-soft dark:text-neutral-600 whitespace-nowrap">{item.time}</span>
             </div>
             <p className="text-[11px] text-neutral-700 dark:text-neutral-300 leading-snug group-hover:text-charcoal dark:group-hover:text-white transition-colors">
               {item.text}
@@ -76,7 +76,7 @@ export default function SidebarRumourMill() {
 
       {/* Footer Action */}
       <div className="mt-2.5 pt-2 border-t border-border">
-        <button className="text-[9px] font-bold text-neutral-500 dark:text-neutral-400 hover:text-crimson dark:hover:text-crimson tracking-widest w-full text-left transition-colors flex items-center justify-between">
+        <button className="text-[9px] font-bold text-charcoal-soft hover:text-crimson dark:hover:text-crimson tracking-widest w-full text-left transition-colors flex items-center justify-between">
           <span>OPEN RUMOUR MILL</span>
           <ArrowUpRight className="w-3.5 h-3.5" />
         </button>

@@ -89,7 +89,7 @@ export default function ProvincialSpotlightSection() {
       {/* Right Side: Provincial Leagues Carousel (Spans 2 columns by 3 rows) */}
       <div className="lg:col-span-2 lg:row-span-3 flex flex-col bg-surface overflow-hidden">
         <div className="px-4 py-3 border-b border-border flex items-center justify-between bg-card">
-          <span className="text-xs font-mono font-bold tracking-widest text-neutral-500 dark:text-neutral-400 uppercase">
+          <span className="text-xs font-mono font-bold tracking-widest text-charcoal-soft uppercase">
             PROVINCIAL LEAGUES // WIRE
           </span>
           <span className="text-xs font-mono text-charcoal-soft uppercase">

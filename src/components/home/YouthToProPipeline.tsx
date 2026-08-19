@@ -59,7 +59,7 @@ export default function YouthToProPipeline() {
         </div>
 
         {/* Featured Spotlight Graphic Pill with Rich Saturated Turf & Red Tones */}
-        <div className="hidden lg:flex items-center gap-3 bg-neutral-100 dark:bg-neutral-900 border border-border dark:border-neutral-700/80 px-3 py-1.5 relative overflow-hidden group/pill flex-1 max-w-sm shadow-inner">
+        <div className="hidden lg:flex items-center gap-3 bg-neutral-100 dark:bg-card border border-border dark:border-neutral-700/80 px-3 py-1.5 relative overflow-hidden group/pill flex-1 max-w-sm shadow-inner">
           <div className="absolute inset-0 z-0">
             <Image
               src={spotlightProspect.avatarUrl}
@@ -75,7 +75,7 @@ export default function YouthToProPipeline() {
             <div className="min-w-0 flex-1">
               <div className="text-[9px] font-mono text-crimson dark:text-crimson tracking-wider uppercase flex items-center gap-1.5 font-bold">
                 <span>⭐ FEATURED SPOTLIGHT</span>
-                <span className="text-neutral-400 dark:text-neutral-500">•</span>
+                <span className="text-charcoal-soft">•</span>
                 <span className="text-neutral-600 dark:text-neutral-300">{spotlightProspect.provincialLeague}</span>
               </div>
               <div className="text-xs font-mono font-bold text-charcoal dark:text-neutral-100 truncate">
@@ -83,20 +83,20 @@ export default function YouthToProPipeline() {
               </div>
             </div>
             <div className="text-right font-mono flex-shrink-0">
-              <div className="text-[9px] text-neutral-500 dark:text-neutral-400 uppercase">Rating</div>
+              <div className="text-[9px] text-charcoal-soft uppercase">Rating</div>
               <div className="text-xs font-bold text-crimson dark:text-crimson">{spotlightProspect.rating}</div>
             </div>
           </div>
         </div>
 
         {/* Minimalist Gender Toggle */}
-        <div className="flex items-center bg-neutral-200 dark:bg-neutral-900 border border-border dark:border-neutral-700 p-0.5 text-xs font-mono self-start xl:self-auto">
+        <div className="flex items-center bg-neutral-200 dark:bg-card border border-border dark:border-neutral-700 p-0.5 text-xs font-mono self-start xl:self-auto">
           <button
             onClick={() => setGender('MEN')}
             className={`px-3 py-1 transition-colors ${
               gender === 'MEN'
                 ? 'bg-crimson text-white font-bold shadow-sm'
-                : 'text-neutral-600 dark:text-neutral-400 hover:text-charcoal dark:hover:text-white'
+                : 'text-neutral-600 dark:text-charcoal-soft hover:text-charcoal dark:hover:text-white'
             }`}
           >
             MEN
@@ -106,7 +106,7 @@ export default function YouthToProPipeline() {
             className={`px-3 py-1 transition-colors ${
               gender === 'WOMEN'
                 ? 'bg-crimson text-white font-bold shadow-sm'
-                : 'text-neutral-600 dark:text-neutral-400 hover:text-charcoal dark:hover:text-white'
+                : 'text-neutral-600 dark:text-charcoal-soft hover:text-charcoal dark:hover:text-white'
             }`}
           >
             WOMEN
@@ -118,7 +118,7 @@ export default function YouthToProPipeline() {
       <div className="my-2 overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="border-b border-border text-[10px] font-mono text-neutral-500 dark:text-neutral-400">
+            <tr className="border-b border-border text-[10px] font-mono text-charcoal-soft">
               <th className="py-1.5 px-2">#</th>
               <th className="py-1.5 px-3">PROSPECT & CLUB</th>
               <th className="py-1.5 px-2">LEAGUE</th>
@@ -141,12 +141,12 @@ export default function YouthToProPipeline() {
                   />
                   <div>
                     <div className="font-bold text-charcoal dark:text-neutral-100 tracking-wide leading-tight">{item.name}</div>
-                    <div className="text-[10px] text-neutral-500 dark:text-neutral-400 leading-none">{item.club}</div>
+                    <div className="text-[10px] text-charcoal-soft leading-none">{item.club}</div>
                   </div>
                 </td>
-                <td className="py-1 px-2 text-neutral-600 dark:text-neutral-400 text-[11px]">{item.provincialLeague}</td>
+                <td className="py-1 px-2 text-neutral-600 dark:text-charcoal-soft text-[11px]">{item.provincialLeague}</td>
                 <td className="py-1 px-2 text-center">
-                  <span className="bg-neutral-200 dark:bg-neutral-900 border border-border dark:border-neutral-700 px-1.5 py-0.5 text-[10px] text-neutral-700 dark:text-neutral-300">
+                  <span className="bg-neutral-200 dark:bg-card border border-border dark:border-neutral-700 px-1.5 py-0.5 text-[10px] text-neutral-700 dark:text-neutral-300">
                     {item.position}
                   </span>
                 </td>
@@ -164,7 +164,7 @@ export default function YouthToProPipeline() {
 
       {/* Footer Link / Portal Indicator */}
       <div className="pt-3 border-t border-border flex items-center justify-between text-xs font-mono">
-        <span className="text-neutral-500 dark:text-neutral-400 text-[11px]">Top 10 Provincial Academy Standouts</span>
+        <span className="text-charcoal-soft text-[11px]">Top 10 Provincial Academy Standouts</span>
         <a
           href="#"
           className="text-crimson hover:text-crimson-dim transition-colors flex items-center gap-1 font-bold"

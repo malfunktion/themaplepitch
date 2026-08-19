@@ -9,8 +9,8 @@ interface WireFeedListProps {
 
 export default function WireFeedList({ stories }: WireFeedListProps) {
   return (
-    <div className="h-full bg-card dark:bg-[#171717] border border-border dark:border-neutral-800 rounded-sm p-4 flex flex-col gap-3">
-      <div className="flex justify-between items-center text-xs font-mono text-neutral-400">
+    <div className="h-full bg-card border border-border rounded-sm p-4 flex flex-col gap-3">
+      <div className="flex justify-between items-center text-xs font-mono text-charcoal-soft">
         <span>[ THE WIRE ]</span>
         <span className="text-crimson font-bold">LATEST</span>
       </div>
@@ -27,13 +27,13 @@ export default function WireFeedList({ stories }: WireFeedListProps) {
             <h3 className="text-sm font-semibold text-charcoal dark:text-white leading-snug group-hover:text-crimson dark:group-hover:text-crimson transition-colors line-clamp-2">
               {story.headline}
             </h3>
-            <span className="text-[11px] font-mono text-neutral-500">
+            <span className="text-[11px] font-mono text-charcoal-soft">
               {story.sourceName}
             </span>
           </Link>
         ))}
         {stories.length === 0 && (
-          <p className="text-xs text-neutral-500 py-2">No dispatches yet.</p>
+          <p className="text-xs text-charcoal-soft py-2">No dispatches yet.</p>
         )}
       </div>
     </div>

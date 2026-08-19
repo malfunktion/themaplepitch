@@ -85,7 +85,7 @@ export default function LocalClubSpotlight() {
           </div>
           <Link 
             href="/grassroots" 
-            className="text-[10px] font-mono uppercase tracking-wider text-neutral-500 dark:text-neutral-400 hover:text-crimson dark:hover:text-crimson transition-colors"
+            className="text-[10px] font-mono uppercase tracking-wider text-charcoal-soft hover:text-crimson dark:hover:text-crimson transition-colors"
           >
             [archive]
           </Link>
@@ -97,7 +97,7 @@ export default function LocalClubSpotlight() {
               className="bg-surface border border-border dark:border-border/80 rounded-sm p-2 flex flex-col justify-between group hover:border-neutral-400 dark:hover:border-neutral-700 transition-colors"
             >
               <div className="flex items-center justify-between mb-1">
-                <span className="text-[7px] font-mono px-1 py-0.5 bg-neutral-200 dark:bg-neutral-900 border border-border text-neutral-700 dark:text-neutral-400 font-bold uppercase">
+                <span className="text-[7px] font-mono px-1 py-0.5 bg-neutral-200 dark:bg-card border border-border text-neutral-700 dark:text-charcoal-soft font-bold uppercase">
                   {story.league}
                 </span>
                 <span className="text-[7px] font-mono text-charcoal-soft">{story.date}</span>
