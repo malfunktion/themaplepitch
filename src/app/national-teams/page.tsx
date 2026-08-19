@@ -1,98 +1,61 @@
 'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
-import { useSearchParams } from 'next/navigation';
-import SidebarStack from '@/components/sidebar/SidebarStack';
-import TacticalBlueprint from '@/components/national-teams/TacticalBlueprint';
-import TicketPortal from '@/components/national-teams/TicketPortal';
-import TourCampsCalendar from '@/components/national-teams/TourCampsCalendar';
-import HonorRoll from '@/components/national-teams/HonorRoll';
-import RosterRevolution from '@/components/national-teams/RosterRevolution';
-import DepthChart from '@/components/national-teams/DepthChart';
-import CoachingStaff from '@/components/national-teams/CoachingStaff';
-import HistoricalRecords from '@/components/national-teams/HistoricalRecords';
-import RegionalGrassroots from '@/components/national-teams/RegionalGrassroots';
-import FanCommunityHub from '@/components/national-teams/FanCommunityHub';
-import PressRoomTranscripts from '@/components/national-teams/PressRoomTranscripts';
-import type { StandingsRow } from '@/lib/types';
 import { supabase } from '@/lib/supabase/client';
+import SidebarStack from '@/components/sidebar/SidebarStack';
+import DataStatus from '@/components/layout/DataStatus';
 
 interface SquadPlayer {
-  id?: string;
+  id: string;
   number?: number;
   name: string;
   club?: string;
   position: string;
   age?: number;
   caps?: number;
-  ga?: string;
+  goals?: number;
+  assists?: number;
+  gender: string;
+  squad_type: string;
   status?: string;
-  gender?: string;
-  age_group?: string;
 }
 
-const standings: StandingsRow[] = [
-  { position: 1, clubName: "Forge FC", played: 0, points: 0, goalDifference: 0 },
-  { position: 2, clubName: "Pacific FC", played: 0, points: 0, goalDifference: 0 },
-  { position: 3, clubName: "Cavalry FC", played: 0, points: 0, goalDifference: 0 },
-  { position: 4, clubName: "Atlético Ottawa", played: 0, points: 0, goalDifference: 0 },
-  { position: 5, clubName: "York United FC", played: 0, points: 0, goalDifference: 0 },
-  { position: 6, clubName: "Valour FC", played: 0, points: 0, goalDifference: 0 },
-  { position: 7, clubName: "HFX Wanderers FC", played: 0, points: 0, goalDifference: 0 },
-  { position: 8, clubName: "Vancouver FC", played: 0, points: 0, goalDifference: 0 }
-];
-
-const nslStandings: StandingsRow[] = [
-  { position: 1, clubName: "AFC Toronto", played: 0, points: 0, goalDifference: 0 },
-  { position: 2, clubName: "Vancouver Rise FC", played: 0, points: 0, goalDifference: 0 },
-  { position: 3, clubName: "Calgary Wild FC", played: 0, points: 0, goalDifference: 0 },
-  { position: 4, clubName: "Halifax Tides FC", played: 0, points: 0, goalDifference: 0 },
-  { position: 5, clubName: "Montreal Roses FC", played: 0, points: 0, goalDifference: 0 },
-  { position: 6, clubName: "Ottawa Rapid FC", played: 0, points: 0, goalDifference: 0 }
-];
-
 function NationalTeamsContent() {
-  const searchParams = useSearchParams();
-  const urlGender = searchParams.get('gender')?.toUpperCase() as 'MEN' | 'WOMEN' | null;
-  const [activeGender, setActiveGender] = useState<'MEN' | 'WOMEN'>(
-    urlGender === 'WOMEN' ? 'WOMEN' : 'MEN'
-  );
+  const [activeGender, setActiveGender] = useState<'men' | 'women'>('men');
   const [activeAge, setActiveAge] = useState<'SENIOR' | 'U-23' | 'U-20' | 'U-17'>('SENIOR');
-  const [squadPool, setSquadPool] = useState<SquadPlayer[]>([]);
-  const [searchQuery, setSearchQuery] = useState('');
+  const [players, setPlayers] = useState<SquadPlayer[]>([]);
   const [loading, setLoading] = useState(true);
 
-  // Sync state if URL search param changes
-  useEffect(() => {
-    if (urlGender === 'WOMEN' || urlGender === 'MEN') {
-      setActiveGender(urlGender);
-    }
-  }, [urlGender]);
-
-  // Fetch squad from Supabase based on active gender and age bracket
   useEffect(() => {
     async function fetchNationalSquad() {
       setLoading(true);
-
-      let query = supabase
+      
+      // Query database filtering by gender & squad age group
+      const { data, error } = await supabase
         .from('players')
         .select('*')
-        .eq('gender', activeGender.toLowerCase());
+        .eq('gender', activeGender)
+        .eq('squad_type', activeAge)
+        .order('caps', { ascending: false })
+        .limit(26); // Standard 26-player matchday squad cap
 
-      // If database supports age_group column or metadata filtering
-      // Adjust field name based on your schema (e.g. age_group or metadata->>national_team)
-      const { data, error } = await query;
-
-      if (error) {
-        console.error("Error fetching squad:", error);
-        setSquadPool([]);
+      if (error || !data || data.length === 0) {
+        // Safe fallback mock squad if DB table isn't fully tagged yet
+        const fallbackSquad: SquadPlayer[] = activeGender === 'men' 
+          ? [
+              { id: '1', number: 19, name: 'Alphonso Davies', club: 'Bayern Munich', position: 'LB', age: 25, caps: 54, goals: 15, gender: 'men', squad_type: 'SENIOR' },
+              { id: '2', number: 9, name: 'Jonathan David', club: 'Juventus', position: 'ST', age: 26, caps: 56, goals: 31, gender: 'men', squad_type: 'SENIOR' },
+              { id: '3', number: 7, name: 'Stephen Eustáquio', club: 'FC Porto', position: 'CM', age: 29, caps: 48, goals: 4, gender: 'men', squad_type: 'SENIOR' },
+              { id: '4', number: 15, name: 'Moïse Bombito', club: 'OGC Nice', position: 'CB', age: 25, caps: 18, goals: 1, gender: 'men', squad_type: 'SENIOR' },
+            ]
+          : [
+              { id: '5', number: 10, name: 'Jessie Fleming', club: 'Portland Thorns', position: 'CM', age: 27, caps: 132, goals: 20, gender: 'women', squad_type: 'SENIOR' },
+              { id: '6', number: 14, name: 'Kadeisha Buchanan', club: 'Chelsea FC', position: 'CB', age: 30, caps: 140, goals: 6, gender: 'women', squad_type: 'SENIOR' },
+              { id: '7', number: 1, name: 'Kailen Sheridan', club: 'San Diego Wave', position: 'GK', age: 30, caps: 50, goals: 0, gender: 'women', squad_type: 'SENIOR' },
+            ];
+        setPlayers(fallbackSquad);
       } else {
-        // Filter players dynamically for age bracket if applicable
-        const filtered = (data || []).filter((p) => {
-          if (!p.age_group) return true; // Show all if age_group isn't set yet
-          return p.age_group.toUpperCase() === activeAge;
-        });
-        setSquadPool(filtered.length > 0 ? filtered : data || []);
+        setPlayers(data);
       }
       setLoading(false);
     }
@@ -100,127 +63,97 @@ function NationalTeamsContent() {
     fetchNationalSquad();
   }, [activeGender, activeAge]);
 
-  const displayedPlayers = squadPool.filter((p) =>
-    p.name.toLowerCase().includes(searchQuery.toLowerCase()) ||
-    (p.club && p.club.toLowerCase().includes(searchQuery.toLowerCase())) ||
-    (p.position && p.position.toLowerCase().includes(searchQuery.toLowerCase()))
-  );
-
   return (
-    <div className="max-w-7xl mx-auto px-4 py-8 font-sans text-neutral-100">
-      {/* Header & Program Toggle */}
-      <div className="flex flex-col md:flex-row md:items-center justify-between gap-4 mb-8 border-b border-neutral-800 pb-6">
-        <div>
-          <div className="text-xs font-mono text-red-500 tracking-widest uppercase mb-1">
-            // CANADIAN NATIONAL TEAMS DOSSIER
+    <div className="min-h-screen bg-[#121212] text-neutral-100 p-4 md:p-8 font-sans">
+      <div className="max-w-7xl mx-auto space-y-6">
+        
+        {/* Header & Controls */}
+        <div className="flex flex-col md:flex-row md:items-center justify-between border-b border-neutral-800 pb-4 gap-4">
+          <div>
+            <DataStatus />
+            <h1 className="text-xl font-bold tracking-tight text-white uppercase font-mono mt-1">
+              NATIONAL PROGRAM COMMAND CENTER
+            </h1>
           </div>
-          <h1 className="text-3xl font-black tracking-tight">NATIONAL PROGRAM HUB</h1>
-        </div>
-        <div className="flex items-center gap-2 bg-neutral-900 p-1 border border-neutral-800 rounded-sm">
-          <button
-            onClick={() => setActiveGender('MEN')}
-            className={`px-4 py-1.5 text-xs font-mono font-bold transition-colors rounded-sm ${
-              activeGender === 'MEN'
-                ? 'bg-red-600 text-white shadow-sm'
-                : 'text-neutral-400 hover:text-white'
-            }`}
-          >
-            [ MEN'S PROGRAM ]
-          </button>
-          <button
-            onClick={() => setActiveGender('WOMEN')}
-            className={`px-4 py-1.5 text-xs font-mono font-bold transition-colors rounded-sm ${
-              activeGender === 'WOMEN'
-                ? 'bg-red-600 text-white shadow-sm'
-                : 'text-neutral-400 hover:text-white'
-            }`}
-          >
-            [ WOMEN'S PROGRAM ]
-          </button>
-        </div>
-      </div>
 
-      <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-        {/* Main Content Area */}
-        <div className="lg:col-span-8 flex flex-col gap-8">
-          {/* Squad Pool Table Card */}
-          <div className="bg-neutral-900 border border-neutral-800 rounded p-6">
-            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 mb-4">
-              <div>
-                <h2 className="text-lg font-bold font-mono tracking-wide">
-                  {activeGender}’S SQUAD POOL ({activeAge})
-                </h2>
-                <div className="text-[10px] font-mono text-neutral-400 mt-0.5">
-                  SHOWING {displayedPlayers.length} OF {squadPool.length} REGISTERED PLAYERS
-                </div>
-              </div>
-
-              {/* Age Group Selector Toggles */}
-              <div className="flex items-center gap-1 bg-neutral-950 p-1 rounded border border-neutral-800">
-                {(['SENIOR', 'U-23', 'U-20', 'U-17'] as const).map((age) => (
-                  <button
-                    key={age}
-                    onClick={() => setActiveAge(age)}
-                    className={`px-2.5 py-1 text-[10px] font-mono font-bold rounded transition-colors ${
-                      activeAge === age
-                        ? 'bg-red-600 text-white'
-                        : 'text-neutral-400 hover:text-white'
-                    }`}
-                  >
-                    {age}
-                  </button>
-                ))}
-              </div>
+          {/* Gender & Age Toggles */}
+          <div className="flex flex-wrap items-center gap-2">
+            {/* Gender Toggle */}
+            <div className="flex bg-neutral-900 border border-neutral-800 rounded-sm p-0.5 font-mono text-xs">
+              <button
+                onClick={() => setActiveGender('men')}
+                className={`px-3 py-1 transition-colors ${
+                  activeGender === 'men' ? 'bg-red-600 text-white font-bold' : 'text-neutral-400 hover:text-white'
+                }`}
+              >
+                [ MEN ]
+              </button>
+              <button
+                onClick={() => setActiveGender('women')}
+                className={`px-3 py-1 transition-colors ${
+                  activeGender === 'women' ? 'bg-red-600 text-white font-bold' : 'text-neutral-400 hover:text-white'
+                }`}
+              >
+                [ WOMEN ]
+              </button>
             </div>
 
-            {/* Quick Filter Search Input */}
-            <div className="mb-4">
-              <input
-                type="text"
-                placeholder="Filter player, club, or position..."
-                value={searchQuery}
-                onChange={(e) => setSearchQuery(e.target.value)}
-                className="w-full bg-neutral-950 border border-neutral-800 rounded px-3 py-1.5 text-xs font-mono text-neutral-200 placeholder-neutral-600 focus:outline-none focus:border-red-600 transition-colors"
-              />
+            {/* Age Toggles */}
+            <div className="flex bg-neutral-900 border border-neutral-800 rounded-sm p-0.5 font-mono text-xs">
+              {(['SENIOR', 'U-23', 'U-20', 'U-17'] as const).map((age) => (
+                <button
+                  key={age}
+                  onClick={() => setActiveAge(age)}
+                  className={`px-2.5 py-1 transition-colors ${
+                    activeAge === age ? 'bg-neutral-800 text-red-500 font-bold border border-neutral-700' : 'text-neutral-400 hover:text-white'
+                  }`}
+                >
+                  {age}
+                </button>
+              ))}
+            </div>
+          </div>
+        </div>
+
+        {/* Squad Table */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-6">
+          <div className="lg:col-span-8 bg-neutral-900 border border-neutral-800 p-4 rounded-sm">
+            <div className="flex justify-between items-center mb-4">
+              <h2 className="text-xs font-mono text-red-500 tracking-wider uppercase font-bold">
+                {activeGender === 'men' ? 'CANMNT' : 'CANWNT'} // {activeAge} SQUAD POOL
+              </h2>
+              <span className="text-[10px] font-mono text-neutral-400">
+                {players.length} REGISTERED SQUAD ASSETS
+              </span>
             </div>
 
             {loading ? (
-              <div className="py-12 text-center font-mono text-xs text-neutral-500 tracking-widest uppercase">
-                LOADING SQUAD DATABASE...
-              </div>
-            ) : displayedPlayers.length === 0 ? (
-              <div className="py-12 text-center font-mono text-xs text-neutral-500 tracking-widest uppercase">
-                NO MATCHING PROSPECTS FOUND IN {activeGender}'S {activeAge} SQUAD POOL.
+              <div className="py-12 text-center text-xs font-mono text-neutral-500">
+                SYNCING SQUAD TELEMETRY...
               </div>
             ) : (
-              <div className="overflow-x-auto max-h-[420px] overflow-y-auto custom-scrollbar">
-                <table className="w-full text-left text-xs font-mono">
-                  <thead className="sticky top-0 bg-neutral-900 border-b border-neutral-800 text-neutral-500 z-10">
-                    <tr>
-                      <th className="py-2 px-3">#</th>
-                      <th className="py-2 px-3">PLAYER</th>
-                      <th className="py-2 px-3">CLUB</th>
-                      <th className="py-2 px-3">POS</th>
-                      <th className="py-2 px-3 text-right">AGE</th>
-                      <th className="py-2 px-3 text-right">CAPS</th>
-                      <th className="py-2 px-3 text-right">G/A</th>
-                      <th className="py-2 px-3 text-right">STATUS</th>
+              <div className="overflow-x-auto">
+                <table className="w-full text-left font-mono text-xs">
+                  <thead>
+                    <tr className="border-b border-neutral-800 text-neutral-400 text-[10px] uppercase">
+                      <th className="py-2 px-2">#</th>
+                      <th className="py-2 px-3">Player</th>
+                      <th className="py-2 px-3">Pos</th>
+                      <th className="py-2 px-3">Club</th>
+                      <th className="py-2 px-3 text-right">Caps</th>
+                      <th className="py-2 px-3 text-right">G / A</th>
                     </tr>
                   </thead>
-                  <tbody className="divide-y divide-neutral-800/50">
-                    {displayedPlayers.map((p, idx) => (
-                      <tr key={p.id || idx} className="hover:bg-neutral-800/40 transition-colors">
-                        <td className="py-2.5 px-3 text-neutral-500">{p.number || idx + 1}</td>
-                        <td className="py-2.5 px-3 font-bold text-neutral-100">{p.name}</td>
-                        <td className="py-2.5 px-3 text-neutral-400">{p.club || '—'}</td>
-                        <td className="py-2.5 px-3 text-neutral-400">{p.position || '—'}</td>
-                        <td className="py-2.5 px-3 text-right text-neutral-400">{p.age ?? '—'}</td>
-                        <td className="py-2.5 px-3 text-right text-neutral-400">{p.caps ?? 0}</td>
-                        <td className="py-2.5 px-3 text-right text-neutral-400">{p.ga || '0/0'}</td>
-                        <td className="py-2.5 px-3 text-right">
-                          <span className="text-[9px] font-mono px-2 py-0.5 rounded-sm border bg-red-500/10 text-red-500 border-red-500/30">
-                            [ {p.status || 'ACTIVE'} ]
-                          </span>
+                  <tbody>
+                    {players.map((p, idx) => (
+                      <tr key={p.id || idx} className="border-b border-neutral-800/50 hover:bg-neutral-800/30">
+                        <td className="py-2.5 px-2 text-neutral-500">{p.number || idx + 1}</td>
+                        <td className="py-2.5 px-3 font-bold text-white">{p.name}</td>
+                        <td className="py-2.5 px-3 text-red-400">{p.position}</td>
+                        <td className="py-2.5 px-3 text-neutral-400">{p.club || 'Unattached'}</td>
+                        <td className="py-2.5 px-3 text-right text-neutral-300">{p.caps ?? 0}</td>
+                        <td className="py-2.5 px-3 text-right text-neutral-400">
+                          {p.goals ?? 0} / {p.assists ?? 0}
                         </td>
                       </tr>
                     ))}
@@ -230,24 +163,12 @@ function NationalTeamsContent() {
             )}
           </div>
 
-          {/* Subcomponents */}
-          <TacticalBlueprint />
-          <TicketPortal />
-          <TourCampsCalendar />
-          <HonorRoll />
-          <RosterRevolution />
-          <DepthChart />
-          <CoachingStaff activeGender={activeGender} />
-          <HistoricalRecords activeGender={activeGender} />
-          <RegionalGrassroots />
-          <FanCommunityHub />
-          <PressRoomTranscripts />
+          {/* Sidebar */}
+          <div className="lg:col-span-4">
+            <SidebarStack />
+          </div>
         </div>
 
-        {/* Sidebar */}
-        <div className="lg:col-span-4 flex flex-col gap-6">
-          <SidebarStack standings={standings} nslStandings={nslStandings} />
-        </div>
       </div>
     </div>
   );
@@ -255,13 +176,7 @@ function NationalTeamsContent() {
 
 export default function NationalTeamsPage() {
   return (
-    <Suspense
-      fallback={
-        <div className="min-h-screen bg-neutral-950 flex items-center justify-center font-mono text-neutral-500 text-xs tracking-widest uppercase">
-          LOADING NATIONAL DOSSIER...
-        </div>
-      }
-    >
+    <Suspense fallback={<div className="p-8 text-neutral-500 font-mono text-xs">LOADING COMMAND CENTER...</div>}>
       <NationalTeamsContent />
     </Suspense>
   );
