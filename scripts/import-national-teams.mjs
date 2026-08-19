@@ -1,16 +1,8 @@
 // scripts/import-national-teams.mjs
-//
-// Despite the name, this currently imports "Teams Abroad" — the European/
-// international clubs where Canadian internationals play their club football
-// (Bayern Munich, Lille, etc.) — not the Canada Men's/Women's National Team
-// rows themselves. Those (Canada Men's National Team / Canada Women's
-// National Team, external_id nat-canmnt / nat-canwnt) already exist in the
-// `teams` table but weren't created by any script currently in this repo —
-// if you need to re-create them from scratch, add that here too.
 import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
-const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SERVICE_ROLE_KEY = process.env.SERVICE_ROLE_KEY;
 
 if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
   console.error('Missing Supabase environment variables.');
@@ -28,129 +20,95 @@ function slugify(name) {
     .replace(/(^-|-$)/g, '');
 }
 
-async function importTeamsAbroad() {
-  console.log('Importing Global Clubs (Teams Abroad)...');
+async function importNationalTeams() {
+  console.log('Importing Canadian National Teams & Squads...');
 
-  // 1. Define international clubs where Canadian stars play
-  const globalClubs = [
-    {
-      external_id: 'club-bayern-munich',
-      name: 'Bayern Munich',
-      short_name: 'BAY',
-      league: 'Abroad',
-      division_level: 'International',
-      slug: 'bayern-munich',
-    },
-    {
-      external_id: 'club-lille-osc',
-      name: 'Lille OSC',
-      short_name: 'LIL',
-      league: 'Abroad',
-      division_level: 'International',
-      slug: 'lille-osc',
-    },
-    {
-      external_id: 'club-fc-porto',
-      name: 'FC Porto',
-      short_name: 'POR',
-      league: 'Abroad',
-      division_level: 'International',
-      slug: 'fc-porto',
-    },
-    {
-      external_id: 'club-villarreal',
-      name: 'Villarreal',
-      short_name: 'VIL',
-      league: 'Abroad',
-      division_level: 'International',
-      slug: 'villarreal',
-    },
-    {
-      external_id: 'club-marseille',
-      name: 'Marseille',
-      short_name: 'OM',
-      league: 'Abroad',
-      division_level: 'International',
-      slug: 'marseille',
-    },
-    {
-      external_id: 'club-celtic-fc',
-      name: 'Celtic FC',
-      short_name: 'CEL',
-      league: 'Abroad',
-      division_level: 'International',
-      slug: 'celtic-fc',
-    },
+  // 1. Upsert National Team entities
+  const nationalTeams = [
+    { external_id: 'nat-canmnt', name: "Canada Men's National Team", short_name: 'CanMNT', league: 'National Teams', gender: 'men', division_level: 'International', slug: 'canmnt' },
+    { external_id: 'nat-canwnt', name: "Canada Women's National Team", short_name: 'CanWNT', league: 'National Teams', gender: 'women', division_level: 'International', slug: 'canwnt' },
   ];
 
-  for (const club of globalClubs) {
-    const { error } = await supabase.from('teams').upsert(club, { onConflict: 'external_id' });
+  for (const team of nationalTeams) {
+    const { error } = await supabase.from('teams').upsert(team, { onConflict: 'external_id' });
     if (error) {
-      console.error(`Failed to upsert club ${club.name}:`, error.message);
+      console.error(`Failed to upsert team ${team.name}:`, error.message);
     } else {
-      console.log(`Successfully upserted global club: ${club.name}`);
+      console.log(`Successfully upserted: ${team.name}`);
     }
   }
 
-  // 2. Fetch updated team map to retrieve generated club IDs
-  const { data: dbTeams, error: fetchTeamError } = await supabase
-    .from('teams')
-    .select('id, name, external_id');
-
-  if (fetchTeamError || !dbTeams) {
-    console.error('Failed to fetch team map:', fetchTeamError);
+  // 2. Fetch team IDs from Supabase
+  const { data: dbTeams, error: fetchTeamError } = await supabase.from('teams').select('id, short_name');
+  if (fetchTeamError) {
+    console.error('Failed to fetch teams:', fetchTeamError.message);
     return;
   }
 
-  const clubMap = {};
-  dbTeams.forEach((t) => {
-    clubMap[t.name] = t.id;
+  const teamMap = {};
+  dbTeams.forEach(t => {
+    teamMap[t.short_name] = t.id;
   });
 
-  // 3. Players Abroad dataset mapping to their respective everyday clubs
-  const playersAbroad = [
-    { name: 'Alphonso Davies', position: 'LB', league: 'Abroad', gender: 'men', clubName: 'Bayern Munich', goals: 15, assists: 18, rating: 8.1 },
-    { name: 'Jonathan David', position: 'ST', league: 'Abroad', gender: 'men', clubName: 'Lille OSC', goals: 30, assists: 6, rating: 8.4 },
-    { name: 'Stephen Eustáquio', position: 'CM', league: 'Abroad', gender: 'men', clubName: 'FC Porto', goals: 5, assists: 11, rating: 7.8 },
-    { name: 'Tajon Buchanan', position: 'RW', league: 'Abroad', gender: 'men', clubName: 'Villarreal', goals: 8, assists: 5, rating: 7.8 },
-    { name: 'Ismaël Koné', position: 'CM', league: 'Abroad', gender: 'men', clubName: 'Marseille', goals: 3, assists: 4, rating: 7.7 },
-    { name: 'Alistair Johnston', position: 'RB', league: 'Abroad', gender: 'men', clubName: 'Celtic FC', goals: 2, assists: 6, rating: 7.9 },
+  // 3. Define Complete Dual-Gender Squad Pools
+  const completeSquads = [
+    // --- CANMNT (Men's Senior) ---
+    { name: 'Alphonso Davies', position: 'LB', league: 'Abroad', gender: 'men', squad_type: 'SENIOR', national_team: 'CanMNT', club: 'Bayern Munich', caps: 55, goals: 15, assists: 12, rating: 8.9 },
+    { name: 'Jonathan David', position: 'ST', league: 'Abroad', gender: 'men', squad_type: 'SENIOR', national_team: 'CanMNT', club: 'Lille OSC', caps: 54, goals: 29, assists: 8, rating: 8.8 },
+    { name: 'Stephen Eustáquio', position: 'CM', league: 'Abroad', gender: 'men', squad_type: 'SENIOR', national_team: 'CanMNT', club: 'FC Porto', caps: 42, goals: 5, assists: 6, rating: 8.3 },
+    { name: 'Tajon Buchanan', position: 'RW', league: 'Abroad', gender: 'men', squad_type: 'SENIOR', national_team: 'CanMNT', club: 'Villarreal', caps: 40, goals: 8, assists: 5, rating: 8.1 },
+    { name: 'Ismaël Koné', position: 'CM', league: 'Abroad', gender: 'men', squad_type: 'SENIOR', national_team: 'CanMNT', club: 'Marseille', caps: 26, goals: 3, assists: 4, rating: 8.0 },
+    { name: 'Alistair Johnston', position: 'RB', league: 'Abroad', gender: 'men', squad_type: 'SENIOR', national_team: 'CanMNT', club: 'Celtic FC', caps: 48, goals: 2, assists: 6, rating: 8.2 },
+    { name: 'Moïse Bombito', position: 'CB', league: 'Abroad', gender: 'men', squad_type: 'SENIOR', national_team: 'CanMNT', club: 'OGC Nice', caps: 18, goals: 1, assists: 0, rating: 7.9 },
+    { name: 'Derek Cornelius', position: 'CB', league: 'Abroad', gender: 'men', squad_type: 'SENIOR', national_team: 'CanMNT', club: 'Marseille', caps: 24, goals: 0, assists: 1, rating: 7.7 },
+    { name: 'Maxime Crépeau', position: 'GK', league: 'MLS', gender: 'men', squad_type: 'SENIOR', national_team: 'CanMNT', club: 'Portland Timbers', caps: 22, goals: 0, assists: 0, rating: 7.8 },
+    { name: 'Dayne St. Clair', position: 'GK', league: 'MLS', gender: 'men', squad_type: 'SENIOR', national_team: 'CanMNT', club: 'Minnesota United', caps: 6, goals: 0, assists: 0, rating: 7.4 },
+    { name: 'Richie Laryea', position: 'RB', league: 'MLS', gender: 'men', squad_type: 'SENIOR', national_team: 'CanMNT', club: 'Toronto FC', caps: 50, goals: 3, assists: 7, rating: 7.6 },
+    { name: 'Jonathan Osorio', position: 'CM', league: 'MLS', gender: 'men', squad_type: 'SENIOR', national_team: 'CanMNT', club: 'Toronto FC', caps: 75, goals: 9, assists: 11, rating: 7.7 },
+    { name: 'Ali Ahmed', position: 'LM', league: 'MLS', gender: 'men', squad_type: 'SENIOR', national_team: 'CanMNT', club: 'Vancouver Whitecaps', caps: 8, goals: 0, assists: 2, rating: 7.3 },
+    { name: 'Jacob Shaffelburg', position: 'LW', league: 'MLS', gender: 'men', squad_type: 'SENIOR', national_team: 'CanMNT', club: 'Nashville SC', caps: 16, goals: 3, assists: 4, rating: 7.6 },
+    { name: 'Cyle Larin', position: 'ST', league: 'Abroad', gender: 'men', squad_type: 'SENIOR', national_team: 'CanMNT', club: 'Mallorca', caps: 78, goals: 30, assists: 5, rating: 8.1 },
+
+    // --- CANWNT (Women's Senior) ---
+    { name: 'Jessie Fleming', position: 'CM', league: 'Abroad', gender: 'women', squad_type: 'SENIOR', national_team: 'CanWNT', club: 'Portland Thorns FC', caps: 135, goals: 30, assists: 15, rating: 8.6 },
+    { name: 'Kadeisha Buchanan', position: 'CB', league: 'Abroad', gender: 'women', squad_type: 'SENIOR', national_team: 'CanWNT', club: 'Chelsea FC', caps: 154, goals: 5, assists: 2, rating: 8.5 },
+    { name: 'Ashley Lawrence', position: 'FB', league: 'Abroad', gender: 'women', squad_type: 'SENIOR', national_team: 'CanWNT', club: 'Chelsea FC', caps: 132, goals: 8, assists: 20, rating: 8.4 },
+    { name: 'Kailen Sheridan', position: 'GK', league: 'NWSL', gender: 'women', squad_type: 'SENIOR', national_team: 'CanWNT', club: 'San Diego Wave', caps: 52, goals: 0, assists: 0, rating: 8.3 },
+    { name: 'Janine Beckie', position: 'FW', league: 'NWSL', gender: 'women', squad_type: 'SENIOR', national_team: 'CanWNT', club: 'Utah Royals', caps: 105, goals: 35, assists: 12, rating: 8.2 },
+    { name: 'Julia Grosso', position: 'CM', league: 'Abroad', gender: 'women', squad_type: 'SENIOR', national_team: 'CanWNT', club: 'Chicago Red Stars', caps: 65, goals: 8, assists: 6, rating: 8.0 },
+    { name: 'Cloé Lacasse', position: 'RW', league: 'Abroad', gender: 'women', squad_type: 'SENIOR', national_team: 'CanWNT', club: 'Utah Royals', caps: 38, goals: 20, assists: 5, rating: 7.9 },
+    { name: 'Evelyne Viens', position: 'ST', league: 'Abroad', gender: 'women', squad_type: 'SENIOR', national_team: 'CanWNT', club: 'AS Roma', caps: 32, goals: 14, assists: 4, rating: 8.1 },
+    { name: 'Vanessa Gilles', position: 'CB', league: 'Abroad', gender: 'women', squad_type: 'SENIOR', national_team: 'CanWNT', club: 'Lyon', caps: 44, goals: 4, assists: 1, rating: 8.0 },
+    { name: 'Shelina Zadorsky', position: 'CB', league: 'Abroad', gender: 'women', squad_type: 'SENIOR', national_team: 'CanWNT', club: 'West Ham United', caps: 101, goals: 6, assists: 2, rating: 7.7 },
+    { name: 'Jade Rose', position: 'CB', league: 'Collegiate', gender: 'women', squad_type: 'SENIOR', national_team: 'CanWNT', club: 'Harvard / CanWNT', caps: 22, goals: 1, assists: 2, rating: 7.8 }
   ];
 
-  console.log('Linking players abroad to their global club profiles...');
+  const formattedPlayers = completeSquads.map(p => ({
+    external_id: slugify(p.name),
+    name: p.name,
+    position: p.position,
+    league: p.league,
+    gender: p.gender,
+    squad_type: p.squad_type,
+    team_id: teamMap[p.national_team] || null,
+    caps: p.caps,
+    goals: p.goals,
+    assists: p.assists,
+    rating: p.rating
+  }));
 
-  for (const player of playersAbroad) {
-    const playerSlug = slugify(player.name);
-    const targetTeamId = clubMap[player.clubName];
+  const { error: upsertError } = await supabase
+    .from('players')
+    .upsert(formattedPlayers, { onConflict: 'external_id' });
 
-    const playerPayload = {
-      external_id: playerSlug,
-      slug: playerSlug,
-      name: player.name,
-      position: player.position,
-      league: player.league,
-      gender: player.gender,
-      current_team_id: targetTeamId || null,
-      goals: player.goals,
-      assists: player.assists,
-      rating: player.rating,
-    };
-
-    const { error: upsertError } = await supabase
-      .from('players')
-      .upsert(playerPayload, { onConflict: 'external_id' });
-
-    if (upsertError) {
-      console.error(`Failed to sync player ${player.name}:`, upsertError.message);
-    } else {
-      console.log(`Successfully linked: ${player.name} → Club: ${player.clubName} (Team ID: ${targetTeamId || 'Unlinked'})`);
-    }
+  if (upsertError) {
+    console.error('Player upsert failed:', upsertError.message);
+  } else {
+    console.log(`Successfully upserted ${formattedPlayers.length} dual-gender national team players into Supabase!`);
   }
-
-  console.log('Teams Abroad import and player club linking completed successfully!');
 }
 
-importTeamsAbroad().catch((err) => {
-  console.error('Teams abroad import failed:', err.message);
+importNationalTeams().catch(err => {
+  console.error('Import script failed:', err.message);
   process.exit(1);
 });
