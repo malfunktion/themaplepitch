@@ -168,7 +168,7 @@ export default function ProLeaguesTracker({ league }: ProLeaguesTrackerProps = {
         {team.position === PLAYOFF_LINE && (
           <div className="flex items-center gap-1.5 py-1 pl-1.5">
             <div className="flex-1 border-t border-dashed border-crimson/40"></div>
-            <span className="text-[7px] font-mono text-crimson/70 tracking-wider whitespace-nowrap">
+            <span className="text-[7px] font-mono text-crimson/70 tracking-wider whitespace-nowrap uppercase">
               PLAYOFF LINE
             </span>
             <div className="flex-1 border-t border-dashed border-crimson/40"></div>
@@ -197,7 +197,7 @@ export default function ProLeaguesTracker({ league }: ProLeaguesTrackerProps = {
             <button
               onClick={() => setGender('men')}
               className={`px-2.5 py-1 rounded-sm transition-colors uppercase ${
-                gender === 'men' ? 'bg-crimson text-white' : 'text-neutral-500 hover:text-charcoal'
+                gender === 'men' ? 'bg-crimson text-white' : 'text-neutral-500 hover:text-charcoal dark:hover:text-white'
               }`}
             >
               MEN
@@ -205,7 +205,7 @@ export default function ProLeaguesTracker({ league }: ProLeaguesTrackerProps = {
             <button
               onClick={() => setGender('women')}
               className={`px-2.5 py-1 rounded-sm transition-colors uppercase ${
-                gender === 'women' ? 'bg-crimson text-white' : 'text-neutral-500 hover:text-charcoal'
+                gender === 'women' ? 'bg-crimson text-white' : 'text-neutral-500 hover:text-charcoal dark:hover:text-white'
               }`}
             >
               WOMEN
@@ -219,7 +219,7 @@ export default function ProLeaguesTracker({ league }: ProLeaguesTrackerProps = {
               className={`px-2 py-1 rounded-sm transition-colors ${
                 scope === 'ALL'
                   ? 'bg-neutral-800 text-white dark:bg-neutral-200 dark:text-black'
-                  : 'text-neutral-500 hover:text-charcoal'
+                  : 'text-neutral-500 hover:text-charcoal dark:hover:text-white'
               }`}
             >
               ALL
@@ -229,7 +229,7 @@ export default function ProLeaguesTracker({ league }: ProLeaguesTrackerProps = {
               className={`px-2 py-1 rounded-sm transition-colors ${
                 scope === 'ABROAD'
                   ? 'bg-neutral-800 text-white dark:bg-neutral-200 dark:text-black'
-                  : 'text-neutral-500 hover:text-charcoal'
+                  : 'text-neutral-500 hover:text-charcoal dark:hover:text-white'
               }`}
               title="Includes MLS, European & Global Leagues"
             >
@@ -240,7 +240,7 @@ export default function ProLeaguesTracker({ league }: ProLeaguesTrackerProps = {
               className={`px-2 py-1 rounded-sm transition-colors ${
                 scope === 'DOMESTIC'
                   ? 'bg-neutral-800 text-white dark:bg-neutral-200 dark:text-black'
-                  : 'text-neutral-500 hover:text-charcoal'
+                  : 'text-neutral-500 hover:text-charcoal dark:hover:text-white'
               }`}
             >
               {domesticLabel}
@@ -250,20 +250,20 @@ export default function ProLeaguesTracker({ league }: ProLeaguesTrackerProps = {
       </div>
 
       {/* 3-ROW GRID */}
-      <div className="grid grid-cols-2 grid-rows-[auto_1fr_1fr] gap-4 h-full">
-        {/* ROW 1: LEAGUE STANDINGS (CPL for Men, NSL for Women) */}
-        <div className="col-span-2 overflow-x-auto border-b border-border pb-4">
-          <div className="text-[9px] font-mono text-charcoal-soft mb-2 font-bold uppercase">
+      <div className="grid grid-cols-1 md:grid-cols-2 grid-rows-[auto_1fr_1fr] gap-4 h-full">
+        {/* ROW 1: LEAGUE STANDINGS */}
+        <div className="col-span-1 md:col-span-2 overflow-x-auto border-b border-border pb-4">
+          <div className="text-[9px] font-mono text-charcoal-soft dark:text-neutral-400 mb-2 font-bold uppercase">
             {domesticLabel} DOMESTIC STANDINGS
           </div>
           {currentStandings.length === 0 ? (
-            <div className="py-4 text-center text-xs font-mono text-charcoal-soft">
+            <div className="py-4 text-center text-xs font-mono text-charcoal-soft dark:text-neutral-400">
               LOADING {domesticLabel} STANDINGS...
             </div>
           ) : (
-            <div className="grid grid-cols-2 gap-4 min-w-[420px]">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-4 min-w-[320px]">
               <div className="flex flex-col gap-1">
-                <div className="grid grid-cols-[20px_1fr_20px_20px] text-[10px] text-charcoal-soft font-bold tracking-wider mb-1 px-1 font-mono">
+                <div className="grid grid-cols-[20px_1fr_20px_20px] text-[10px] text-charcoal-soft dark:text-neutral-400 font-bold tracking-wider mb-1 px-1 font-mono">
                   <span>#</span>
                   <span>CLUB</span>
                   <span className="text-center">P</span>
@@ -273,7 +273,7 @@ export default function ProLeaguesTracker({ league }: ProLeaguesTrackerProps = {
               </div>
 
               <div className="flex flex-col gap-1">
-                <div className="grid grid-cols-[20px_1fr_20px_20px] text-[10px] text-charcoal-soft font-bold tracking-wider mb-1 px-1 font-mono">
+                <div className="grid grid-cols-[20px_1fr_20px_20px] text-[10px] text-charcoal-soft dark:text-neutral-400 font-bold tracking-wider mb-1 px-1 font-mono">
                   <span>#</span>
                   <span>CLUB</span>
                   <span className="text-center">P</span>
@@ -286,21 +286,23 @@ export default function ProLeaguesTracker({ league }: ProLeaguesTrackerProps = {
         </div>
 
         {/* ROW 2: GOLDEN BOOT & AVG GOALS */}
-        <div className="flex flex-col gap-2 border-r border-border pr-4">
+        <div className="flex flex-col gap-2 border-b md:border-b-0 md:border-r border-border pb-4 md:pb-0 md:pr-4">
           <h3 className="text-neutral-500 text-[10px] font-bold uppercase tracking-widest border-b border-border pb-1 font-mono">
             Golden Boot Race ({scope})
           </h3>
           {goldenBoot.length === 0 ? (
-            <div className="text-[10px] font-mono text-charcoal-soft py-2">No player goals logged</div>
+            <div className="text-[10px] font-mono text-charcoal-soft dark:text-neutral-400 py-2">
+              No player goals logged
+            </div>
           ) : (
             goldenBoot.map((player, idx) => {
-              const pRoute = player.slug || player.external_id || player.id;
+              const pRoute = player.slug || player.external_id || slugify(player.name);
               const teamObj = Array.isArray(player.current_team) ? player.current_team[0] : player.current_team;
-              const tRoute = teamObj?.slug || slugify(teamObj?.name || player.league);
+              const tRoute = teamObj?.slug || slugify(teamObj?.name || player.league || '');
               return (
                 <div key={player.id || idx} className="flex items-center justify-between text-xs p-1">
                   <div className="flex items-center gap-2 w-1/2 min-w-0">
-                    <span className="text-charcoal-soft w-3 shrink-0 font-mono">{idx + 1}</span>
+                    <span className="text-charcoal-soft dark:text-neutral-400 w-3 shrink-0 font-mono">{idx + 1}</span>
                     <div className="flex flex-col min-w-0">
                       <Link
                         href={`/players/${pRoute}`}
@@ -310,7 +312,7 @@ export default function ProLeaguesTracker({ league }: ProLeaguesTrackerProps = {
                       </Link>
                       <Link
                         href={`/teams/${tRoute}`}
-                        className="text-charcoal-soft text-[9px] truncate hover:text-crimson hover:underline"
+                        className="text-charcoal-soft dark:text-neutral-400 text-[9px] truncate hover:text-crimson hover:underline"
                       >
                         {teamObj?.name || player.league || 'Pro Club'}
                       </Link>
@@ -330,24 +332,26 @@ export default function ProLeaguesTracker({ league }: ProLeaguesTrackerProps = {
           )}
         </div>
 
-        <div className="flex flex-col gap-2 pl-4">
+        <div className="flex flex-col gap-2 md:pl-4 pb-4 md:pb-0">
           <div className="flex justify-between items-center border-b border-border pb-1 font-mono">
             <h3 className="text-neutral-500 text-[10px] font-bold uppercase tracking-widest">
               Avg Goals / Match
             </h3>
-            <span className="text-[8px] text-charcoal-soft">[Red] Avg</span>
+            <span className="text-[8px] text-charcoal-soft dark:text-neutral-400">[Red] Avg</span>
           </div>
           {avgGoals.length === 0 ? (
-            <div className="text-[10px] font-mono text-charcoal-soft py-2">No stats logged</div>
+            <div className="text-[10px] font-mono text-charcoal-soft dark:text-neutral-400 py-2">
+              No stats logged
+            </div>
           ) : (
             avgGoals.map((player, idx) => {
-              const pRoute = player.slug || player.external_id || player.id;
+              const pRoute = player.slug || player.external_id || slugify(player.name);
               const teamObj = Array.isArray(player.current_team) ? player.current_team[0] : player.current_team;
-              const tRoute = teamObj?.slug || slugify(teamObj?.name || player.league);
+              const tRoute = teamObj?.slug || slugify(teamObj?.name || player.league || '');
               return (
                 <div key={player.id || idx} className="flex items-center justify-between text-xs p-1">
                   <div className="flex items-center gap-2 w-1/2 min-w-0">
-                    <span className="text-charcoal-soft w-3 shrink-0 font-mono">{idx + 1}</span>
+                    <span className="text-charcoal-soft dark:text-neutral-400 w-3 shrink-0 font-mono">{idx + 1}</span>
                     <div className="flex flex-col min-w-0">
                       <Link
                         href={`/players/${pRoute}`}
@@ -357,7 +361,7 @@ export default function ProLeaguesTracker({ league }: ProLeaguesTrackerProps = {
                       </Link>
                       <Link
                         href={`/teams/${tRoute}`}
-                        className="text-charcoal-soft text-[9px] truncate hover:text-crimson hover:underline"
+                        className="text-charcoal-soft dark:text-neutral-400 text-[9px] truncate hover:text-crimson hover:underline"
                       >
                         {teamObj?.name || player.league || 'Pro Club'}
                       </Link>
@@ -379,21 +383,23 @@ export default function ProLeaguesTracker({ league }: ProLeaguesTrackerProps = {
         </div>
 
         {/* ROW 3: ASSISTS & CLEAN SHEETS */}
-        <div className="flex flex-col gap-2 border-r border-border pr-4 pt-4 border-t">
+        <div className="flex flex-col gap-2 border-r-0 md:border-r border-border pr-0 md:pr-4 pt-4 border-t">
           <h3 className="text-neutral-500 text-[10px] font-bold uppercase tracking-widest border-b border-border pb-1 font-mono">
             Assist Leaders
           </h3>
           {assistLeaders.length === 0 ? (
-            <div className="text-[10px] font-mono text-charcoal-soft py-2">No assists logged</div>
+            <div className="text-[10px] font-mono text-charcoal-soft dark:text-neutral-400 py-2">
+              No assists logged
+            </div>
           ) : (
             assistLeaders.map((player, idx) => {
-              const pRoute = player.slug || player.external_id || player.id;
+              const pRoute = player.slug || player.external_id || slugify(player.name);
               const teamObj = Array.isArray(player.current_team) ? player.current_team[0] : player.current_team;
-              const tRoute = teamObj?.slug || slugify(teamObj?.name || player.league);
+              const tRoute = teamObj?.slug || slugify(teamObj?.name || player.league || '');
               return (
                 <div key={player.id || idx} className="flex items-center justify-between text-xs p-1">
                   <div className="flex items-center gap-2 w-1/2 min-w-0">
-                    <span className="text-charcoal-soft w-3 shrink-0 font-mono">{idx + 1}</span>
+                    <span className="text-charcoal-soft dark:text-neutral-400 w-3 shrink-0 font-mono">{idx + 1}</span>
                     <div className="flex flex-col min-w-0">
                       <Link
                         href={`/players/${pRoute}`}
@@ -403,7 +409,7 @@ export default function ProLeaguesTracker({ league }: ProLeaguesTrackerProps = {
                       </Link>
                       <Link
                         href={`/teams/${tRoute}`}
-                        className="text-charcoal-soft text-[9px] truncate hover:text-crimson hover:underline"
+                        className="text-charcoal-soft dark:text-neutral-400 text-[9px] truncate hover:text-crimson hover:underline"
                       >
                         {teamObj?.name || player.league || 'Pro Club'}
                       </Link>
@@ -423,21 +429,23 @@ export default function ProLeaguesTracker({ league }: ProLeaguesTrackerProps = {
           )}
         </div>
 
-        <div className="flex flex-col gap-2 pl-4 pt-4 border-t border-border">
+        <div className="flex flex-col gap-2 md:pl-4 pt-4 border-t border-border">
           <h3 className="text-neutral-500 text-[10px] font-bold uppercase tracking-widest border-b border-border pb-1 font-mono">
             Clean Sheets
           </h3>
           {cleanSheets.length === 0 ? (
-            <div className="text-[10px] font-mono text-charcoal-soft py-2">No clean sheets logged</div>
+            <div className="text-[10px] font-mono text-charcoal-soft dark:text-neutral-400 py-2">
+              No clean sheets logged
+            </div>
           ) : (
             cleanSheets.map((player, idx) => {
-              const pRoute = player.slug || player.external_id || player.id;
+              const pRoute = player.slug || player.external_id || slugify(player.name);
               const teamObj = Array.isArray(player.current_team) ? player.current_team[0] : player.current_team;
-              const tRoute = teamObj?.slug || slugify(teamObj?.name || player.league);
+              const tRoute = teamObj?.slug || slugify(teamObj?.name || player.league || '');
               return (
                 <div key={player.id || idx} className="flex items-center justify-between text-xs p-1">
                   <div className="flex items-center gap-2 w-1/2 min-w-0">
-                    <span className="text-charcoal-soft w-3 shrink-0 font-mono">{idx + 1}</span>
+                    <span className="text-charcoal-soft dark:text-neutral-400 w-3 shrink-0 font-mono">{idx + 1}</span>
                     <div className="flex flex-col min-w-0">
                       <Link
                         href={`/players/${pRoute}`}
@@ -447,7 +455,7 @@ export default function ProLeaguesTracker({ league }: ProLeaguesTrackerProps = {
                       </Link>
                       <Link
                         href={`/teams/${tRoute}`}
-                        className="text-charcoal-soft text-[9px] truncate hover:text-crimson hover:underline"
+                        className="text-charcoal-soft dark:text-neutral-400 text-[9px] truncate hover:text-crimson hover:underline"
                       >
                         {teamObj?.name || player.league || 'Pro Club'}
                       </Link>
