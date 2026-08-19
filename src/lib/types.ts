@@ -101,3 +101,28 @@ export interface HomeLayoutItem {
   id: HomeSectionId;
   span: string;
 }
+
+// Global Player Interface
+export interface Player {
+  id?: string | number;
+  slug?: string;
+  external_id?: string | number;
+  name: string;
+  position?: string;
+  club?: string | null;
+  clubName?: string | null;
+  league?: League | string;
+  gender?: string;
+  number?: number | string | null;
+  caps?: number | null;
+  goals?: number | null;
+  assists?: number | null;
+  ga?: string;
+  age?: number | null;
+  status?: 'LOCKED' | 'UNTIED / DUAL-NAT' | 'INJURED' | string;
+  rating?: number | string | null;
+  imageUrl?: string | null;
+  vitals?: string;
+  tag?: string;
+}
+
