@@ -57,10 +57,9 @@ function NationalTeamsContent() {
 
   const [squad, setSquad] = useState<PlayerAsset[]>([]);
   const [news, setNews] = useState<WireArticle[]>([]);
+  const [standings, setStandings] = useState<StandingsRow[]>([]);
+  const [nslStandings, setNslStandings] = useState<StandingsRow[]>([]);
   const [isLoading, setIsLoading] = useState<boolean>(true);
-
-  const standings: StandingsRow[] = getCplStandings();
-  const nslStandings: StandingsRow[] = getNslStandings();
 
   // Sync gender with URL params if updated
   useEffect(() => {
@@ -68,6 +67,23 @@ function NationalTeamsContent() {
       setActiveGender(urlGender);
     }
   }, [urlGender]);
+
+  // Fetch asynchronous standings safely
+  useEffect(() => {
+    async function fetchStandingsData() {
+      try {
+        const [cplData, nslData] = await Promise.all([
+          getCplStandings(),
+          getNslStandings(),
+        ]);
+        setStandings(cplData);
+        setNslStandings(nslData);
+      } catch (err) {
+        console.error('Error loading standings in National Teams:', err);
+      }
+    }
+    fetchStandingsData();
+  }, []);
 
   // Fetch complete squad pool and news wire dynamically from Supabase
   useEffect(() => {
@@ -91,7 +107,7 @@ function NationalTeamsContent() {
       if (playerData && playerData.length > 0) {
         setSquad(playerData as PlayerAsset[]);
       } else {
-        // Fallback mock pool if DB is unseeded, ensuring full positional depth is visible
+        // Fallback mock pool ensuring full positional depth is visible
         setSquad([
           { id: 1, name: 'Alphonso Davies', position: 'LB', club: 'Bayern Munich', caps: 58, goals: 15, rating: 8.5, status: 'LOCKED' },
           { id: 2, name: 'Jonathan David', position: 'ST', club: 'Lille OSC', caps: 55, goals: 31, rating: 8.4, status: 'LOCKED' },
@@ -238,7 +254,7 @@ function NationalTeamsContent() {
             </div>
 
             {/* Middle Tier: Tactical Pitch (Starting XI) */}
-            <div className="bg-neutral-900/9il border border-border p-6 rounded-sm relative overflow-hidden">
+            <div className="bg-neutral-900/90 border border-border p-6 rounded-sm relative overflow-hidden">
               <div className="flex justify-between items-center mb-6 border-b border-border/60 pb-3">
                 <h2 className="font-mono text-sm font-bold uppercase tracking-wider text-white">
                   TOP 11 STARTING SQUAD {'//'} AUTOMATED TACTICAL MATRIX ({startingXI.length} ASSETS)
