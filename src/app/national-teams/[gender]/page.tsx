@@ -8,7 +8,7 @@ import DepthChart from '@/components/national-teams/DepthChart';
 import TacticalBlueprint from '@/components/national-teams/TacticalBlueprint';
 import CoachingStaff from '@/components/national-teams/CoachingStaff';
 import HistoricalRecords from '@/components/national-teams/HistoricalRecords';
-import { players } from '@/lib/data/demo';
+import { supabase } from '@/lib/supabase/client';
 import type { Player } from '@/lib/types';
 
 const genders = ['men', 'women'];
@@ -63,12 +63,28 @@ export default async function NationalGenderPage({
   const label = isWomen ? 'CANWNT' : 'CANMNT';
   const activeGenderUpper = isWomen ? 'WOMEN' : 'MEN';
 
-  // Filter roster pool for demonstration / dynamic fallback
-  const roster: Player[] = (players as Player[]).filter((p) =>
-    isWomen
-      ? p.clubId === 'vancouver-rise' || p.clubId === 'calgary-wild' || p.position === 'GK'
-      : p.clubId !== 'vancouver-rise' && p.clubId !== 'calgary-wild'
-  );
+  // Real squad pool: look up the national team's row (created by
+  // scripts/import-canadian-national-teams.mjs, external_id nat-canmnt /
+  // nat-canwnt), then every player whose current_team_id points at it.
+  // Previously this filtered the ~20-row lib/data/demo.ts placeholder
+  // dataset by clubId as a stand-in for "national team roster," which had
+  // nothing to do with the real imported squad and is why the count shown
+  // here never matched what was actually in the database.
+  const { data: nationalTeam } = await supabase
+    .from('teams')
+    .select('id')
+    .eq('external_id', isWomen ? 'nat-canwnt' : 'nat-canmnt')
+    .maybeSingle();
+
+  const { data: rosterData } = nationalTeam
+    ? await supabase
+        .from('players')
+        .select('id, external_id, slug, name, position, goals, assists, current_team_id')
+        .eq('current_team_id', nationalTeam.id)
+        .order('name')
+    : { data: [] };
+
+  const roster: Player[] = (rosterData || []) as Player[];
 
   return (
     <div className="min-h-screen bg-surface p-4 sm:p-6 lg:p-8 flex flex-col gap-6 text-charcoal dark:text-white">
