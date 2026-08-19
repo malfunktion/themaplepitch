@@ -2,9 +2,21 @@
 
 import React, { useCallback } from "react";
 import useEmblaCarousel from "embla-carousel-react";
-import { Play, Mic, Radio, Calendar, ChevronLeft, ChevronRight, ExternalLink } from "lucide-react";
+import { Play, Mic, Radio, Calendar, ChevronLeft, ChevronRight, ExternalLink, MessageSquare } from "lucide-react";
 
 // --- MOCK DATA ---
+
+const HERO_FEATURE = {
+  isLive: true,
+  title: "LIVE WATCH-ALONG: Barton Street Battalion",
+  subtitle: "Forge FC vs. FC Supra du Québec - Matchday 17",
+  creator: "Barton St. Battalion",
+  // Change platform to 'twitch', 'youtube', or 'kick' to see the different embeds
+  platform: "youtube", 
+  // For YouTube, use the Video ID (e.g., dQw4w9WgXcQ). 
+  // For Twitch or Kick, use the channel name (e.g., hasanabi).
+  embedId: "jfKfPfyJRkM", 
+};
 
 const TICKER_ITEMS = [
   { time: "Today, 7:00 PM", title: "Forge FC vs. FC Supra du Québec (OneSoccer)" },
@@ -13,15 +25,6 @@ const TICKER_ITEMS = [
   { time: "Tomorrow, 12:00 PM", title: "NSL: Montreal Roses FC vs. Calgary Wild FC" },
   { time: "Fri, 4:00 PM", title: "Footy Prime: Weekend Preview Drop" },
 ];
-
-const HERO_FEATURE = {
-  isLive: true,
-  title: "LIVE WATCH-ALONG: Barton Street Battalion",
-  subtitle: "Forge FC vs. FC Supra du Québec - Matchday 17",
-  creator: "Barton St. Battalion",
-  platform: "Twitch",
-  image: "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&q=80&w=1600",
-};
 
 const VOD_ROWS = [
   {
@@ -50,6 +53,40 @@ const PODCASTS = [
   { id: 103, title: "CPL Newsroom", episode: "Matchweek 17 Review & Analysis", creator: "Charlie & Mitchell", isNew: true },
   { id: 104, title: "The Third Sub", episode: "Vancouver Rise FC Mid-Season Grades", creator: "West Coast Fans", isNew: false },
 ];
+
+// --- HELPERS ---
+
+const renderEmbed = (platform: string, embedId: string) => {
+  switch (platform) {
+    case "twitch":
+      return (
+        <iframe
+          src={`https://player.twitch.tv/?channel=${embedId}&parent=localhost&parent=dev.themaplepitch.ca&autoplay=true&muted=true`}
+          className="w-full h-full absolute inset-0 border-0"
+          allowFullScreen
+        ></iframe>
+      );
+    case "youtube":
+      return (
+        <iframe
+          src={`https://www.youtube.com/embed/${embedId}?autoplay=1&mute=1&rel=0`}
+          className="w-full h-full absolute inset-0 border-0"
+          allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture"
+          allowFullScreen
+        ></iframe>
+      );
+    case "kick":
+      return (
+        <iframe
+          src={`https://player.kick.com/${embedId}`}
+          className="w-full h-full absolute inset-0 border-0"
+          allowFullScreen
+        ></iframe>
+      );
+    default:
+      return <div className="w-full h-full flex items-center justify-center bg-zinc-900 text-zinc-500">Player not supported</div>;
+  }
+};
 
 // --- COMPONENTS ---
 
@@ -112,35 +149,36 @@ export default function FanHubMediaPage() {
   return (
     <div className="w-full min-h-screen bg-black font-sans pb-20 text-white">
       
-      {/* 1. HERO BILLBOARD */}
-      <div className="relative w-full min-h-[480px] h-[55vh] flex items-end rounded-2xl overflow-hidden border border-zinc-800">
-        {/* Background Image with Dark Gradient Overlay */}
-        <div 
-          className="absolute inset-0 bg-cover bg-center transition-all"
-          style={{ 
-            backgroundImage: `linear-gradient(to top, rgba(0,0,0,0.95) 10%, rgba(0,0,0,0.4) 60%, rgba(0,0,0,0.8) 100%), url(${HERO_FEATURE.image})` 
-          }}
-        />
+      {/* 1. EMBEDDED PLAYER HERO */}
+      <div className="w-full bg-black border-b border-zinc-900 pb-6">
+        {/* The 16:9 Video Container */}
+        <div className="w-full max-w-7xl mx-auto aspect-video relative bg-zinc-900 md:rounded-b-2xl overflow-hidden shadow-2xl">
+          {renderEmbed(HERO_FEATURE.platform, HERO_FEATURE.embedId)}
+        </div>
         
-        <div className="relative z-10 p-6 md:p-10 max-w-3xl">
-          {HERO_FEATURE.isLive && (
-            <div className="flex items-center gap-2 mb-3 bg-red-600/90 text-white px-3 py-1 rounded-full w-max text-xs font-bold tracking-wider animate-pulse">
-              <Radio className="w-3.5 h-3.5" />
-              LIVE NOW
-            </div>
-          )}
-          <h1 className="text-3xl md:text-5xl font-black text-white leading-tight mb-2 tracking-tight">
-            {HERO_FEATURE.title}
-          </h1>
-          <p className="text-sm md:text-base text-zinc-300 mb-6 font-medium">
-            {HERO_FEATURE.subtitle} • <span className="text-red-400">{HERO_FEATURE.creator}</span>
-          </p>
-          <div className="flex flex-wrap gap-3">
-            <button className="bg-red-600 text-white px-6 py-2.5 rounded-lg font-bold flex items-center gap-2 hover:bg-red-700 transition-colors text-sm">
-              <Play className="w-4 h-4 fill-white" />
-              Watch {HERO_FEATURE.platform} Stream
+        {/* Metadata underneath the video */}
+        <div className="w-full max-w-7xl mx-auto px-4 md:px-6 pt-6 flex flex-col md:flex-row md:items-start justify-between gap-6">
+          <div>
+            {HERO_FEATURE.isLive && (
+              <div className="flex items-center gap-2 mb-3 bg-red-600/10 text-red-500 border border-red-500/30 px-3 py-1 rounded-full w-max text-xs font-bold tracking-wider animate-pulse">
+                <Radio className="w-3.5 h-3.5" />
+                LIVE NOW ON {HERO_FEATURE.platform.toUpperCase()}
+              </div>
+            )}
+            <h1 className="text-2xl md:text-4xl font-black text-white leading-tight mb-2">
+              {HERO_FEATURE.title}
+            </h1>
+            <p className="text-sm md:text-base text-zinc-400 font-medium">
+              {HERO_FEATURE.subtitle} • <span className="text-zinc-200">{HERO_FEATURE.creator}</span>
+            </p>
+          </div>
+
+          <div className="flex flex-wrap items-center gap-3 shrink-0">
+            <button className="bg-zinc-800 text-white border border-zinc-700 px-5 py-2.5 rounded-lg font-bold hover:bg-zinc-700 transition-colors text-sm flex items-center gap-2">
+              <MessageSquare className="w-4 h-4" />
+              Join Chat
             </button>
-            <button className="bg-zinc-800/90 text-white border border-zinc-700 px-5 py-2.5 rounded-lg font-bold hover:bg-zinc-700 transition-colors text-sm">
+            <button className="bg-red-600 text-white px-6 py-2.5 rounded-lg font-bold hover:bg-red-700 transition-colors text-sm">
               Match Center
             </button>
           </div>
