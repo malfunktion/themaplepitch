@@ -1,4 +1,12 @@
-// scripts/import-teams-abroad.mjs
+// scripts/import-national-teams.mjs
+//
+// Despite the name, this currently imports "Teams Abroad" — the European/
+// international clubs where Canadian internationals play their club football
+// (Bayern Munich, Lille, etc.) — not the Canada Men's/Women's National Team
+// rows themselves. Those (Canada Men's National Team / Canada Women's
+// National Team, external_id nat-canmnt / nat-canwnt) already exist in the
+// `teams` table but weren't created by any script currently in this repo —
+// if you need to re-create them from scratch, add that here too.
 import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -122,7 +130,7 @@ async function importTeamsAbroad() {
       position: player.position,
       league: player.league,
       gender: player.gender,
-      team_id: targetTeamId || null,
+      current_team_id: targetTeamId || null,
       goals: player.goals,
       assists: player.assists,
       rating: player.rating,

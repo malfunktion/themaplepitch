@@ -44,7 +44,13 @@ function slugify(text) {
     .replace(/-+/g, '-');
 }
 
-const CANADIAN_LEAGUES = ['CPL', 'NSL', 'Canadian Championship', 'MLS'];
+// 'Canadian Championship' intentionally left out here: after the
+// team_competitions migration, no team row has league = 'Canadian
+// Championship' anymore (that membership is now recorded as a
+// team_competitions row against the club's real CPL/MLS team, so this
+// script doesn't redundantly re-fetch the same real club's squad twice
+// and burn through the free-tier API quota on a duplicate).
+const CANADIAN_LEAGUES = ['CPL', 'NSL', 'MLS'];
 
 async function runImportSequence() {
   console.log('Fetching Canadian teams from Supabase...');

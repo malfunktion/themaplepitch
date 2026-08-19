@@ -57,6 +57,8 @@ const TEAM_NAME_OVERRIDES = {
   'york united fc': 'Inter Toronto FC',
   'york9': 'Inter Toronto FC',
   'york9 fc': 'Inter Toronto FC',
+  'quebec supra': 'FC Supra du Québec',
+  'québec supra': 'FC Supra du Québec',
 };
 function normalizeTeamName(name) {
   return TEAM_NAME_OVERRIDES[name.trim().toLowerCase()] || name;
