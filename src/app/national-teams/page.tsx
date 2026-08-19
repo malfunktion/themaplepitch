@@ -3,13 +3,28 @@
 import React, { useState, useEffect, Suspense } from 'react';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
+import SidebarStack from '@/components/sidebar/SidebarStack';
+import DataStatus from '@/components/layout/DataStatus';
+import TacticalBlueprint from '@/components/national-teams/TacticalBlueprint';
+import TicketPortal from '@/components/national-teams/TicketPortal';
+import TourCampsCalendar from '@/components/national-teams/TourCampsCalendar';
+import HonorRoll from '@/components/national-teams/HonorRoll';
+import RosterRevolution from '@/components/national-teams/RosterRevolution';
+import DepthChart from '@/components/national-teams/DepthChart';
+import CoachingStaff from '@/components/national-teams/CoachingStaff';
+import HistoricalRecords from '@/components/national-teams/HistoricalRecords';
+import RegionalGrassroots from '@/components/national-teams/RegionalGrassroots';
+import FanCommunityHub from '@/components/national-teams/FanCommunityHub';
+import PressRoomTranscripts from '@/components/national-teams/PressRoomTranscripts';
+import type { StandingsRow } from '@/lib/types';
+import { getCplStandings, getNslStandings } from '@/lib/data/standings';
 
 interface SquadPlayer {
   id?: number;
   number?: number;
   name: string;
   club?: string;
-  league?: string; // <-- Added league property to satisfy TypeScript
+  league?: string;
   position: string;
   age?: number;
   caps?: number;
@@ -31,6 +46,15 @@ function NationalTeamsContent() {
   const [squadPool, setSquadPool] = useState<SquadPlayer[]>([]);
   const [loading, setLoading] = useState(true);
 
+  // Standings for the sidebar stack
+  const [standings, setStandings] = useState<StandingsRow[]>([]);
+  const [nslStandings, setNslStandings] = useState<StandingsRow[]>([]);
+
+  useEffect(() => {
+    getCplStandings().then(setStandings);
+    getNslStandings().then(setNslStandings);
+  }, []);
+
   // Sync state if URL search param changes
   useEffect(() => {
     if (urlGender === 'WOMEN' || urlGender === 'MEN') {
@@ -44,7 +68,6 @@ function NationalTeamsContent() {
       setLoading(true);
       const genderDb = activeGender === 'WOMEN' ? 'women' : 'men';
 
-      // Query Supabase for the active national team pool, fetching up to 35 records
       const { data, error } = await supabase
         .from('players')
         .select('*')
@@ -63,14 +86,11 @@ function NationalTeamsContent() {
     fetchNationalSquad();
   }, [activeGender, activeAge]);
 
-  // Sort all fetched players by rating descending
   const sortedSquad = [...squadPool].sort((a, b) => (b.rating || 0) - (a.rating || 0));
-
-  // Top 11 for the Tactical Pitch Matrix
   const startingXI = sortedSquad.slice(0, 11);
-
-  // Remaining assets flow into the Substitutes & Squad Depth Pool
   const squadDepthPool = sortedSquad.slice(11);
+
+  const activeGenderUpper = activeGender === 'WOMEN' ? 'WOMEN' : 'MEN';
 
   if (loading) {
     return (
@@ -95,7 +115,7 @@ function NationalTeamsContent() {
             </p>
           </div>
 
-          {/* Gender & Age Toggles */}
+          {/* Gender Toggles */}
           <div className="flex items-center gap-3">
             <div className="flex bg-neutral-900 border border-border rounded-sm p-1">
               <button
@@ -118,49 +138,77 @@ function NationalTeamsContent() {
           </div>
         </div>
 
-        {/* TOP 11 STARTING SQUAD SECTION */}
-        <div className="space-y-4">
-          <div className="flex justify-between items-center">
-            <h2 className="font-mono text-sm font-bold tracking-widest uppercase text-crimson">
-              TOP 11 STARTING SQUAD // DYNAMIC FORMATION MATRIX
-            </h2>
-            <span className="text-xs font-mono text-neutral-500">AUTO-SORTED BY HIGHEST DB RATING</span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-4 gap-4">
-            {startingXI.map((player, idx) => (
-              <div key={player.id || idx} className="bg-neutral-900 border border-border/60 p-4 rounded-sm">
-                <div className="flex justify-between items-start">
-                  <span className="text-[10px] font-mono text-neutral-500 uppercase">{player.position || 'PRO'}</span>
-                  <span className="text-xs font-mono font-bold text-crimson">{player.rating ? `${player.rating} RTG` : 'LOCKED'}</span>
-                </div>
-                <h3 className="font-mono text-sm font-bold mt-2">{player.name}</h3>
-                <p className="text-xs font-mono text-neutral-400 mt-1">{player.club || player.league || 'National Asset'}</p>
+        {/* Main Grid Layout (8 Columns Content / 4 Columns Sidebar) */}
+        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
+          
+          {/* Content Feed */}
+          <div className="lg:col-span-8 space-y-8">
+            
+            {/* TOP 11 STARTING SQUAD SECTION */}
+            <div className="space-y-4">
+              <div className="flex justify-between items-center">
+                <h2 className="font-mono text-sm font-bold tracking-widest uppercase text-crimson">
+                  TOP 11 STARTING SQUAD // DYNAMIC FORMATION MATRIX
+                </h2>
+                <span className="text-xs font-mono text-neutral-500">AUTO-SORTED BY HIGHEST DB RATING</span>
               </div>
-            ))}
-          </div>
-        </div>
 
-        {/* SUBSTITUTES & SQUAD DEPTH POOL */}
-        <div className="space-y-4 pt-6 border-t border-border/40">
-          <div className="flex justify-between items-center">
-            <h2 className="font-mono text-sm font-bold tracking-widest uppercase text-neutral-300">
-              SUBSTITUTES & SQUAD DEPTH POOL ({squadDepthPool.length} ASSETS)
-            </h2>
-            <span className="text-xs font-mono text-neutral-500">SORTED BY POSITION DEPTH</span>
-          </div>
-
-          <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
-            {squadDepthPool.map((player, idx) => (
-              <div key={player.id || idx} className="bg-neutral-900/60 border border-border/40 p-3 rounded-sm flex justify-between items-center">
-                <div>
-                  <h4 className="font-mono text-xs font-bold">{player.name}</h4>
-                  <p className="text-[10px] font-mono text-neutral-500">{player.club || player.league || 'Pro Club'} • {player.position}</p>
-                </div>
-                <span className="text-xs font-mono text-neutral-400">{player.rating ? `${player.rating} RTG` : `${player.caps || 0} caps`}</span>
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+                {startingXI.map((player, idx) => (
+                  <div key={player.id || idx} className="bg-neutral-900 border border-border/60 p-4 rounded-sm">
+                    <div className="flex justify-between items-start">
+                      <span className="text-[10px] font-mono text-neutral-500 uppercase">{player.position || 'PRO'}</span>
+                      <span className="text-xs font-mono font-bold text-crimson">{player.rating ? `${player.rating} RTG` : 'LOCKED'}</span>
+                    </div>
+                    <h3 className="font-mono text-sm font-bold mt-2">{player.name}</h3>
+                    <p className="text-xs font-mono text-neutral-400 mt-1">{player.club || player.league || 'National Asset'}</p>
+                  </div>
+                ))}
               </div>
-            ))}
+            </div>
+
+            {/* SUBSTITUTES & SQUAD DEPTH POOL */}
+            <div className="space-y-4 pt-6 border-t border-border/40">
+              <div className="flex justify-between items-center">
+                <h2 className="font-mono text-sm font-bold tracking-widest uppercase text-neutral-300">
+                  SUBSTITUTES & SQUAD DEPTH POOL ({squadDepthPool.length} ASSETS)
+                </h2>
+                <span className="text-xs font-mono text-neutral-500">SORTED BY POSITION DEPTH</span>
+              </div>
+
+              <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-4">
+                {squadDepthPool.map((player, idx) => (
+                  <div key={player.id || idx} className="bg-neutral-900/60 border border-border/40 p-3 rounded-sm flex justify-between items-center">
+                    <div>
+                      <h4 className="font-mono text-xs font-bold">{player.name}</h4>
+                      <p className="text-[10px] font-mono text-neutral-500">{player.club || player.league || 'Pro Club'} • {player.position}</p>
+                    </div>
+                    <span className="text-xs font-mono text-neutral-400">{player.rating ? `${player.rating} RTG` : `${player.caps || 0} caps`}</span>
+                  </div>
+                ))}
+              </div>
+            </div>
+
+            {/* COMPLETE DOSSIER MODULES STACK */}
+            <TacticalBlueprint />
+            <TicketPortal />
+            <TourCampsCalendar />
+            <HonorRoll />
+            <RosterRevolution />
+            <DepthChart activeGender={activeGenderUpper} />
+            <CoachingStaff activeGender={activeGenderUpper} />
+            <HistoricalRecords activeGender={activeGenderUpper} />
+            <RegionalGrassroots />
+            <FanCommunityHub />
+            <PressRoomTranscripts />
+
           </div>
+
+          {/* Sidebar Column */}
+          <div className="lg:col-span-4 flex flex-col gap-6">
+            <SidebarStack standings={standings} nslStandings={nslStandings} />
+          </div>
+
         </div>
 
       </div>
@@ -181,3 +229,4 @@ export default function NationalTeamsPage() {
     </Suspense>
   );
 }
+
