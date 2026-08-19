@@ -28,7 +28,7 @@ const fullNationalSquads = [
   { name: 'Tajon Buchanan', position: 'RW', league: 'Abroad', gender: 'men', squad_type: 'SENIOR', club: 'Villarreal', caps: 42, goals: 8, assists: 12, rating: 8.0, national_team: 'CanMNT' },
   { name: 'Alistair Johnston', position: 'RB', league: 'Abroad', gender: 'men', squad_type: 'SENIOR', club: 'Celtic FC', caps: 44, goals: 2, assists: 9, rating: 7.9, national_team: 'CanMNT' },
   { name: 'Ismaël Koné', position: 'CM', league: 'Abroad', gender: 'men', squad_type: 'SENIOR', club: 'Marseille', caps: 25, goals: 3, assists: 5, rating: 7.9, national_team: 'CanMNT' },
-  { name: 'Cyle Larin', position: 'ST', league: 'Abroad', gender: 'men', squad_type: 'SENIOR', club: Mallorca, caps: 75, goals: 30, assists: 6, rating: 7.9, national_team: 'CanMNT' },
+  { name: 'Cyle Larin', position: 'ST', league: 'Abroad', gender: 'men', squad_type: 'SENIOR', club: 'Mallorca', caps: 75, goals: 30, assists: 6, rating: 7.9, national_team: 'CanMNT' },
   { name: 'Jacob Shaffelburg', position: 'LW', league: 'MLS', gender: 'men', squad_type: 'SENIOR', club: 'Nashville SC', caps: 20, goals: 4, assists: 5, rating: 7.8, national_team: 'CanMNT' },
   { name: 'Moïse Bombito', position: 'CB', league: 'MLS', gender: 'men', squad_type: 'SENIOR', club: 'Nice', caps: 15, goals: 1, assists: 0, rating: 7.8, national_team: 'CanMNT' },
   { name: 'Jonathan Osorio', position: 'CM', league: 'MLS', gender: 'men', squad_type: 'SENIOR', club: 'Toronto FC', caps: 78, goals: 9, assists: 11, rating: 7.7, national_team: 'CanMNT' },
@@ -53,6 +53,7 @@ async function runImport() {
       name: p.name,
       position: p.position,
       league: p.league,
+      club: p.club, // Map club field
       gender: p.gender,
       squad_type: p.squad_type,
       caps: p.caps,
