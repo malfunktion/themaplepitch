@@ -131,14 +131,14 @@ function NationalTeamsContent() {
 
   if (loading) {
     return (
-      <div className="min-h-screen bg-neutral-950 flex items-center justify-center font-mono text-neutral-500 text-xs tracking-widest uppercase">
+      <div className="min-h-screen bg-bg flex items-center justify-center font-mono text-charcoal-soft text-xs tracking-widest uppercase">
         SYNCING NATIONAL DOSSIER...
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-neutral-950 text-foreground py-8 px-4">
+    <div className="min-h-screen bg-bg text-foreground py-8 px-4">
       <div className="max-w-7xl mx-auto space-y-8">
         
         {/* Header & Controls */}
@@ -147,17 +147,17 @@ function NationalTeamsContent() {
             <h1 className="font-mono text-xl font-bold tracking-wider uppercase">
               CANADA {activeGender} // NATIONAL SQUAD POOL
             </h1>
-            <p className="text-xs font-mono text-neutral-400 mt-1">
+            <p className="text-xs font-mono text-charcoal-soft mt-1">
               DYNAMIC FORMATION MATRIX & SQUAD DEPTH VAULT
             </p>
           </div>
 
           <div className="flex items-center gap-3">
-            <div className="flex bg-neutral-900 border border-border rounded-sm p-1">
+            <div className="flex bg-card border border-border rounded-sm p-1">
               <button
                 onClick={() => setActiveGender('MEN')}
                 className={`px-3 py-1 text-xs font-mono transition-colors ${
-                  activeGender === 'MEN' ? 'bg-crimson text-white font-bold' : 'text-neutral-400 hover:text-foreground'
+                  activeGender === 'MEN' ? 'bg-crimson text-white font-bold' : 'text-charcoal-soft hover:text-foreground'
                 }`}
               >
                 MEN
@@ -165,7 +165,7 @@ function NationalTeamsContent() {
               <button
                 onClick={() => setActiveGender('WOMEN')}
                 className={`px-3 py-1 text-xs font-mono transition-colors ${
-                  activeGender === 'WOMEN' ? 'bg-crimson text-white font-bold' : 'text-neutral-400 hover:text-foreground'
+                  activeGender === 'WOMEN' ? 'bg-crimson text-white font-bold' : 'text-charcoal-soft hover:text-foreground'
                 }`}
               >
                 WOMEN
@@ -184,7 +184,7 @@ function NationalTeamsContent() {
               className={`px-3 py-1.5 font-mono text-xs rounded-sm border transition-all ${
                 activeAge === age
                   ? 'bg-crimson text-white border-crimson font-bold'
-                  : 'bg-neutral-900 text-neutral-400 border-border hover:border-crimson/50'
+                  : 'bg-card text-charcoal-soft border-border hover:border-crimson/50'
               }`}
             >
               {age}
@@ -203,23 +203,23 @@ function NationalTeamsContent() {
                 <h2 className="font-mono text-xs font-bold text-crimson tracking-wider uppercase">
                   # {activeGender === 'WOMEN' ? 'CanWNT' : 'CanMNT'} INTELLIGENCE DISPATCHES
                 </h2>
-                <span className="text-[10px] font-mono text-neutral-500">LIVE WIRE STREAM</span>
+                <span className="text-[10px] font-mono text-charcoal-soft">LIVE WIRE STREAM</span>
               </div>
               <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
                 {wireStories.length > 0 ? (
                   wireStories.map((story) => (
-                    <div key={story.id} className="bg-neutral-900/85 border border-border/60 p-3 rounded-sm flex flex-col justify-between">
+                    <div key={story.id} className="bg-card/85 border border-border/60 p-3 rounded-sm flex flex-col justify-between">
                       <div>
                         <span className="text-[9px] font-mono px-1.5 py-0.5 bg-crimson/10 text-crimson rounded border border-crimson/30">
                           {story.sourceName || 'THE WIRE'}
                         </span>
                         <h4 className="font-mono text-xs font-bold mt-2 line-clamp-2">{story.headline}</h4>
                       </div>
-                      <span className="text-[9px] font-mono text-neutral-500 mt-2">{story.timestamp || 'RECENT'}</span>
+                      <span className="text-[9px] font-mono text-charcoal-soft mt-2">{story.timestamp || 'RECENT'}</span>
                     </div>
                   ))
                 ) : (
-                  <div className="col-span-3 bg-neutral-900/50 border border-border/40 p-4 text-center font-mono text-xs text-neutral-500">
+                  <div className="col-span-3 bg-card/50 border border-border/40 p-4 text-center font-mono text-xs text-charcoal-soft">
                     No recent dispatches logged for this national program stream.
                   </div>
                 )}
@@ -227,12 +227,12 @@ function NationalTeamsContent() {
             </div>
 
             {/* Middle Tier: Tactical Pitch Diagram (The Starting XI) */}
-            <div className="bg-neutral-900/90 border border-border p-6 rounded-sm space-y-4">
+            <div className="bg-card/90 border border-border p-6 rounded-sm space-y-4">
               <div className="flex justify-between items-center">
                 <h2 className="font-mono text-sm font-bold tracking-widest uppercase text-crimson">
                   TOP 11 STARTING SQUAD // DYNAMIC FORMATION MATRIX
                 </h2>
-                <span className="text-xs font-mono text-neutral-500">AUTO-SORTED BY HIGHEST DB RATING</span>
+                <span className="text-xs font-mono text-charcoal-soft">AUTO-SORTED BY HIGHEST DB RATING</span>
               </div>
 
               {/* Vector Grass Field Visualization */}
@@ -271,7 +271,7 @@ function NationalTeamsContent() {
                 <h2 className="font-mono text-sm font-bold tracking-widest uppercase text-neutral-300">
                   SUBSTITUTES & SQUAD DEPTH POOL ({squadDepthPool.length} ASSETS)
                 </h2>
-                <span className="text-xs font-mono text-neutral-500">SORTED BY POSITION DEPTH</span>
+                <span className="text-xs font-mono text-charcoal-soft">SORTED BY POSITION DEPTH</span>
               </div>
 
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
@@ -279,14 +279,14 @@ function NationalTeamsContent() {
                   const deputies = getSubsByPosition(posGroup);
                   if (deputies.length === 0) return null;
                   return (
-                    <div key={posGroup} className="bg-neutral-900/60 border border-border/50 p-4 rounded-sm space-y-2">
+                    <div key={posGroup} className="bg-card/60 border border-border/50 p-4 rounded-sm space-y-2">
                       <h3 className="font-mono text-xs font-bold text-crimson tracking-wider">{posGroup} DEPUTIES ({deputies.length})</h3>
                       <div className="space-y-1.5">
                         {deputies.map((player, idx) => (
-                          <div key={player.id || idx} className="flex justify-between items-center text-xs font-mono bg-neutral-900 p-2 rounded border border-border/30">
+                          <div key={player.id || idx} className="flex justify-between items-center text-xs font-mono bg-card p-2 rounded border border-border/30">
                             <div>
                               <span className="font-bold text-white">{player.name}</span>
-                              <span className="text-neutral-500 text-[10px] block">{player.club || player.league || 'Unattached'} • {player.caps || 0} caps</span>
+                              <span className="text-charcoal-soft text-[10px] block">{player.club || player.league || 'Unattached'} • {player.caps || 0} caps</span>
                             </div>
                             <span className="text-crimson font-bold">{player.rating ? `${player.rating} RTG` : `${player.caps || 0} caps`}</span>
                           </div>
@@ -328,9 +328,9 @@ function NationalTeamsContent() {
 function PlayerPitchNode({ player }: { player: SquadPlayer }) {
   return (
     <div className="flex flex-col items-center group cursor-pointer">
-      <div className="bg-neutral-900/95 border border-crimson/60 group-hover:border-crimson px-2.5 py-1.5 rounded text-center shadow-lg transition-all">
+      <div className="bg-card/95 border border-crimson/60 group-hover:border-crimson px-2.5 py-1.5 rounded text-center shadow-lg transition-all">
         <span className="text-[10px] font-mono font-bold text-white block leading-none">{player.name}</span>
-        <span className="text-[8px] font-mono text-neutral-400 block mt-0.5">{player.position} • {player.rating ? `${player.rating} RTG` : 'PRO'}</span>
+        <span className="text-[8px] font-mono text-charcoal-soft block mt-0.5">{player.position} • {player.rating ? `${player.rating} RTG` : 'PRO'}</span>
       </div>
     </div>
   );
@@ -340,7 +340,7 @@ export default function NationalTeamsPage() {
   return (
     <Suspense
       fallback={
-        <div className="min-h-screen bg-neutral-950 flex items-center justify-center font-mono text-neutral-500 text-xs tracking-widest uppercase">
+        <div className="min-h-screen bg-bg flex items-center justify-center font-mono text-charcoal-soft text-xs tracking-widest uppercase">
           LOADING NATIONAL DOSSIER...
         </div>
       }
