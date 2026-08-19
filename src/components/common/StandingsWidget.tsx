@@ -51,7 +51,7 @@ export default function StandingsWidget({
           <button
             onClick={() => setLeagueTab('CPL')}
             className={`px-2 py-1 rounded-sm transition-colors ${
-              leagueTab === 'CPL' ? 'bg-crimson text-white shadow-sm' : 'text-neutral-500 hover:text-charcoal dark:hover:text-white'
+              leagueTab === 'CPL' ? 'bg-crimson text-white shadow-sm' : 'text-charcoal-soft hover:text-charcoal dark:hover:text-white'
             }`}
           >
             CPL ({cplStandings.length || 8})
@@ -59,7 +59,7 @@ export default function StandingsWidget({
           <button
             onClick={() => setLeagueTab('NSL')}
             className={`px-2 py-1 rounded-sm transition-colors ${
-              leagueTab === 'NSL' ? 'bg-crimson text-white shadow-sm' : 'text-neutral-500 hover:text-charcoal dark:hover:text-white'
+              leagueTab === 'NSL' ? 'bg-crimson text-white shadow-sm' : 'text-charcoal-soft hover:text-charcoal dark:hover:text-white'
             }`}
           >
             NSL ({nslStandings.length || 6})
@@ -71,7 +71,7 @@ export default function StandingsWidget({
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse">
           <thead>
-            <tr className="border-b border-border text-[9px] font-mono text-neutral-500 uppercase">
+            <tr className="border-b border-border text-[9px] font-mono text-charcoal-soft uppercase">
               <th className="py-1.5 px-1 font-semibold w-6 text-center">#</th>
               <th className="py-1.5 px-1 font-semibold">Club</th>
               {!compact && <th className="py-1.5 px-1 font-semibold text-center w-8">PL</th>}
@@ -84,8 +84,8 @@ export default function StandingsWidget({
               currentStandings.map((row: any, idx) => {
                 const teamSlug = row.slug || row.teamSlug || slugify(row.clubName || 'team');
                 return (
-                  <tr key={idx} className="group hover:bg-neutral-50 dark:hover:bg-neutral-900/20 transition-colors">
-                    <td className="py-2 px-1 text-center font-mono font-bold text-neutral-400 group-hover:text-crimson">
+                  <tr key={idx} className="group hover:bg-neutral-50 dark:hover:bg-card/20 transition-colors">
+                    <td className="py-2 px-1 text-center font-mono font-bold text-charcoal-soft group-hover:text-crimson">
                       {row.position || idx + 1}
                     </td>
                     <td className="py-2 px-1 font-bold truncate max-w-[120px]" title={row.clubName}>
@@ -97,9 +97,9 @@ export default function StandingsWidget({
                       </Link>
                     </td>
                     {!compact && (
-                      <td className="py-2 px-1 text-center font-mono text-neutral-500">{row.played ?? 0}</td>
+                      <td className="py-2 px-1 text-center font-mono text-charcoal-soft">{row.played ?? 0}</td>
                     )}
-                    <td className="py-2 px-1 text-center font-mono text-neutral-500">
+                    <td className="py-2 px-1 text-center font-mono text-charcoal-soft">
                       {(row.goalDifference ?? 0) > 0 ? `+${row.goalDifference}` : row.goalDifference ?? 0}
                     </td>
                     <td className="py-2 px-1 text-right font-mono font-bold">{row.points ?? 0}</td>
@@ -108,7 +108,7 @@ export default function StandingsWidget({
               })
             ) : (
               <tr>
-                <td colSpan={compact ? 4 : 5} className="py-6 text-center text-xs text-neutral-500 font-mono italic">
+                <td colSpan={compact ? 4 : 5} className="py-6 text-center text-xs text-charcoal-soft font-mono italic">
                   No standings data available for {leagueTab}.
                 </td>
               </tr>
