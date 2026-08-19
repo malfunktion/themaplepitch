@@ -28,7 +28,7 @@ interface SquadPlayer {
   caps?: number;
   rating?: number;
   ga?: string;
-  status?: 'LOCKED' | 'UNTIED / DUAL-NAT' | 'INJURED';
+  status?: 'LOCKED' | 'UNTIED / DUAL-NAT' | 'INJURED' | 'ACTIVE';
   gender?: string;
   squad_type?: string;
 }
@@ -126,7 +126,24 @@ function NationalTeamsContent() {
   const activeGenderUpper = activeGender;
   const sortedSquad = [...squad].sort((a, b) => (b.rating || 0) - (a.rating || 0));
   const startingXI = sortedSquad.slice(0, 11);
-  const squadDepthPool = sortedSquad.slice(11);
+  const substitutes = sortedSquad.slice(11);
+
+  // Position Group Filtering Helpers
+  const getSubsByPosition = (posCategory: 'GK' | 'DEF' | 'MID' | 'FWD') => {
+    return substitutes.filter(p => {
+      const pos = (p.position || '').toUpperCase();
+      if (posCategory === 'GK') return pos.includes('GK');
+      if (posCategory === 'DEF') return pos.includes('CB') || pos.includes('LB') || pos.includes('RB') || pos.includes('FB') || pos.includes('DEF') || pos.includes('WB');
+      if (posCategory === 'MID') return pos.includes('CM') || pos.includes('DM') || pos.includes('AM') || pos.includes('LM') || pos.includes('RM') || pos.includes('MID');
+      if (posCategory === 'FWD') return pos.includes('ST') || pos.includes('FW') || pos.includes('LW') || pos.includes('RW') || pos.includes('W') || pos.includes('CF');
+      return false;
+    });
+  };
+
+  const gkDeputies = getSubsByPosition('GK');
+  const defDeputies = getSubsByPosition('DEF');
+  const midDeputies = getSubsByPosition('MID');
+  const fwdDeputies = getSubsByPosition('FWD');
 
   return (
     <div className="min-h-screen bg-neutral-950 text-neutral-100 font-mono">
@@ -259,47 +276,90 @@ function NationalTeamsContent() {
               </div>
             </div>
 
-            {/* Tier 3: Substitutes & Full Squad Depth Pool */}
+            {/* Tier 3: Substitutes & Full Squad Depth Pool (Grouped by Position) */}
             <div className="border border-neutral-800 bg-neutral-900/40 p-6 rounded-sm">
               <div className="flex justify-between items-center mb-6">
                 <h3 className="text-xs font-bold text-white uppercase tracking-widest">
-                  SUBSTITUTES & SQUAD DEPTH POOL ({squadDepthPool.length} ASSETS)
+                  SUBSTITUTES & SQUAD DEPTH POOL ({substitutes.length} ASSETS)
                 </h3>
                 <span className="text-[10px] text-neutral-400">SORTED BY POSITION DEPTH</span>
               </div>
 
-              {squadDepthPool.length > 0 ? (
-                <div className="overflow-x-auto">
-                  <table className="w-full text-left text-xs">
-                    <thead>
-                      <tr className="border-b border-neutral-800 text-neutral-500 uppercase text-[10px]">
-                        <th className="py-2 px-3">#</th>
-                        <th className="py-2 px-3">Player Name</th>
-                        <th className="py-2 px-3">Pos</th>
-                        <th className="py-2 px-3">Club / League</th>
-                        <th className="py-2 px-3 text-right">Caps</th>
-                        <th className="py-2 px-3 text-right">G / A</th>
-                        <th className="py-2 px-3 text-right">Status</th>
-                      </tr>
-                    </thead>
-                    <tbody>
-                      {squadDepthPool.map((p, idx) => (
-                        <tr key={p.id || idx} className="border-b border-neutral-800/50 hover:bg-neutral-800/30">
-                          <td className="py-2.5 px-3 text-neutral-500">{p.number || idx + 12}</td>
-                          <td className="py-2.5 px-3 font-bold text-white">{p.name}</td>
-                          <td className="py-2.5 px-3 text-red-400">{p.position}</td>
-                          <td className="py-2.5 px-3 text-neutral-400">{p.club || p.league || 'Pro Club'}</td>
-                          <td className="py-2.5 px-3 text-right text-neutral-300">{p.caps ?? 0}</td>
-                          <td className="py-2.5 px-3 text-right text-neutral-400">{p.ga || '0 / 0'}</td>
-                          <td className="py-2.5 px-3 text-right">
-                            <span className="text-[9px] font-mono px-2 py-0.5 rounded-sm border bg-red-600/10 text-red-500 border-red-600/30">
-                              [ {p.status || 'ACTIVE'} ]
-                            </span>
-                          </td>
-                        </tr>
+              {substitutes.length > 0 ? (
+                <div className="space-y-6">
+                  
+                  {/* GK DEPUTIES */}
+                  <div>
+                    <h4 className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest mb-2 border-l-2 border-red-600 pl-2">
+                      GK DEPUTIES ({gkDeputies.length})
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                      {gkDeputies.map((player, idx) => (
+                        <div key={player.id || idx} className="bg-neutral-900/90 border border-neutral-800 p-2.5 rounded-sm flex items-center justify-between">
+                          <div>
+                            <span className="text-xs font-mono font-bold text-white block">{player.name}</span>
+                            <span className="text-[10px] font-mono text-neutral-400 block">{player.club || player.league || 'Pro Club'} • {player.caps ?? 0} caps</span>
+                          </div>
+                          <span className="text-[10px] font-mono text-red-500 font-bold">{player.rating ? `${Number(player.rating).toFixed(1)} RTG` : '[ LOCKED ]'}</span>
+                        </div>
                       ))}
-                    </tbody>
-                  </table>
+                    </div>
+                  </div>
+
+                  {/* DEF DEPUTIES */}
+                  <div>
+                    <h4 className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest mb-2 border-l-2 border-red-600 pl-2">
+                      DEF DEPUTIES ({defDeputies.length})
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                      {defDeputies.map((player, idx) => (
+                        <div key={player.id || idx} className="bg-neutral-900/90 border border-neutral-800 p-2.5 rounded-sm flex items-center justify-between">
+                          <div>
+                            <span className="text-xs font-mono font-bold text-white block">{player.name}</span>
+                            <span className="text-[10px] font-mono text-neutral-400 block">{player.club || player.league || 'Pro Club'} • {player.caps ?? 0} caps</span>
+                          </div>
+                          <span className="text-[10px] font-mono text-red-500 font-bold">{player.rating ? `${Number(player.rating).toFixed(1)} RTG` : '[ LOCKED ]'}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* MID DEPUTIES */}
+                  <div>
+                    <h4 className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest mb-2 border-l-2 border-red-600 pl-2">
+                      MID DEPUTIES ({midDeputies.length})
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                      {midDeputies.map((player, idx) => (
+                        <div key={player.id || idx} className="bg-neutral-900/90 border border-neutral-800 p-2.5 rounded-sm flex items-center justify-between">
+                          <div>
+                            <span className="text-xs font-mono font-bold text-white block">{player.name}</span>
+                            <span className="text-[10px] font-mono text-neutral-400 block">{player.club || player.league || 'Pro Club'} • {player.caps ?? 0} caps</span>
+                          </div>
+                          <span className="text-[10px] font-mono text-red-500 font-bold">{player.rating ? `${Number(player.rating).toFixed(1)} RTG` : '[ LOCKED ]'}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
+                  {/* FWD DEPUTIES */}
+                  <div>
+                    <h4 className="text-[10px] font-mono text-neutral-400 uppercase tracking-widest mb-2 border-l-2 border-red-600 pl-2">
+                      FWD DEPUTIES ({fwdDeputies.length})
+                    </h4>
+                    <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
+                      {fwdDeputies.map((player, idx) => (
+                        <div key={player.id || idx} className="bg-neutral-900/90 border border-neutral-800 p-2.5 rounded-sm flex items-center justify-between">
+                          <div>
+                            <span className="text-xs font-mono font-bold text-white block">{player.name}</span>
+                            <span className="text-[10px] font-mono text-neutral-400 block">{player.club || player.league || 'Pro Club'} • {player.caps ?? 0} caps</span>
+                          </div>
+                          <span className="text-[10px] font-mono text-red-500 font-bold">{player.rating ? `${Number(player.rating).toFixed(1)} RTG` : '[ LOCKED ]'}</span>
+                        </div>
+                      ))}
+                    </div>
+                  </div>
+
                 </div>
               ) : (
                 <div className="py-8 text-center text-xs text-neutral-500">
