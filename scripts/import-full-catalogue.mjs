@@ -1,3 +1,4 @@
+// scripts/import-full-catalogue.mjs
 import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -25,8 +26,9 @@ function slugify(name) {
 async function runFullCatalogueImport() {
   console.log('🚀 Initializing Full Catalogue Ingestion for The Maple Pitch...');
 
+  // 1. Master Teams & Clubs Catalogue (CPL, NSL, MLS, National Teams, and Global Clubs Abroad)
   const masterTeams = [
-    // CPL
+    // CPL (Men's Professional)
     { name: 'Forge FC', league: 'CPL', gender: 'men' },
     { name: 'Cavalry FC', league: 'CPL', gender: 'men' },
     { name: 'Pacific FC', league: 'CPL', gender: 'men' },
@@ -35,20 +37,25 @@ async function runFullCatalogueImport() {
     { name: 'HFX Wanderers FC', league: 'CPL', gender: 'men' },
     { name: 'Vancouver FC', league: 'CPL', gender: 'men' },
     { name: 'Atlético Ottawa', league: 'CPL', gender: 'men' },
-    // NSL
+    
+    // NSL (Women's Professional)
     { name: 'AFC Toronto', league: 'NSL', gender: 'women' },
     { name: 'Calgary Wild FC', league: 'NSL', gender: 'women' },
     { name: 'Halifax Tides FC', league: 'NSL', gender: 'women' },
     { name: 'Montreal Roses FC', league: 'NSL', gender: 'women' },
     { name: 'Ottawa Rapid FC', league: 'NSL', gender: 'women' },
     { name: 'Vancouver Rise FC', league: 'NSL', gender: 'women' },
-    // MLS Canadian Clubs
+    
+    // Canadian MLS Clubs
     { name: 'Toronto FC', league: 'MLS', gender: 'men' },
     { name: 'CF Montréal', league: 'MLS', gender: 'men' },
     { name: 'Vancouver Whitecaps', league: 'MLS', gender: 'men' },
-    // National Teams & Clubs Abroad
+    
+    // National Program Entities
     { name: "Canada Men's National Team", league: 'National', gender: 'men' },
     { name: "Canada Women's National Team", league: 'National', gender: 'women' },
+    
+    // Global Clubs Hosting Canadians Abroad & Major Pathways
     { name: 'Lille OSC', league: 'Abroad', gender: 'men' },
     { name: 'Bayern Munich', league: 'Abroad', gender: 'men' },
     { name: 'FC Porto', league: 'Abroad', gender: 'men' },
@@ -63,7 +70,6 @@ async function runFullCatalogueImport() {
     { name: 'Chelsea FC', league: 'FA WSL', gender: 'women' },
     { name: 'Utah Royals', league: 'NWSL', gender: 'women' },
     { name: 'Sporting CP', league: 'Abroad', gender: 'women' },
-    // Additional Clubs for Abroad Players
     { name: 'Middlesbrough', league: 'Abroad', gender: 'men' },
     { name: 'Portland Timbers', league: 'MLS', gender: 'men' },
     { name: 'Minnesota United', league: 'MLS', gender: 'men' },
@@ -79,56 +85,36 @@ async function runFullCatalogueImport() {
   ];
 
   const teamMap = {};
-  console.log('🏟️ Resolving & syncing full club & team catalogue...');
+  console.log('🏟️ Upserting & resolving full club & team catalogue...');
 
   for (const t of masterTeams) {
     const slug = slugify(t.name);
-    
-    // First check if team already exists by name or slug
-    const { data: existing } = await supabase
+    const payload = {
+      name: t.name,
+      short_name: t.name,
+      league: t.league,
+      gender: t.gender,
+      slug: slug,
+      external_id: slug
+    };
+
+    const { data, error } = await supabase
       .from('teams')
+      .upsert(payload, { onConflict: 'external_id' })
       .select('id, name')
-      .or(`slug.eq.${slug},name.eq.${t.name}`)
       .maybeSingle();
 
-    if (existing) {
-      teamMap[t.name] = existing.id;
-      console.log(`🔗 Linked Existing Team: ${t.name} (ID: ${existing.id})`);
-    } else {
-      const payload = {
-        name: t.name,
-        short_name: t.name,
-        league: t.league,
-        gender: t.gender,
-        slug: slug,
-        external_id: slug
-      };
-
-      const { data, error } = await supabase
-        .from('teams')
-        .insert(payload)
-        .select('id, name')
-        .maybeSingle();
-
-      if (error) {
-        // Fallback: fetch again if concurrent insert happened
-        const { data: fallback } = await supabase.from('teams').select('id').eq('name', t.name).maybeSingle();
-        if (fallback) {
-          teamMap[t.name] = fallback.id;
-          console.log(`✅ Synced Team via Fallback: ${t.name} (ID: ${fallback.id})`);
-        } else {
-          console.warn(`⚠️ Team note for ${t.name}: ${error.message}`);
-        }
-      } else if (data) {
-        teamMap[t.name] = data.id;
-        console.log(`✅ Synced New Team: ${t.name} (ID: ${data.id})`);
-      }
+    if (error) {
+      console.warn(`⚠️ Team sync warning for ${t.name}: ${error.message}`);
+    } else if (data) {
+      teamMap[t.name] = data.id;
+      console.log(`✅ Synced Team: ${t.name} → ID: ${data.id}`);
     }
   }
 
-  // 2. Comprehensive Player Rosters
+  // 2. Comprehensive Player Rosters (CanMNT, CanWNT, CPL, NSL, MLS, and Abroad)
   const cataloguePlayers = [
-    // --- MARQUEE & ABROAD STARS ---
+    // --- MARQUEE & ABROAD STARS (MEN) ---
     { name: 'Jonathan David', club: 'Lille OSC', league: 'Abroad', gender: 'men', position: 'ST', rating: 8.4, goals: 18, assists: 4, caps: 54, squad_type: 'SENIOR' },
     { name: 'Alphonso Davies', club: 'Bayern Munich', league: 'Abroad', gender: 'men', position: 'LB', rating: 8.1, goals: 2, assists: 6, caps: 50, squad_type: 'SENIOR' },
     { name: 'Stephen Eustáquio', club: 'FC Porto', league: 'Abroad', gender: 'men', position: 'CM', rating: 7.8, goals: 3, assists: 5, caps: 42, squad_type: 'SENIOR' },
@@ -155,7 +141,7 @@ async function runFullCatalogueImport() {
     { name: 'Julia Grosso', club: 'Chicago Red Stars', league: 'NWSL', gender: 'women', position: 'CM', rating: 7.9, goals: 2, assists: 3, caps: 65, squad_type: 'SENIOR' },
     { name: 'Jordyn Huitema', club: 'Seattle Reign', league: 'NWSL', gender: 'women', position: 'ST', rating: 7.7, goals: 8, assists: 2, caps: 80, squad_type: 'SENIOR' },
     { name: 'Vanessa Gilles', club: 'Lyon', league: 'Abroad', gender: 'women', position: 'CB', rating: 8.0, goals: 4, assists: 0, caps: 45, squad_type: 'SENIOR' },
-    { name: 'Jade Rose', club: 'Harvard / National Pool', league: 'NCAA', gender: 'women', position: 'CB', rating: 7.6, goals: 1, assists: 1, caps: 22, squad_type: 'SENIOR' },
+    { name: 'Jade Rose', club: 'Utah Royals', league: 'NWSL', gender: 'women', position: 'CB', rating: 7.6, goals: 1, assists: 1, caps: 22, squad_type: 'SENIOR' },
 
     // --- CPL DOMESTIC SQUADS ---
     { name: 'Tristan Borges', club: 'Forge FC', league: 'CPL', gender: 'men', position: 'AM', rating: 7.2, goals: 6, assists: 8, caps: 2, squad_type: 'SENIOR' },
@@ -174,7 +160,7 @@ async function runFullCatalogueImport() {
     { name: 'Marie-Yasmine Alidou', club: 'Montreal Roses FC', league: 'NSL', gender: 'women', position: 'CM', rating: 7.5, goals: 6, assists: 8, caps: 8, squad_type: 'SENIOR' },
     { name: 'Sarah Stratigakis', club: 'AFC Toronto', league: 'NSL', gender: 'women', position: 'CM', rating: 7.3, goals: 4, assists: 5, caps: 5, squad_type: 'SENIOR' },
 
-    // --- CANADIAN MLS CLUBS & PATHWAYS ---
+    // --- CANADIAN MLS CLUBS & YOUTH PATHWAYS ---
     { name: 'Jonathan Osorio', club: 'Toronto FC', league: 'MLS', gender: 'men', position: 'CM', rating: 7.5, goals: 6, assists: 5, caps: 71, squad_type: 'SENIOR' },
     { name: 'Richie Laryea', club: 'Toronto FC', league: 'MLS', gender: 'men', position: 'RB', rating: 7.6, goals: 2, assists: 6, caps: 52, squad_type: 'SENIOR' },
     { name: 'Kamal Miller', club: 'Portland Timbers', league: 'MLS', gender: 'men', position: 'CB', rating: 7.4, goals: 1, assists: 2, caps: 44, squad_type: 'SENIOR' },
@@ -213,9 +199,9 @@ async function runFullCatalogueImport() {
       .upsert(playerPayload, { onConflict: 'external_id' });
 
     if (upsertError) {
-      console.error(`⚠️ Error syncing ${p.name}: ${upsertError.message}`);
+      console.error(`⚠️ Error syncing player ${p.name}: ${upsertError.message}`);
     } else {
-      console.log(`✅ Synced Player: ${p.name} → Club: ${p.club} (Team ID: ${targetTeamId || 'N/A'})`);
+      console.log(`✅ Synced Player: ${p.name} → Club: ${p.club} (Team ID: ${targetTeamId || 'Unlinked'})`);
     }
   }
 
@@ -223,6 +209,6 @@ async function runFullCatalogueImport() {
 }
 
 runFullCatalogueImport().catch(err => {
-  console.error('Fatal import failure:', err);
+  console.error('❌ Fatal import failure:', err);
   process.exit(1);
 });
