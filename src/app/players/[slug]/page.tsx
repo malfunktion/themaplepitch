@@ -1,5 +1,7 @@
+// src/app/players/[slug]/page.tsx
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import HubHeader from '@/components/entity/HubHeader';
 import SourceStamp from '@/components/entity/SourceStamp';
@@ -36,47 +38,53 @@ async function getPlayerData(slugParam: string) {
     .from('players')
     .select(`
       *,
-      current_team:teams!current_team_id(id, name, slug, league)
+      current_team:teams!current_team_id(id, name, slug, league, logo_url)
     `)
     .or(flexQuery)
     .maybeSingle();
 
   if (!player) return null;
 
-  // Fetch season stats & historical match logs
-  const [seasonStatsRes, clubMatchesRes] = await Promise.all([
+  // Fetch season stats, match logs, and tagged media/news
+  const [seasonStatsRes, clubMatchesRes, mediaRes] = await Promise.all([
     supabase
       .from('player_season_stats')
-      .select('season, competition, matches_played, goals, assists, minutes, rating, team:teams(name, slug)')
+      .select('season, competition, matches_played, goals, assists, minutes, rating, team:teams(name, slug, logo_url)')
       .eq('player_id', player.id)
       .order('season', { ascending: false }),
+    player.current_team_id
+      ? supabase
+          .from('matches')
+          .select(`
+            id,
+            match_date,
+            home_score,
+            away_score,
+            home_team:teams!home_team_id(name, slug),
+            away_team:teams!away_team_id(name, slug)
+          `)
+          .or(`home_team_id.eq.${player.current_team_id},away_team_id.eq.${player.current_team_id}`)
+          .limit(6)
+      : Promise.resolve({ data: [] }),
     supabase
-      .from('matches')
-      .select(`
-        id,
-        match_date,
-        home_score,
-        away_score,
-        home_team:teams!home_team_id(name, slug),
-        away_team:teams!away_team_id(name, slug)
-      `)
-      .or(`home_team_id.eq.${player.current_team_id},away_team_id.eq.${player.current_team_id}`)
-      .limit(6),
+      .from('media')
+      .select('id, title, youtube_id, category, created_at')
+      .or(`player_id.eq.${player.id},tags.cs.{${player.slug || player.name}}`)
+      .limit(3)
   ]);
 
   return {
     player,
     seasonStats: seasonStatsRes.data || [],
     clubMatches: clubMatchesRes.data || [],
+    mediaClips: mediaRes.data || [],
   };
 }
 
 export async function generateMetadata({
   params,
-  searchParams,
 }: {
   params: Promise<{ slug: string }>;
-  searchParams: Promise<{ tab?: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
   const data = await getPlayerData(slug);
@@ -122,7 +130,7 @@ export default async function PlayerProfilePage({
 
   if (!data?.player) notFound();
 
-  const { player, seasonStats, clubMatches } = data;
+  const { player, seasonStats, clubMatches, mediaClips } = data;
   const activeTab = tab === 'national' ? 'national' : 'club';
 
   const club = Array.isArray(player.current_team) ? (player.current_team as any)[0] : (player.current_team as any);
@@ -153,11 +161,40 @@ export default async function PlayerProfilePage({
 
   return (
     <>
-      <HubHeader
-        eyebrow={`Player Dossier // ${activeTab === 'national' ? `${nationalTag} International Program` : clubName}`}
-        title={(player.name || 'Player').toUpperCase()}
-        description={`${player.position || 'Player'} • ${player.nationality || 'Canada'} • ${activeTab === 'national' ? `Active ${nationalTag} Representative` : `Playing in ${player.league || 'Domestic'}`}. Live profile powered by Supabase telemetry.`}
-      />
+      {/* HEADER WITH SUPABASE STORAGE HEADSHOT & CLUB LOGO */}
+      <div className="border border-border bg-card p-6 mb-6 flex flex-col md:flex-row items-center gap-6">
+        <div className="relative w-28 h-28 rounded-full border-2 border-crimson overflow-hidden bg-neutral-900 flex items-center justify-center shrink-0">
+          {player.headshot_url || player.avatar_url ? (
+            <img
+              src={player.headshot_url || player.avatar_url}
+              alt={player.name}
+              className="w-full h-full object-cover"
+            />
+          ) : (
+            <span className="font-mono text-2xl text-neutral-500 font-bold">
+              {player.name ? player.name.split(' ').map((n: string) => n[0]).join('') : 'MP'}
+            </span>
+          )}
+        </div>
+
+        <div className="flex-1 text-center md:text-left space-y-2">
+          <div className="text-xs font-mono text-crimson font-bold uppercase tracking-wider">
+            Player Dossier // {activeTab === 'national' ? `${nationalTag} Program` : clubName}
+          </div>
+          <h1 className="text-2xl md:text-3xl font-black font-mono tracking-tight text-charcoal dark:text-white uppercase">
+            {player.name}
+          </h1>
+          <p className="text-xs font-mono text-neutral-400">
+            {player.position || 'Player'} • {player.nationality || 'Canada'} • {activeTab === 'national' ? `Active ${nationalTag} Representative` : `Playing in ${player.league || 'Domestic'}`}
+          </p>
+        </div>
+
+        {club?.logo_url && (
+          <div className="hidden md:block w-16 h-16 shrink-0">
+            <img src={club.logo_url} alt={clubName} className="w-full h-full object-contain" />
+          </div>
+        )}
+      </div>
 
       {/* CONTEXT SWITCHER TOGGLE BAR */}
       <div className="mb-6 flex items-center gap-2 border border-border bg-card p-2">
@@ -245,6 +282,32 @@ export default async function PlayerProfilePage({
               <div className="text-xs text-charcoal-soft font-mono">
                 No granular multi-season stats indexed for this player yet.
               </div>
+            )}
+          </div>
+
+          {/* MEDIA VAULT / VIDEO HIGHLIGHTS */}
+          <div className="border border-border p-5 bg-card">
+            <div className="text-[10px] font-mono uppercase text-crimson mb-3">
+              Player Media Vault &amp; Match Highlights
+            </div>
+            {mediaClips.length > 0 ? (
+              <div className="grid gap-4 sm:grid-cols-2">
+                {mediaClips.map((clip: any) => (
+                  <div key={clip.id} className="border border-border/80 p-2 bg-neutral-900/40">
+                    <div className="aspect-video w-full bg-black">
+                      <iframe
+                        className="w-full h-full"
+                        src={`https://www.youtube.com/embed/${clip.youtube_id}`}
+                        title={clip.title}
+                        allowFullScreen
+                      />
+                    </div>
+                    <div className="text-xs font-mono font-bold mt-2 truncate">{clip.title}</div>
+                  </div>
+                ))}
+              </div>
+            ) : (
+              <div className="text-xs text-charcoal-soft font-mono">No video highlights uploaded for this player yet.</div>
             )}
           </div>
 
