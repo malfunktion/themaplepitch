@@ -1,6 +1,7 @@
 'use client';
 
 import React, { useState, useEffect, Suspense } from 'react';
+import Link from 'next/link';
 import { useSearchParams } from 'next/navigation';
 import { supabase } from '@/lib/supabase/client';
 import SidebarStack from '@/components/sidebar/SidebarStack';
@@ -21,6 +22,8 @@ import type { StandingsRow, WireStory } from '@/lib/types';
 
 interface SquadPlayer {
   id?: number;
+  slug?: string;
+  external_id?: string;
   number?: number;
   name: string;
   club?: string;
@@ -283,13 +286,17 @@ function NationalTeamsContent() {
                       <h3 className="font-mono text-xs font-bold text-crimson tracking-wider">{posGroup} DEPUTIES ({deputies.length})</h3>
                       <div className="space-y-1.5">
                         {deputies.map((player, idx) => (
-                          <div key={player.id || idx} className="flex justify-between items-center text-xs font-mono bg-card p-2 rounded border border-border/30">
+                          <Link
+                            key={player.id || idx}
+                            href={`/players/${player.slug || player.external_id || player.id}`}
+                            className="flex justify-between items-center text-xs font-mono bg-card p-2 rounded border border-border/30 hover:border-crimson transition-colors"
+                          >
                             <div>
-                              <span className="font-bold text-white">{player.name}</span>
+                              <span className="font-bold text-white hover:text-crimson transition-colors">{player.name}</span>
                               <span className="text-charcoal-soft text-[10px] block">{player.club || player.league || 'Unattached'} • {player.caps || 0} caps</span>
                             </div>
                             <span className="text-crimson font-bold">{player.rating ? `${player.rating} RTG` : `${player.caps || 0} caps`}</span>
-                          </div>
+                          </Link>
                         ))}
                       </div>
                     </div>
@@ -326,13 +333,14 @@ function NationalTeamsContent() {
 
 // Compact Pitch Node Helper Component
 function PlayerPitchNode({ player }: { player: SquadPlayer }) {
+  const playerRoute = player.slug || player.external_id || player.id;
   return (
-    <div className="flex flex-col items-center group cursor-pointer">
+    <Link href={`/players/${playerRoute}`} className="flex flex-col items-center group cursor-pointer">
       <div className="bg-card/95 border border-crimson/60 group-hover:border-crimson px-2.5 py-1.5 rounded text-center shadow-lg transition-all">
-        <span className="text-[10px] font-mono font-bold text-white block leading-none">{player.name}</span>
+        <span className="text-[10px] font-mono font-bold text-white block leading-none group-hover:text-crimson transition-colors">{player.name}</span>
         <span className="text-[8px] font-mono text-charcoal-soft block mt-0.5">{player.position} • {player.rating ? `${player.rating} RTG` : 'PRO'}</span>
       </div>
-    </div>
+    </Link>
   );
 }
 
