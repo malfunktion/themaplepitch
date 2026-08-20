@@ -20,8 +20,8 @@ export default function ProvincialVideoVault({ leagueName, gender, videos }: Pro
   const featured = [...videos.popular, ...videos.lastWeek].slice(0, 3);
 
   return (
-    <div className="bg-card dark:bg-[#171717] border border-border dark:border-neutral-800 rounded-sm p-4 flex flex-col gap-3">
-      <div className="flex justify-between items-center text-xs font-mono text-neutral-400">
+    <div className="bg-card border border-border rounded-sm p-4 flex flex-col gap-3">
+      <div className="flex justify-between items-center text-xs font-mono text-charcoal-soft">
         <span>{leagueName} &middot; {gender} VIDEO VAULT</span>
         <span className="text-red-600 font-bold">ARCHIVE</span>
       </div>
@@ -40,12 +40,12 @@ export default function ProvincialVideoVault({ leagueName, gender, videos }: Pro
                 <span className="absolute bottom-1 right-1 text-[9px] font-mono bg-black/70 text-white px-1 rounded-sm">{v.duration}</span>
               </div>
               <span className="text-[11px] font-bold text-charcoal dark:text-neutral-200 leading-snug">{v.title}</span>
-              {v.matchup && <span className="text-[9px] text-charcoal-soft dark:text-neutral-500">{v.matchup}</span>}
+              {v.matchup && <span className="text-[9px] text-charcoal-soft">{v.matchup}</span>}
             </div>
           ))}
         </div>
       ) : (
-        <p className="text-[11px] text-charcoal-soft dark:text-neutral-500 py-2">No video content archived for this league yet.</p>
+        <p className="text-[11px] text-charcoal-soft py-2">No video content archived for this league yet.</p>
       )}
     </div>
   );

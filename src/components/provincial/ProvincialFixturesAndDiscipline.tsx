@@ -10,7 +10,7 @@ export function FixturesCard({ fixtures }: { fixtures: FixtureItem[] }) {
       <div className="space-y-3 font-mono text-xs">
         {fixtures && fixtures.length > 0 ? (
           fixtures.map((fix) => (
-            <div key={fix.id} className="p-3 bg-surface dark:bg-neutral-900 border border-border rounded-sm flex flex-col gap-1">
+            <div key={fix.id} className="p-3 bg-surface dark:bg-card border border-border rounded-sm flex flex-col gap-1">
               <div className="flex justify-between text-[10px] text-charcoal-soft">
                 <span>{fix.matchday}</span>
                 <span className="text-crimson font-bold">{fix.kickoff}</span>
@@ -20,7 +20,7 @@ export function FixturesCard({ fixtures }: { fixtures: FixtureItem[] }) {
             </div>
           ))
         ) : (
-          <div className="text-[10px] text-neutral-500 py-2">No upcoming fixtures scheduled for this tier.</div>
+          <div className="text-[10px] text-charcoal-soft py-2">No upcoming fixtures scheduled for this tier.</div>
         )}
       </div>
     </div>
@@ -37,7 +37,7 @@ export function DisciplineLogCard({ logs }: { logs: DisciplineLog[] }) {
       <div className="space-y-3 font-mono text-xs">
         {logs && logs.length > 0 ? (
           logs.map((log) => (
-            <div key={log.id} className="p-3 bg-surface dark:bg-neutral-900 border border-border rounded-sm flex flex-col gap-1">
+            <div key={log.id} className="p-3 bg-surface dark:bg-card border border-border rounded-sm flex flex-col gap-1">
               <div className="flex justify-between text-[10px]">
                 <span className="font-bold text-charcoal dark:text-neutral-300">{log.match}</span>
                 <span className="text-charcoal-soft">{log.timestamp}</span>
@@ -50,7 +50,7 @@ export function DisciplineLogCard({ logs }: { logs: DisciplineLog[] }) {
             </div>
           ))
         ) : (
-          <div className="text-[10px] text-neutral-500 py-2">No disciplinary records reported.</div>
+          <div className="text-[10px] text-charcoal-soft py-2">No disciplinary records reported.</div>
         )}
       </div>
     </div>

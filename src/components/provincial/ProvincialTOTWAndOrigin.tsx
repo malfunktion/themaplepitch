@@ -20,7 +20,7 @@ export function TeamOfTheWeekCard({ totw }: { totw: TOTWData }) {
           <span className="font-mono text-xs font-bold text-charcoal-soft tracking-widest uppercase">TEAM OF THE WEEK // BEST XI</span>
           <span className="text-[10px] font-mono text-crimson-dim">{totw.week}</span>
         </div>
-        <div className="mb-3 bg-neutral-100 dark:bg-neutral-900/40 p-2.5 rounded-sm border border-border">
+        <div className="mb-3 bg-neutral-100 dark:bg-card/40 p-2.5 rounded-sm border border-border">
           <div className="text-[9px] font-mono font-bold text-crimson uppercase">MANAGER OF THE WEEK</div>
           <div className="text-sm font-bold text-charcoal dark:text-white">{totw.manager}</div>
           <p className="text-[11px] text-charcoal-soft mt-1">{totw.note}</p>
@@ -48,7 +48,7 @@ export function TalentOriginCard({ originPins }: { originPins: OriginPin[] }) {
       </div>
       <div className="flex flex-col gap-3">
         {originPins.map((hub, idx) => (
-          <div key={idx} className="bg-neutral-100 dark:bg-neutral-900/50 p-3 rounded-sm border border-border">
+          <div key={idx} className="bg-neutral-100 dark:bg-card/50 p-3 rounded-sm border border-border">
             <div className="flex justify-between items-center mb-2">
               <span className="text-xs font-bold text-charcoal dark:text-white font-mono">{hub.name}</span>
               <span className="text-[10px] font-mono font-bold bg-crimson text-white px-1.5 py-0.5 rounded-sm">{hub.count} PROSPECTS</span>

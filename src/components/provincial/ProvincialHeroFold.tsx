@@ -40,7 +40,7 @@ export default function ProvincialHeroFold({
   return (
     <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 mb-6">
       {/* Hero Section - Converted to Next.js Image */}
-      <div className="lg:col-span-2 bg-card dark:bg-[#171717] border border-border dark:border-neutral-800 rounded-sm overflow-hidden flex flex-col justify-end relative min-h-[380px] p-6 group">
+      <div className="lg:col-span-2 bg-card border border-border rounded-sm overflow-hidden flex flex-col justify-end relative min-h-[380px] p-6 group">
         <div className="absolute inset-0 z-0">
           <Image
             src={defaultHero.image}
@@ -65,8 +65,8 @@ export default function ProvincialHeroFold({
       </div>
 
       {/* Dispatches Side Stack */}
-      <div className="bg-card dark:bg-[#171717] border border-border dark:border-neutral-800 rounded-sm p-4 flex flex-col gap-3">
-        <div className="text-xs font-mono font-bold text-neutral-400 border-b border-border dark:border-neutral-800 pb-2 flex justify-between items-center">
+      <div className="bg-card border border-border rounded-sm p-4 flex flex-col gap-3">
+        <div className="text-xs font-mono font-bold text-charcoal-soft border-b border-border pb-2 flex justify-between items-center">
           <span>[ PROVINCIAL DISPATCHES ]</span>
           <span className="text-red-600 ml-auto">LIVE</span>
         </div>
@@ -76,9 +76,9 @@ export default function ProvincialHeroFold({
               <Link
                 key={d.id}
                 href={d.url || '#'}
-                className="group block p-2 hover:bg-neutral-800/20 rounded transition-colors border-b border-border/40 dark:border-neutral-800/40 last:border-none"
+                className="group block p-2 hover:bg-neutral-800/20 rounded transition-colors border-b border-border/40/40 last:border-none"
               >
-                <div className="text-[10px] font-mono text-neutral-400 mb-0.5">
+                <div className="text-[10px] font-mono text-charcoal-soft mb-0.5">
                   {d.league} {'//'} {d.timestamp}
                 </div>
                 <div className="text-xs font-bold text-foreground group-hover:text-red-600 transition-colors leading-tight">
@@ -87,7 +87,7 @@ export default function ProvincialHeroFold({
               </Link>
             ))
           ) : (
-            <div className="text-xs font-mono text-neutral-500 py-4 text-center">
+            <div className="text-xs font-mono text-charcoal-soft py-4 text-center">
               No active dispatches.
             </div>
           )}
