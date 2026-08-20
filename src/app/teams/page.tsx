@@ -2,7 +2,7 @@ import Link from 'next/link';
 import HubHeader from '@/components/entity/HubHeader';
 import SourceStamp from '@/components/entity/SourceStamp';
 import SidebarStack from '@/components/sidebar/SidebarStack';
-import { supabase } from '@/lib/supabase/client';
+import { createClient } from '@supabase/supabase-js';
 import { getCplStandings, getNslStandings } from '@/lib/data/standings';
 
 const supabase = createClient(
@@ -32,7 +32,7 @@ export default async function TeamsPage() {
           description="Competition-aware team entities connect standings, fixtures, player rosters, form and tactical analysis. Powered by live Supabase data."
         />
         <div className="grid gap-4 md:grid-cols-2">
-          {teamList.map((t) => {
+          {teamList.map((t: any) => {
             const teamRoute = t.slug || t.external_id || t.id;
             return (
               <Link
