@@ -10,8 +10,8 @@ const xi = [
 
 export default function StatsTeamOfWeek() {
   return (
-    <div className="bg-card dark:bg-[#171717] border border-border dark:border-neutral-800 rounded-sm p-4 flex flex-col gap-3">
-      <div className="flex justify-between items-center text-xs font-mono text-neutral-400">
+    <div className="bg-card border border-border rounded-sm p-4 flex flex-col gap-3">
+      <div className="flex justify-between items-center text-xs font-mono text-charcoal-soft">
         <span>TEAM OF THE WEEK</span>
         <span className="text-red-600 font-bold">XI SELECTION</span>
       </div>
@@ -25,7 +25,7 @@ export default function StatsTeamOfWeek() {
               <span className="text-[9px] font-mono font-bold text-crimson w-8">{p.pos}</span>
               <span className="text-xs font-bold text-charcoal dark:text-neutral-200">{p.name}</span>
             </div>
-            <span className="text-[10px] text-charcoal-soft dark:text-neutral-500">{p.club}</span>
+            <span className="text-[10px] text-charcoal-soft">{p.club}</span>
           </div>
         ))}
       </div>

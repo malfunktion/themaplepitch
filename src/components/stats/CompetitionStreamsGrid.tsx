@@ -21,7 +21,7 @@ function StreamCard({ title, players, lastColLabel, lastColKey, nameColLabel }: 
       <div>
         <div className="flex items-center justify-between pb-3 border-b border-border mb-3">
           <span className="text-xs font-mono font-bold tracking-wider text-charcoal">[ {title} ]</span>
-          <span className="text-[10px] font-mono text-neutral-400 dark:text-neutral-600 cursor-not-allowed" title="Explorer page coming soon">
+          <span className="text-[10px] font-mono text-charcoal-soft dark:text-neutral-600 cursor-not-allowed" title="Explorer page coming soon">
             [ COMING SOON ]
           </span>
         </div>
