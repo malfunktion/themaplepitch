@@ -28,6 +28,7 @@ async function fetchRealApiData() {
 
   const headers = {
     'x-apisports-key': APIF_KEY,
+    'Accept-Encoding': 'identity', // <-- Bypasses Termux gunzip stream crash
     'User-Agent': 'TheMaplePitch-ScoutTerminal/1.0',
     'Accept': 'application/json'
   };
@@ -83,6 +84,7 @@ async function fetchRealApiData() {
             gender: 'men',
             team_id: teamId,
             league: league.name,
+            avatar_url: p.photo, // Captured so media vault can sync headshots
             rating: 7.2
           }));
 
