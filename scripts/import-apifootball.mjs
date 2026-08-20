@@ -1,4 +1,3 @@
-// scripts/import-apifootball.mjs
 import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://wsbyyvtcvyhidvijvwuo.supabase.co';
@@ -44,17 +43,10 @@ function slugify(text) {
     .replace(/-+/g, '-');
 }
 
-// 'Canadian Championship' intentionally left out here: after the
-// team_competitions migration, no team row has league = 'Canadian
-// Championship' anymore (that membership is now recorded as a
-// team_competitions row against the club's real CPL/MLS team, so this
-// script doesn't redundantly re-fetch the same real club's squad twice
-// and burn through the free-tier API quota on a duplicate).
 const CANADIAN_LEAGUES = ['CPL', 'NSL', 'MLS'];
 
 async function runImportSequence() {
   console.log('Fetching Canadian teams from Supabase...');
-  
   const { data: dbTeams } = await supabase
     .from('teams')
     .select('id, external_id, name, league')
@@ -65,43 +57,74 @@ async function runImportSequence() {
     return;
   }
 
-  console.log(`Processing ${dbTeams.length} Canadian teams...`);
+  console.log(`Processing squads for ${dbTeams.length} Canadian teams with Smart Sync...`);
+
+  // Fetch existing players to compare and prevent redundant writes
+  const { data: existingPlayers } = await supabase
+    .from('players')
+    .select('external_id, name, position, nationality');
+
+  const existingMap = new Map();
+  (existingPlayers || []).forEach((p) => existingMap.set(p.external_id, p));
 
   let totalPlayersUpserted = 0;
+
   for (const team of dbTeams) {
-    // Skip unmapped external IDs
     if (!team.external_id || isNaN(Number(team.external_id))) continue;
 
     console.log(`Fetching squad for ${team.name} (API ID: ${team.external_id})...`);
     const squadRes = await fetchFromApiFootball(`/players/squads?team=${team.external_id}`);
-    
+
     if (squadRes && squadRes.length > 0 && squadRes[0].players) {
-      const roster = squadRes[0].players.map((p) => ({
-        external_id: `${slugify(p.name)}-${p.id || Math.floor(Math.random() * 10000)}`,
-        name: p.name,
-        league: team.league || 'Domestic',
-        gender: team.league === 'NSL' ? 'women' : 'men',
-        position: p.position || 'CM',
-        goals: 0,
-        assists: 0,
-        rating: 7.0,
-        current_team_id: team.id,
-        nationality: p.nationality || 'Canada',
-      }));
+      const rowsToUpsert = [];
 
-      const { data: inserted } = await supabase
-        .from('players')
-        .upsert(roster, { onConflict: 'external_id' })
-        .select('id');
+      for (const p of squadRes[0].players) {
+        const extId = `${slugify(p.name)}-${p.id || Math.floor(Math.random() * 10000)}`;
+        const incomingData = {
+          external_id: extId,
+          name: p.name,
+          league: team.league || 'Domestic',
+          gender: team.league === 'NSL' ? 'women' : 'men',
+          position: p.position || 'CM',
+          current_team_id: team.id,
+          nationality: p.nationality || 'Canada',
+        };
 
-      totalPlayersUpserted += inserted?.length || 0;
+        const existing = existingMap.get(extId);
+        if (existing) {
+          // Smart Sync: Skip write if data is completely unchanged
+          if (
+            existing.name === incomingData.name &&
+            existing.position === incomingData.position &&
+            existing.nationality === incomingData.nationality
+          ) {
+            continue; 
+          }
+        }
+
+        rowsToUpsert.push(incomingData);
+      }
+
+      if (rowsToUpsert.length > 0) {
+        const { data: inserted, error } = await supabase
+          .from('players')
+          .upsert(rowsToUpsert, { onConflict: 'external_id' })
+          .select('id');
+
+        if (error) {
+          console.error(`Error upserting roster for ${team.name}:`, error.message);
+        } else {
+          totalPlayersUpserted += inserted?.length || 0;
+        }
+      } else {
+        console.log(`No changes detected for ${team.name} squad. Skipping write.`);
+      }
     }
 
-    // 6-second sleep delay keeps request rate under API-Football free limit (10 req/min)
-    await sleep(6000);
+    await sleep(6000); // Respect API-Football rate limit
   }
 
-  console.log(`Successfully upserted ${totalPlayersUpserted} Canadian player profiles.`);
+  console.log(`Successfully smart-synced player profiles. Total updated/inserted: ${totalPlayersUpserted}`);
 }
 
 runImportSequence();
