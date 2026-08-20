@@ -106,11 +106,8 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ season?: string }>;
 }): Promise<Metadata> {
-  const resolvedParams = await params;
-  const resolvedSearch = await searchParams;
-  const slug = resolvedParams.slug;
-  const season = resolvedSearch.season;
-  
+  const { slug } = await params;
+  const { season } = await searchParams;
   const data = await getTeamData(slug, season || '2026');
 
   if (!data?.team) {
@@ -146,11 +143,8 @@ export default async function TeamProfilePage({
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ season?: string }>;
 }) {
-  const resolvedParams = await params;
-  const resolvedSearch = await searchParams;
-  const slug = resolvedParams.slug;
-  const season = resolvedSearch.season;
-
+  const { slug } = await params;
+  const { season } = await searchParams;
   const data = await getTeamData(slug, season || '2026');
 
   if (!data?.team) notFound();
