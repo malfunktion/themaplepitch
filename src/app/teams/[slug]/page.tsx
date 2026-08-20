@@ -37,10 +37,9 @@ function safeFormatDate(dateVal: any): string {
   }
 }
 
-async function getTeamData(slugParam: string) {
+async function getTeamData(slugParam: string, seasonParam: string) {
   const isNumeric = !isNaN(Number(slugParam));
   
-  // Fuzzy query checks exact slug/external_id/id AND partial slug matching (e.g. 'forge-fc' matching 'cpl-forge-fc')
   const flexQuery = isNumeric
     ? `id.eq.${slugParam},slug.eq.${slugParam},external_id.eq.${slugParam}`
     : `slug.eq.${slugParam},external_id.eq.${slugParam},slug.ilike.%${slugParam}%`;
@@ -53,7 +52,10 @@ async function getTeamData(slugParam: string) {
 
   if (!team) return null;
 
-  const [playersRes, matchesRes] = await Promise.all([
+  const activeSeason = seasonParam || '2026';
+
+  // Fetch concurrent relational data: players, matches, historical standings, and season stats
+  const [playersRes, matchesRes, standingRes, seasonStatsRes] = await Promise.all([
     supabase.from('players').select('*').eq('current_team_id', team.id),
     supabase
       .from('matches')
@@ -66,10 +68,32 @@ async function getTeamData(slugParam: string) {
       `)
       .or(`home_team_id.eq.${team.id},away_team_id.eq.${team.id}`)
       .limit(8),
+    supabase
+      .from('team_season_standings')
+      .select('*')
+      .eq('team_id', team.id)
+      .eq('season', activeSeason)
+      .maybeSingle(),
+    supabase
+      .from('player_season_stats')
+      .select(`
+        goals,
+        assists,
+        matches_played,
+        rating,
+        player:players(id, name, slug, external_id, position)
+      `)
+      .eq('team_id', team.id)
+      .eq('season', activeSeason)
+      .order('goals', { ascending: false })
+      .limit(5),
   ]);
 
   return {
     team,
+    activeSeason,
+    standing: standingRes.data || null,
+    topScorers: seasonStatsRes.data || [],
     players: playersRes.data || [],
     matches: matchesRes.data || [],
   };
@@ -77,19 +101,22 @@ async function getTeamData(slugParam: string) {
 
 export async function generateMetadata({
   params,
+  searchParams,
 }: {
   params: Promise<{ slug: string }>;
+  searchParams: Promise<{ season?: string }>;
 }): Promise<Metadata> {
   const { slug } = await params;
-  const data = await getTeamData(slug);
+  const { season } = await searchParams;
+  const data = await getTeamData(slug, season || '2026');
 
   if (!data?.team) {
     return { title: 'Team Not Found' };
   }
 
-  const { team } = data;
-  const title = `${team.name || 'Team'} | The Maple Pitch`;
-  const description = `${team.name || 'Club'} hub, roster, fixtures, and telemetry on The Maple Pitch.`;
+  const { team, activeSeason } = data;
+  const title = `${team.name || 'Team'} (${activeSeason}) | The Maple Pitch`;
+  const description = `${team.name || 'Club'} historical archive, ${activeSeason} campaign stats, roster, and fixtures on The Maple Pitch.`;
 
   return {
     title,
@@ -109,102 +136,51 @@ export async function generateMetadata({
   };
 }
 
-export default async function TeamProfilePage({ params }: { params: Promise<{ slug: string }> }) {
+export default async function TeamProfilePage({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ season?: string }>;
+}) {
   const { slug } = await params;
-  const data = await getTeamData(slug);
+  const { season } = await searchParams;
+  const data = await getTeamData(slug, season || '2026');
 
   if (!data?.team) notFound();
 
-  const { team, players, matches } = data;
+  const { team, activeSeason, standing, topScorers, players, matches } = data;
+  const availableSeasons = ['2026', '2025', '2024'];
 
   return (
     <>
       <HubHeader
-        eyebrow={`Club Hub // ${team.league || 'Canada'}`}
+        eyebrow={`Club Archive // ${team.league || 'Canada'} // ${activeSeason} Season`}
         title={(team.name || 'Team').toUpperCase()}
-        description={`Official club dossier, active roster, and competition schedule for ${team.name || 'Club'}.`}
+        description={`Official club dossier, historical standings, and multi-season player metrics for ${team.name || 'Club'}.`}
       />
 
-      <div className="grid gap-6 lg:grid-cols-3">
-        <section className="lg:col-span-2 space-y-6">
-          <div className="border border-border p-5 bg-card">
-            <div className="text-[10px] font-mono uppercase text-crimson mb-3">
-              Active Roster ({players.length})
-            </div>
-            {players.length > 0 ? (
-              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
-                {players.map((p: any) => {
-                  const playerRouteParam = p.slug || p.external_id || p.id;
-                  return (
-                    <Link
-                      key={p.id}
-                      href={`/players/${playerRouteParam}`}
-                      className="border border-border/60 p-3 flex justify-between items-center hover:border-crimson transition-colors text-xs"
-                    >
-                      <span className="font-bold">{p.name}</span>
-                      <span className="font-mono text-charcoal-soft uppercase">
-                        {p.position || 'CM'}
-                      </span>
-                    </Link>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-xs text-charcoal-soft">No active roster loaded in vault.</div>
-            )}
-          </div>
-
-          <div className="border border-border p-5 bg-card">
-            <div className="text-[10px] font-mono uppercase text-crimson mb-3">
-              Fixtures &amp; Results
-            </div>
-            {matches.length > 0 ? (
-              <div className="divide-y divide-border text-xs">
-                {matches.map((m: any) => {
-                  const homeTeam = Array.isArray(m.home_team) ? m.home_team[0] : m.home_team;
-                  const awayTeam = Array.isArray(m.away_team) ? m.away_team[0] : m.away_team;
-                  const homeName = homeTeam?.name;
-                  const awayName = awayTeam?.name;
-                  return (
-                    <div key={m.id} className="py-2.5 flex justify-between items-center">
-                      <span>{safeFormatDate(m.match_date)}</span>
-                      <span>
-                        {homeName || 'Home'} vs {awayName || 'Away'}
-                      </span>
-                      <span className="font-mono uppercase text-charcoal-soft">
-                        {m.stage || 'Match'}
-                      </span>
-                    </div>
-                  );
-                })}
-              </div>
-            ) : (
-              <div className="text-xs text-charcoal-soft">No fixtures recorded for this club.</div>
-            )}
-          </div>
-        </section>
-
-        <aside>
-          <div className="border border-border bg-card p-5">
-            <div className="text-[10px] font-mono uppercase text-crimson">Club Information</div>
-            <div className="mt-4 space-y-2 text-xs text-charcoal-soft">
-              <div className="flex justify-between">
-                <span>League</span>
-                <span className="font-mono uppercase text-charcoal">{team.league || 'N/A'}</span>
-              </div>
-              <div className="flex justify-between">
-                <span>Slug</span>
-                <span className="font-mono text-charcoal">{team.slug}</span>
-              </div>
-            </div>
-          </div>
-        </aside>
+      {/* Historical Season Selector Bar */}
+      <div className="mb-6 flex flex-wrap items-center gap-2 border border-border bg-card p-3">
+        <span className="text-[10px] font-mono uppercase text-charcoal-soft mr-2">
+          SEASON SELECTOR:
+        </span>
+        {availableSeasons.map((s) => {
+          const isSelected = activeSeason === s;
+          return (
+            <Link
+              key={s}
+              href={`/teams/${team.slug || team.id}?season=${s}`}
+              className={`px-3 py-1 text-xs font-mono font-bold uppercase transition-colors border rounded-sm ${
+                isSelected
+                  ? 'bg-crimson text-white border-crimson'
+                  : 'bg-transparent text-charcoal-soft border-border hover:text-charcoal hover:border-charcoal'
+              }`}
+            >
+              [ {s} {s === '2026' ? '(Active)' : ''} ]
+            </Link>
+          );
+        })}
       </div>
 
-      <div className="mt-6">
-        <SourceStamp source={{ name: 'TheSportsDB Automated Vault Sync', accessedAt: new Date().toISOString() }} />
-      </div>
-    </>
-  );
-}
-
+      
