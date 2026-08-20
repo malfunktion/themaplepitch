@@ -44,9 +44,7 @@ async function importTeams() {
     const displayName = normalizeTeamName(t.name);
     const extId = slugify(displayName);
     
-    // Key by league + name to match teams_league_name_key constraint uniquely
-    const mapKey = `CPL::${displayName.toLowerCase()}`;
-    teamMap.set(mapKey, {
+    teamMap.set(extId, {
       name: displayName,
       short_name: null,
       league: 'CPL',
@@ -63,10 +61,10 @@ async function importTeams() {
   console.log(`Upserting ${uniqueTeams.length} unique CPL teams individually...`);
 
   for (const teamRow of uniqueTeams) {
-    // Fixed: Match the 'league,name' database constraint
+    // Target external_id to match the teams_external_id_key constraint cleanly
     const { error } = await supabase
       .from('teams')
-      .upsert(teamRow, { onConflict: 'league,name' });
+      .upsert(teamRow, { onConflict: 'external_id' });
 
     if (error) {
       console.error(`Failed to upsert team ${teamRow.name}:`, error.message);
@@ -131,7 +129,6 @@ async function importMatches(teamIdMap) {
       }
     }
 
-    // Stripped non-existent columns (affiliate_ticket_link, broadcast_network) to match schema cache
     initialRows.push({
       home_team_id: homeId,
       away_team_id: awayId,
