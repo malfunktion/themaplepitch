@@ -56,14 +56,14 @@ async function importTeams() {
     });
   }
 
+  // Deduplicate strictly by external_id to eliminate batch duplicates before upserting
   const finalDeduper = new Map();
   for (const row of initialRows) {
-    finalDeduper.set(`${row.league}::${row.name}`, row);
+    finalDeduper.set(row.external_id, row);
   }
   const uniqueRows = Array.from(finalDeduper.values());
 
-  // Fixed: Target the exact 'league,name' constraint unique key matching teams_league_name_key
-  const { error } = await supabase.from('teams').upsert(uniqueRows, { onConflict: 'league,name' });
+  const { error } = await supabase.from('teams').upsert(uniqueRows, { onConflict: 'external_id' });
   if (error) throw new Error(`teams upsert failed: ${error.message}`);
   console.log(`Upserted ${uniqueRows.length} unique CPL teams.`);
 }
@@ -93,14 +93,14 @@ async function importMatches(teamIdMap) {
   let matchesProtected = 0;
 
   for (const m of matches) {
-    const homeId = teamIdMap.get(slugify(m.home_team));
-    const awayId = teamIdMap.get(slugify(m.away_team));
+    const homeId = teamIdMap.get(slugify(normalizeTeamName(m.home_team)));
+    const awayId = teamIdMap.get(slugify(normalizeTeamName(m.away_team)));
     if (!homeId || !awayId) {
       skipped += 1;
       continue;
     }
 
-    const extId = slugify(`${m.date}-${m.home_team}-${m.away_team}`);
+    const extId = slugify(`${m.date}-${normalizeTeamName(m.home_team)}-${normalizeTeamName(m.away_team)}`);
     const existing = existingMap.get(extId);
 
     let homeScore = m.home_goals;
