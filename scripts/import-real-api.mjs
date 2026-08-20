@@ -18,9 +18,10 @@ function slugify(text) {
   return text.toString().toLowerCase().trim().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9 -]/g, '').replace(/\s+/g, '-');
 }
 
+// NOTE: API-Football free tier requires historical seasons (2022–2024)
 const LEAGUES_TO_FETCH = [
-  { id: 659, name: 'CPL', season: 2026 },
-  { id: 494, name: 'Canadian Championship', season: 2026 }
+  { id: 659, name: 'CPL', season: 2024 },
+  { id: 494, name: 'Canadian Championship', season: 2024 }
 ];
 
 async function fetchRealApiData() {
@@ -28,13 +29,13 @@ async function fetchRealApiData() {
 
   const headers = {
     'x-apisports-key': APIF_KEY,
-    'Accept-Encoding': 'identity', // <-- Bypasses Termux gunzip stream crash
+    'Accept-Encoding': 'identity', // Bypasses Termux gunzip stream crash
     'User-Agent': 'TheMaplePitch-ScoutTerminal/1.0',
     'Accept': 'application/json'
   };
 
   for (const league of LEAGUES_TO_FETCH) {
-    console.log(`🔍 Fetching teams for ${league.name} (ID: ${league.id})...`);
+    console.log(`🔍 Fetching teams for ${league.name} (ID: ${league.id}, Season: ${league.season})...`);
     
     try {
       const res = await fetch(`https://v3.football.api-sports.io/teams?league=${league.id}&season=${league.season}`, { headers });
