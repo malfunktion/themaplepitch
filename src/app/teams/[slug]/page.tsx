@@ -1,5 +1,6 @@
 import type { Metadata } from 'next';
 import Link from 'next/link';
+import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import HubHeader from '@/components/entity/HubHeader';
 import SourceStamp from '@/components/entity/SourceStamp';
@@ -10,7 +11,7 @@ const supabase = createClient(
   process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
 );
 
-export const revalidate = 300;
+export const revalidate = 3600;
 
 export async function generateStaticParams() {
   const { data: teams } = await supabase.from('teams').select('id, slug, external_id');
@@ -37,6 +38,12 @@ function safeFormatDate(dateVal: any): string {
 }
 
 async function getTeamData(slugParam: string, seasonParam: string) {
+  // slugParam comes straight from the URL and gets interpolated into a
+  // PostgREST `.or()` filter string below. Only allow characters that a
+  // real slug/id would ever contain, so a crafted path segment (commas,
+  // parens, `%`, etc.) can't inject extra filter clauses.
+  if (!/^[a-zA-Z0-9-]+$/.test(slugParam)) return null;
+
   const isNumeric = !isNaN(Number(slugParam));
   
   const flexQuery = isNumeric
@@ -319,6 +326,17 @@ export default async function TeamProfilePage({
         {/* Sidebar Info */}
         <aside className="space-y-6">
           <div className="border border-border bg-card p-5">
+            {team.logo_url && (
+              <div className="mb-4 flex h-20 w-20 items-center justify-center border border-border/60 bg-neutral-900/5 p-3">
+                <Image
+                  src={team.logo_url}
+                  alt={`${team.name || 'Team'} crest`}
+                  width={64}
+                  height={64}
+                  className="h-full w-full object-contain"
+                />
+              </div>
+            )}
             <div className="text-[10px] font-mono uppercase text-crimson">Club Information</div>
             <div className="mt-4 space-y-3 text-xs text-charcoal-soft font-mono">
               <div className="flex justify-between border-b border-border/40 pb-2">
