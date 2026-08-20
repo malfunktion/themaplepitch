@@ -1,6 +1,7 @@
 'use client';
 
 import React from 'react';
+import Link from 'next/link';
 
 type ComparePlayer = {
   playerId: string;
@@ -54,7 +55,9 @@ export default function ComparePanel({ playerA, playerB, onClear }: ComparePanel
           <div className="text-[9px] text-charcoal-soft uppercase">PROSPECT ALPHA // [01]</div>
           {playerA ? (
             <div className="space-y-1">
-              <div className="text-xs font-bold text-charcoal">{playerA.name}</div>
+              <Link href={`/players/${playerA.playerId}`} className="text-xs font-bold text-charcoal hover:text-crimson">
+                {playerA.name}
+              </Link>
               <div className="text-[10px] text-charcoal-soft">{playerA.club} // {playerA.league}</div>
               <div className="text-xs font-bold text-crimson pt-1">{playerA.statSummary}</div>
             </div>
@@ -70,7 +73,9 @@ export default function ComparePanel({ playerA, playerB, onClear }: ComparePanel
           <div className="text-[9px] text-charcoal-soft uppercase">PROSPECT BETA // [02]</div>
           {playerB ? (
             <div className="space-y-1">
-              <div className="text-xs font-bold text-charcoal">{playerB.name}</div>
+              <Link href={`/players/${playerB.playerId}`} className="text-xs font-bold text-charcoal hover:text-crimson">
+                {playerB.name}
+              </Link>
               <div className="text-[10px] text-charcoal-soft">{playerB.club} // {playerB.league}</div>
               <div className="text-xs font-bold text-crimson pt-1">{playerB.statSummary}</div>
             </div>
