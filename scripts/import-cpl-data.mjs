@@ -39,13 +39,14 @@ async function importTeams() {
   if (!res.ok) throw new Error(`/api/teams failed: ${res.status}`);
   const { teams } = await res.json();
 
-  // Deduplicate incoming teams by external_id first
   const teamMap = new Map();
   for (const t of teams) {
     const displayName = normalizeTeamName(t.name);
     const extId = slugify(displayName);
     
-    teamMap.set(extId, {
+    // Key by league + name to match teams_league_name_key constraint uniquely
+    const mapKey = `CPL::${displayName.toLowerCase()}`;
+    teamMap.set(mapKey, {
       name: displayName,
       short_name: null,
       league: 'CPL',
@@ -61,11 +62,11 @@ async function importTeams() {
   const uniqueTeams = Array.from(teamMap.values());
   console.log(`Upserting ${uniqueTeams.length} unique CPL teams individually...`);
 
-  // Upsert one by one to completely bypass batch constraint mapping errors
   for (const teamRow of uniqueTeams) {
+    // Fixed: Match the 'league,name' database constraint
     const { error } = await supabase
       .from('teams')
-      .upsert(teamRow, { onConflict: 'external_id' });
+      .upsert(teamRow, { onConflict: 'league,name' });
 
     if (error) {
       console.error(`Failed to upsert team ${teamRow.name}:`, error.message);
@@ -130,6 +131,7 @@ async function importMatches(teamIdMap) {
       }
     }
 
+    // Stripped non-existent columns (affiliate_ticket_link, broadcast_network) to match schema cache
     initialRows.push({
       home_team_id: homeId,
       away_team_id: awayId,
@@ -139,8 +141,6 @@ async function importMatches(teamIdMap) {
       away_score: awayScore,
       competition: 'CPL',
       gender: 'men',
-      affiliate_ticket_link: null,
-      broadcast_network: null,
       external_id: extId,
     });
   }
