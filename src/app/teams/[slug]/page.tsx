@@ -106,8 +106,11 @@ export async function generateMetadata({
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ season?: string }>;
 }): Promise<Metadata> {
-  const { slug } = await params;
-  const { season } = await searchParams;
+  const resolvedParams = await params;
+  const resolvedSearch = await searchParams;
+  const slug = resolvedParams.slug;
+  const season = resolvedSearch.season;
+  
   const data = await getTeamData(slug, season || '2026');
 
   if (!data?.team) {
@@ -143,8 +146,11 @@ export default async function TeamProfilePage({
   params: Promise<{ slug: string }>;
   searchParams: Promise<{ season?: string }>;
 }) {
-  const { slug } = await params;
-  const { season } = await searchParams;
+  const resolvedParams = await params;
+  const resolvedSearch = await searchParams;
+  const slug = resolvedParams.slug;
+  const season = resolvedSearch.season;
+
   const data = await getTeamData(slug, season || '2026');
 
   if (!data?.team) notFound();
@@ -183,4 +189,166 @@ export default async function TeamProfilePage({
         })}
       </div>
 
-      
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Main Content Area */}
+        <section className="lg:col-span-2 space-y-6">
+          
+          {/* Archived Season Snapshot Banner */}
+          <div className="border border-border p-5 bg-card">
+            <div className="text-[10px] font-mono uppercase text-crimson mb-3">
+              {activeSeason} Campaign Snapshot
+            </div>
+            {standing ? (
+              <div className="grid grid-cols-2 sm:grid-cols-4 gap-4 text-xs font-mono">
+                <div className="border border-border/60 p-3 bg-neutral-900/5">
+                  <div className="text-neutral-400 text-[9px]">FINAL POSITION</div>
+                  <div className="text-base font-bold mt-1 text-charcoal dark:text-white">
+                    #{standing.position || '—'}
+                  </div>
+                </div>
+                <div className="border border-border/60 p-3 bg-neutral-900/5">
+                  <div className="text-neutral-400 text-[9px]">POINTS</div>
+                  <div className="text-base font-bold mt-1 text-crimson">
+                    {standing.points ?? '—'} PTS
+                  </div>
+                </div>
+                <div className="border border-border/60 p-3 bg-neutral-900/5">
+                  <div className="text-neutral-400 text-[9px]">RECORD (W-D-L)</div>
+                  <div className="text-xs font-bold mt-1 text-charcoal dark:text-white">
+                    {standing.wins}-{standing.draws}-{standing.losses}
+                  </div>
+                </div>
+                <div className="border border-border/60 p-3 bg-neutral-900/5">
+                  <div className="text-neutral-400 text-[9px]">GOAL DIFF</div>
+                  <div className="text-xs font-bold mt-1 text-charcoal dark:text-white">
+                    {standing.goals_for} GF / {standing.goals_against} GA ({standing.goals_for - standing.goals_against >= 0 ? '+' : ''}{standing.goals_for - standing.goals_against})
+                  </div>
+                </div>
+              </div>
+            ) : (
+              <div className="text-xs text-charcoal-soft font-mono">
+                No archived league table snapshot recorded for the {activeSeason} campaign.
+              </div>
+            )}
+          </div>
+
+          {/* Archived Top Scorers / Season Stats */}
+          <div className="border border-border p-5 bg-card">
+            <div className="text-[10px] font-mono uppercase text-crimson mb-3">
+              {activeSeason} Top Goalscorers &amp; Playmakers
+            </div>
+            {topScorers.length > 0 ? (
+              <div className="divide-y divide-border text-xs">
+                {topScorers.map((stat: any, idx: number) => {
+                  const p = Array.isArray(stat.player) ? stat.player[0] : stat.player;
+                  const playerRoute = p?.slug || p?.external_id || p?.id;
+                  return (
+                    <div key={idx} className="py-2.5 flex justify-between items-center">
+                      <div className="flex items-center gap-3">
+                        <span className="font-mono text-neutral-400 text-[10px]">#{idx + 1}</span>
+                        <Link href={`/players/${playerRoute}`} className="font-bold hover:text-crimson">
+                          {p?.name || 'Unknown Player'}
+                        </Link>
+                        <span className="font-mono uppercase text-[10px] text-charcoal-soft">
+                          ({p?.position || 'POS'})
+                        </span>
+                      </div>
+                      <div className="font-mono text-xs">
+                        <span className="text-crimson font-bold">{stat.goals} GOALS</span> • {stat.assists} AST • {stat.matches_played} APPS
+                      </div>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-xs text-charcoal-soft font-mono">
+                Detailed player stats matrix not yet indexed for {activeSeason}.
+              </div>
+            )}
+          </div>
+
+          {/* Active Roster */}
+          <div className="border border-border p-5 bg-card">
+            <div className="text-[10px] font-mono uppercase text-crimson mb-3">
+              Squad Roster ({players.length})
+            </div>
+            {players.length > 0 ? (
+              <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+                {players.map((p: any) => {
+                  const playerRouteParam = p.slug || p.external_id || p.id;
+                  return (
+                    <Link
+                      key={p.id}
+                      href={`/players/${playerRouteParam}`}
+                      className="border border-border/60 p-3 flex justify-between items-center hover:border-crimson transition-colors text-xs"
+                    >
+                      <span className="font-bold">{p.name}</span>
+                      <span className="font-mono text-charcoal-soft uppercase">
+                        {p.position || 'CM'}
+                      </span>
+                    </Link>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-xs text-charcoal-soft font-mono">No active roster loaded in vault.</div>
+            )}
+          </div>
+
+          {/* Fixtures & Results */}
+          <div className="border border-border p-5 bg-card">
+            <div className="text-[10px] font-mono uppercase text-crimson mb-3">
+              Fixtures &amp; Match Log
+            </div>
+            {matches.length > 0 ? (
+              <div className="divide-y divide-border text-xs">
+                {matches.map((m: any) => {
+                  const homeTeam = Array.isArray(m.home_team) ? m.home_team[0] : m.home_team;
+                  const awayTeam = Array.isArray(m.away_team) ? m.away_team[0] : m.away_team;
+                  return (
+                    <div key={m.id} className="py-2.5 flex justify-between items-center font-mono">
+                      <span className="text-neutral-400 text-[11px]">{safeFormatDate(m.match_date)}</span>
+                      <span className="font-bold">
+                        {homeTeam?.name || 'Home'} vs {awayTeam?.name || 'Away'}
+                      </span>
+                      <span className="uppercase text-crimson text-[10px]">
+                        {m.stage || 'Match'}
+                      </span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-xs text-charcoal-soft font-mono">No fixtures recorded for this club.</div>
+            )}
+          </div>
+        </section>
+
+        {/* Sidebar Info */}
+        <aside className="space-y-6">
+          <div className="border border-border bg-card p-5">
+            <div className="text-[10px] font-mono uppercase text-crimson">Club Information</div>
+            <div className="mt-4 space-y-3 text-xs text-charcoal-soft font-mono">
+              <div className="flex justify-between border-b border-border/40 pb-2">
+                <span>League</span>
+                <span className="uppercase text-charcoal">{team.league || 'N/A'}</span>
+              </div>
+              <div className="flex justify-between border-b border-border/40 pb-2">
+                <span>Database Slug</span>
+                <span className="text-charcoal">{team.slug}</span>
+              </div>
+              <div className="flex justify-between border-b border-border/40 pb-2">
+                <span>Active Season Filter</span>
+                <span className="text-crimson font-bold">{activeSeason}</span>
+              </div>
+            </div>
+          </div>
+        </aside>
+      </div>
+
+      <div className="mt-6">
+        <SourceStamp source={{ name: 'The Maple Pitch Historical Club Vault', accessedAt: new Date().toISOString() }} />
+      </div>
+    </>
+  );
+}
