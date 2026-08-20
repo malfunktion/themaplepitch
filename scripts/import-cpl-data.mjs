@@ -58,12 +58,12 @@ async function importTeams() {
 
   const finalDeduper = new Map();
   for (const row of initialRows) {
-    finalDeduper.set(row.external_id, row);
+    finalDeduper.set(`${row.league}::${row.name}`, row);
   }
   const uniqueRows = Array.from(finalDeduper.values());
 
-  // Fixed: Upsert conflicting on external_id to match your database schema constraint
-  const { error } = await supabase.from('teams').upsert(uniqueRows, { onConflict: 'external_id' });
+  // Fixed: Target the exact 'league,name' constraint unique key matching teams_league_name_key
+  const { error } = await supabase.from('teams').upsert(uniqueRows, { onConflict: 'league,name' });
   if (error) throw new Error(`teams upsert failed: ${error.message}`);
   console.log(`Upserted ${uniqueRows.length} unique CPL teams.`);
 }
