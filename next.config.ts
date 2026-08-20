@@ -30,6 +30,9 @@ const nextConfig: NextConfig = {
       { protocol: 'https', hostname: 'images.unsplash.com' },
       { protocol: 'https', hostname: 'cdn.sanity.io' },
       { protocol: 'https', hostname: 'raw.githubusercontent.com' },
+      // Supabase Storage: team crests and player headshots synced by
+      // scripts/sync-all-media-forced.mjs into the `media` bucket.
+      { protocol: 'https', hostname: 'wsbyyvtcvyhidvijvwuo.supabase.co', pathname: '/storage/v1/object/public/**' },
     ],
   },
   async headers() {
