@@ -54,7 +54,7 @@ export default function StandingsWidget({
               leagueTab === 'CPL' ? 'bg-crimson text-white shadow-sm' : 'text-charcoal-soft hover:text-charcoal dark:hover:text-white'
             }`}
           >
-            CPL ({cplStandings.length || 8})
+            CPL ({cplStandings.length})
           </button>
           <button
             onClick={() => setLeagueTab('NSL')}
@@ -62,7 +62,7 @@ export default function StandingsWidget({
               leagueTab === 'NSL' ? 'bg-crimson text-white shadow-sm' : 'text-charcoal-soft hover:text-charcoal dark:hover:text-white'
             }`}
           >
-            NSL ({nslStandings.length || 6})
+            NSL ({nslStandings.length})
           </button>
         </div>
       </div>
