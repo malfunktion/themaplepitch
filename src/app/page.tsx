@@ -19,6 +19,8 @@ import { client } from '@/lib/sanity';
 import { getWireFeed } from '@/lib/data/newsWire';
 import { getCplStandings, getNslStandings } from '@/lib/data/standings';
 
+export const revalidate = 300; // Cache and serve from edge for 5 minutes
+
 export const dynamic = 'force-dynamic';
 
 async function getSiteSettings() {
