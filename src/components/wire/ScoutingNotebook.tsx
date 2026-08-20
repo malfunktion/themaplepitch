@@ -8,8 +8,8 @@ const notes = [
 
 export default function ScoutingNotebook() {
   return (
-    <div className="bg-card dark:bg-[#171717] border border-border dark:border-neutral-800 rounded-sm p-4 flex flex-col gap-3">
-      <div className="flex justify-between items-center text-xs font-mono text-neutral-400">
+    <div className="bg-card border border-border rounded-sm p-4 flex flex-col gap-3">
+      <div className="flex justify-between items-center text-xs font-mono text-charcoal-soft">
         <span>SCOUTING NOTEBOOK</span>
         <span className="text-red-600 font-bold">ANALYTICS</span>
       </div>
@@ -21,8 +21,8 @@ export default function ScoutingNotebook() {
           <div key={i} className="py-2 flex items-start justify-between gap-3">
             <div>
               <span className="text-xs font-bold text-charcoal dark:text-neutral-200">{n.prospect}</span>
-              <span className="text-[10px] text-charcoal-soft dark:text-neutral-500"> &middot; {n.club}</span>
-              <p className="text-[11px] text-charcoal-soft dark:text-neutral-400 mt-0.5">{n.note}</p>
+              <span className="text-[10px] text-charcoal-soft"> &middot; {n.club}</span>
+              <p className="text-[11px] text-charcoal-soft mt-0.5">{n.note}</p>
             </div>
             <span className="text-xs font-mono font-bold text-crimson shrink-0">{n.grade}</span>
           </div>

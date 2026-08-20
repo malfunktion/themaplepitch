@@ -9,8 +9,8 @@ const regions = [
 
 export default function RegionalAggregator() {
   return (
-    <div className="bg-card dark:bg-[#171717] border border-border dark:border-neutral-800 rounded-sm p-4 flex flex-col gap-3">
-      <div className="flex justify-between items-center text-xs font-mono text-neutral-400">
+    <div className="bg-card border border-border rounded-sm p-4 flex flex-col gap-3">
+      <div className="flex justify-between items-center text-xs font-mono text-charcoal-soft">
         <span>REGIONAL AGGREGATOR</span>
         <span className="text-red-600 font-bold">PROVINCIAL</span>
       </div>

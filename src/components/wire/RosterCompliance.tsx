@@ -8,8 +8,8 @@ const clubs = [
 
 export default function RosterCompliance() {
   return (
-    <div className="bg-card dark:bg-[#171717] border border-border dark:border-neutral-800 rounded-sm p-4 flex flex-col gap-3">
-      <div className="flex justify-between items-center text-xs font-mono text-neutral-400">
+    <div className="bg-card border border-border rounded-sm p-4 flex flex-col gap-3">
+      <div className="flex justify-between items-center text-xs font-mono text-charcoal-soft">
         <span>ROSTER COMPLIANCE</span>
         <span className="text-red-600 font-bold">SALARY CAP</span>
       </div>
@@ -18,7 +18,7 @@ export default function RosterCompliance() {
       </p>
       <table className="w-full text-left font-mono text-[11px]">
         <thead>
-          <tr className="text-charcoal-soft dark:text-neutral-500 border-b border-border dark:border-neutral-800 uppercase text-[9px]">
+          <tr className="text-charcoal-soft border-b border-border uppercase text-[9px]">
             <th className="py-1.5 font-normal">Club</th>
             <th className="py-1.5 font-normal text-right">U-21 Mins</th>
             <th className="py-1.5 font-normal text-right">Cap Space</th>
@@ -29,8 +29,8 @@ export default function RosterCompliance() {
           {clubs.map((c, i) => (
             <tr key={i}>
               <td className="py-1.5 text-charcoal dark:text-neutral-200 font-bold">{c.club}</td>
-              <td className="py-1.5 text-right text-charcoal-soft dark:text-neutral-400">{c.u21Minutes}</td>
-              <td className="py-1.5 text-right text-charcoal-soft dark:text-neutral-400">{c.capSpace}</td>
+              <td className="py-1.5 text-right text-charcoal-soft">{c.u21Minutes}</td>
+              <td className="py-1.5 text-right text-charcoal-soft">{c.capSpace}</td>
               <td className="py-1.5 text-right text-crimson font-bold">{c.slots}</td>
             </tr>
           ))}

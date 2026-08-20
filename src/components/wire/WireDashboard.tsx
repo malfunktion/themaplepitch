@@ -174,7 +174,7 @@ export default function WireDashboard({ initialStories, standings, nslStandings 
                   </Link>
                 ))}
                 {largeDispatches.length === 0 && (
-                  <div className="flex-1 flex items-center justify-center text-[10px] font-mono text-neutral-500 border border-dashed border-border rounded-sm">
+                  <div className="flex-1 flex items-center justify-center text-[10px] font-mono text-charcoal-soft border border-dashed border-border rounded-sm">
                     NO FEATURED DISPATCHES YET
                   </div>
                 )}
