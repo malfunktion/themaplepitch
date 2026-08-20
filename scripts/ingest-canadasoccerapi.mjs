@@ -4,7 +4,7 @@ const SUPABASE_URL = process.env.SUPABASE_URL || 'https://wsbyyvtcvyhidvijvwuo.s
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SERVICE_ROLE_KEY;
 
 if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
-  console.error('❌ Missing required environment variables (SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY).');
+  console.error('❌ Missing required environment variables (SUPABASE_URL or SERVICE_ROLE_KEY).');
   process.exit(1);
 }
 
@@ -28,20 +28,24 @@ function slugify(text) {
 async function ingestTeams() {
   console.log('🏟️ Ingesting CPL Teams from CanadaSoccerAPI...');
   try {
-    const res = await fetch('https://canadasoccerapi.com/api/v1/teams');
+    const res = await fetch('https://canadasoccerapi.com/api/teams');
     if (!res.ok) throw new Error(`HTTP Error ${res.status}`);
-    const teams = await res.json();
+    const body = await res.json();
+    const teams = Array.isArray(body) ? body : (body.teams || []);
 
     const teamMap = new Map();
 
     for (const team of teams) {
-      const slug = slugify(team.name || team.team_name);
+      const name = team.name || team.team_name || team.team;
+      if (!name) continue;
+
+      const slug = slugify(name);
       const externalId = `cpl-${slug}`;
 
       const payload = {
         external_id: externalId,
         slug: slug,
-        name: team.name || team.team_name,
+        name: name,
         short_name: team.short_name || team.code || null,
         league: 'CPL',
         competition: 'CPL',
@@ -60,6 +64,7 @@ async function ingestTeams() {
         console.error(`⚠️ Error upserting team ${payload.name}:`, error.message);
       } else if (data) {
         teamMap.set(data.name.toLowerCase(), data.id);
+        teamMap.set(data.name.toLowerCase().replace(' fc', ''), data.id);
         console.log(`✅ Synced Team: ${data.name} (ID: ${data.id})`);
       }
     }
@@ -74,9 +79,10 @@ async function ingestTeams() {
 async function ingestMatches(teamMap) {
   console.log('⚽ Ingesting CPL Match History & Telemetry (with xG)...');
   try {
-    const res = await fetch('https://canadasoccerapi.com/api/v1/matches');
+    const res = await fetch('https://canadasoccerapi.com/api/matches?limit=300');
     if (!res.ok) throw new Error(`HTTP Error ${res.status}`);
-    const matches = await res.json();
+    const body = await res.json();
+    const matches = Array.isArray(body) ? body : (body.matches || []);
 
     let syncedCount = 0;
 
@@ -86,22 +92,25 @@ async function ingestMatches(teamMap) {
 
       if (!homeName || !awayName) continue;
 
-      const homeId = teamMap.get(homeName.toLowerCase()) || null;
-      const awayId = teamMap.get(awayName.toLowerCase()) || null;
+      const homeId = teamMap.get(homeName.toLowerCase()) || teamMap.get(homeName.toLowerCase().replace(' fc', '')) || null;
+      const awayId = teamMap.get(awayName.toLowerCase()) || teamMap.get(awayName.toLowerCase().replace(' fc', '')) || null;
 
       const matchDate = m.date || m.match_date || new Date().toISOString();
       const externalId = `cpl-match-${slugify(homeName)}-vs-${slugify(awayName)}-${matchDate.split('T')[0]}`;
+
+      const homeScore = m.home_goals ?? m.home_score ?? m.homeScore ?? null;
+      const awayScore = m.away_goals ?? m.away_score ?? m.awayScore ?? null;
 
       const matchPayload = {
         external_id: externalId,
         home_team_id: homeId,
         away_team_id: awayId,
-        home_score: m.home_score !== undefined ? m.home_score : m.homeGoals ?? null,
-        away_score: m.away_score !== undefined ? m.away_score : m.awayGoals ?? null,
+        home_score: homeScore,
+        away_score: awayScore,
         home_xg: m.home_xg || m.homeXg || null,
         away_xg: m.away_xg || m.awayXg || null,
         venue: m.venue || m.stadium || null,
-        status: m.status || (m.home_score !== null && m.home_score !== undefined ? 'FT' : 'NS'),
+        status: m.status || (homeScore !== null ? 'FT' : 'NS'),
         match_date: matchDate,
         competition: 'CPL'
       };
