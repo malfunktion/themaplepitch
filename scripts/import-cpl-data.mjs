@@ -40,14 +40,33 @@ async function importTeams() {
   if (!res.ok) throw new Error(`/api/teams failed: ${res.status}`);
   const { teams } = await res.json();
 
-  // Fetch existing teams to perform smart manual checks and avoid multi-constraint clashes
+  // Self-healing step: Fetch existing CPL teams and clean up any legacy duplicates causing constraint clashes
   const { data: existingTeams } = await supabase
     .from('teams')
     .select('id, external_id, name, league')
     .eq('league', 'CPL');
 
-  const existingByExtId = new Map((existingTeams || []).map((t) => [t.external_id, t]));
-  const existingByName = new Map((existingTeams || []).map((t) => [`${t.league}::${t.name.toLowerCase().trim()}`, t]));
+  if (existingTeams && existingTeams.length > 0) {
+    const seenSlugs = new Map();
+    for (const t of existingTeams) {
+      const slug = slugify(t.name);
+      if (seenSlugs.has(slug)) {
+        console.log(`Cleaning up duplicate team record for ${t.name} (ID: ${t.id})...`);
+        await supabase.from('teams').delete().eq('id', t.id);
+      } else {
+        seenSlugs.set(slug, t.id);
+      }
+    }
+  }
+
+  // Re-fetch clean list after cleanup
+  const { data: cleanExisting } = await supabase
+    .from('teams')
+    .select('id, external_id, name, league')
+    .eq('league', 'CPL');
+
+  const existingByExtId = new Map((cleanExisting || []).map((t) => [t.external_id, t]));
+  const existingByName = new Map((cleanExisting || []).map((t) => [`${t.league}::${t.name.toLowerCase().trim()}`, t]));
 
   const teamMap = new Map();
   for (const t of teams) {
@@ -76,21 +95,18 @@ async function importTeams() {
 
     let error;
     if (matchByExtId) {
-      // Update existing record by ID
       const { error: updateError } = await supabase
         .from('teams')
         .update(teamRow)
         .eq('id', matchByExtId.id);
       error = updateError;
     } else if (matchByName) {
-      // Update existing record found via name match
       const { error: updateError } = await supabase
         .from('teams')
         .update(teamRow)
         .eq('id', matchByName.id);
       error = updateError;
     } else {
-      // Insert new record safely
       const { error: insertError } = await supabase
         .from('teams')
         .insert(teamRow);
