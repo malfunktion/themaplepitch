@@ -577,12 +577,12 @@ export default function StatsHubPage() {
                 />
                 <MetricCard
                   label="CPL CLUBS"
-                  value={String(standings.length || 8)}
+                  value={String(standings.length)}
                   detail="LIVE STANDINGS"
                 />
                 <MetricCard
                   label="NSL CLUBS"
-                  value={String(nslStandings.length || 6)}
+                  value={String(nslStandings.length)}
                   detail="LIVE STANDINGS"
                 />
               </section>
@@ -646,11 +646,15 @@ export default function StatsHubPage() {
           )}
 
           {showCollegiate && (
-            <DataTable
-              title={`COLLEGIATE PLAYER STREAM // ${programGender}`}
-              players={filteredPlayers.slice(0, 10)}
-              onAddToCompare={handleAddToCompare}
-            />
+            <section className="bg-card border border-border rounded-sm p-6 text-center">
+              <div className="text-[9px] font-mono tracking-widest text-charcoal-soft uppercase">
+                NCAA / U SPORTS
+              </div>
+              <div className="text-xs font-mono text-charcoal-soft mt-2">
+                Collegiate pathway data isn&apos;t tracked in the database yet. This tab will
+                populate once a verified NCAA/U SPORTS source is connected.
+              </div>
+            </section>
           )}
 
           {showProvincial && (
