@@ -1,5 +1,4 @@
 // scripts/check-api-quotas.mjs
-import fetch from 'node-fetch';
 
 const APIFOOTBALL_KEY = process.env.APIFOOTBALL_KEY || process.env.RAPIDAPI_KEY || '123';
 const THESPORTSDB_KEY = process.env.THESPORTSDB_KEY || '5c5b3e3c9a98dd5a09969018da39aa37';
@@ -14,24 +13,26 @@ async function checkApiQuotas() {
       headers: { 'x-apisports-key': APIFOOTBALL_KEY }
     });
     
-    const remaining = res.headers.get('x-ratelimit-requests-remaining');
-    const limit = res.headers.get('x-ratelimit-requests-limit');
-    const minuteRem = res.headers.get('x-ratelimit-remaining');
-
     if (res.ok) {
       const data = await res.json();
+      const remaining = res.headers.get('x-ratelimit-requests-remaining');
+      const limit = res.headers.get('x-ratelimit-requests-limit');
+      const minuteRem = res.headers.get('x-ratelimit-remaining');
+
       console.log(`[API-FOOTBALL]`);
+      console.log(`- Status: Connected / Active Key`);
       console.log(`- Daily Requests Left: ${remaining !== null ? remaining : 'N/A'} / ${limit !== null ? limit : 'N/A'}`);
       console.log(`- Per-Minute Left: ${minuteRem !== null ? minuteRem : 'N/A'}`);
       if (data.response && data.response.subscription) {
-        console.log(`- Subscription Plan: ${data.response.subscription.plan} (${data.response.subscription.active ? 'Active' : 'Inactive'})`);
+        console.log(`- Plan: ${data.response.subscription.plan}`);
       }
     } else {
       console.log(`[API-FOOTBALL]`);
-      console.log(`- Status: Error ${res.status} (Check your API Key)`);
+      console.log(`- Status: Failed (HTTP ${res.status} - Likely invalid or dummy API key)`);
     }
   } catch (err) {
-    console.log(`[API-FOOTBALL]\n- Error: ${err.message}`);
+    console.log(`[API-FOOTBALL]`);
+    console.log(`- Status: Connection rejected or closed (Check your API key)`);
   }
 
   console.log('----------------------------------------');
@@ -42,13 +43,13 @@ async function checkApiQuotas() {
     if (res.ok) {
       console.log(`[THESPORTSDB]`);
       console.log(`- Status: Connected / Key Active`);
-      console.log(`- Daily / Monthly Quota: Managed via Tier (Enforced max ~100 requests/minute)`);
     } else {
       console.log(`[THESPORTSDB]`);
-      console.log(`- Status: Error ${res.status} (Invalid Key or Restricted)`);
+      console.log(`- Status: Restricted or Invalid Key (HTTP ${res.status})`);
     }
   } catch (err) {
-    console.log(`[THESPORTSDB]\n- Error: ${err.message}`);
+    console.log(`[THESPORTSDB]`);
+    console.log(`- Status: Connection Error`);
   }
 
   console.log('----------------------------------------');
@@ -65,7 +66,8 @@ async function checkApiQuotas() {
       console.log(`- Status: Error ${res.status}`);
     }
   } catch (err) {
-    console.log(`[CANADA SOCCER API]\n- Error: ${err.message}`);
+    console.log(`[CANADA SOCCER API]`);
+    console.log(`- Status: Offline or Unreachable`);
   }
 
   console.log('========================================\n');
