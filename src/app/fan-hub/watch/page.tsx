@@ -59,6 +59,21 @@ const SCHEDULE_DAYS = Object.keys(TV_GUIDE_DATA);
 
 const CONTENT_SECTIONS = [
   {
+    id: "creator-highlights",
+    title: "🔥 Creator Highlights",
+    subtitle: "Top clips, viral moments, and standout features from the community",
+    items: [
+      { id: "h1", title: "Incredible 90-yard solo run goal in League1 Ontario", creator: "Grassroots Canada", duration: "1:15", tag: "Highlight", image: "https://images.unsplash.com/photo-1508098682722-e99c43a406b2?auto=format&fit=crop&q=80&w=600" },
+      { id: "h2", title: "Supporter section reaction to stoppage time winner", creator: "Hammer City Ultras", duration: "2:30", tag: "Atmosphere", image: "https://images.unsplash.com/photo-1518605368461-1ee7c684e27f?auto=format&fit=crop&q=80&w=600" },
+      { id: "h3", title: "Tactical breakdown of Canada's defensive block", creator: "Tactical Maple", duration: "4:10", tag: "Analysis", image: "https://images.unsplash.com/photo-1551280857-2b9eb02bfa12?auto=format&fit=crop&q=80&w=600" },
+      { id: "h4", title: "Post-match player interview with CPL breakout star", creator: "Northern Tribune", duration: "5:00", tag: "Interview", image: "https://images.unsplash.com/photo-1522778119026-d647f0596c20?auto=format&fit=crop&q=80&w=600" },
+      { id: "h5", title: "Top 5 Saves of the NSL Opening Month", creator: "NSL Fan TV", duration: "3:20", tag: "Compilations", image: "https://images.unsplash.com/photo-1579952363873-27f3bade9f55?auto=format&fit=crop&q=80&w=600" },
+      { id: "h6", title: "Tailgate culture outside Tim Hortons Field", creator: "Barton St. Battalion", duration: "3:45", tag: "Culture", image: "https://images.unsplash.com/photo-1518099074172-2e47ee6cb394?auto=format&fit=crop&q=80&w=600" },
+      { id: "h7", title: "CanMNT player arriving at camp in style", creator: "The Boys On The Field", duration: "1:50", tag: "CanMNT", image: "https://images.unsplash.com/photo-1508344928928-7165b67de128?auto=format&fit=crop&q=80&w=600" },
+      { id: "h8", title: "L1BC rainy derby matchday cinematic vibe", creator: "West Coast Footy", duration: "2:15", tag: "Cinematic", image: "https://images.unsplash.com/photo-1575361204480-aadea25e6e68?auto=format&fit=crop&q=80&w=600" },
+    ],
+  },
+  {
     id: "live-watchalongs",
     title: "🔴 Live Fan Streams & Watch Parties",
     subtitle: "Real-time commentary and reactions from supporter groups across Canada",
@@ -222,7 +237,6 @@ export default function FanHubMediaPage() {
       <div className="max-w-7xl mx-auto px-4 md:px-8 my-12">
         <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl overflow-hidden">
           
-          {/* TV Guide Header & Day Tabs */}
           <div className="bg-zinc-900 border-b border-zinc-800 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <Tv className="w-5 h-5 text-red-500" />
@@ -246,12 +260,10 @@ export default function FanHubMediaPage() {
             </div>
           </div>
 
-          {/* TV Guide List/Grid */}
           <div className="divide-y divide-zinc-800/60">
             {TV_GUIDE_DATA[selectedDay].map((item) => (
               <div key={item.id} className="p-4 sm:p-5 flex flex-col sm:flex-row sm:items-center gap-4 hover:bg-zinc-800/40 transition-colors group">
                 
-                {/* Time & Status Column */}
                 <div className="sm:w-32 shrink-0">
                   <div className="text-lg font-black text-white">{item.time}</div>
                   {item.status === "live" ? (
@@ -265,7 +277,6 @@ export default function FanHubMediaPage() {
                   )}
                 </div>
 
-                {/* Show Details Column */}
                 <div className="flex-1">
                   <div className="flex items-center gap-2 mb-1">
                     <span className="bg-zinc-800 text-zinc-300 text-[10px] px-2 py-0.5 rounded font-bold border border-zinc-700">
@@ -281,7 +292,6 @@ export default function FanHubMediaPage() {
                   </p>
                 </div>
 
-                {/* Action Buttons Column */}
                 <div className="shrink-0 flex sm:flex-col gap-2">
                   {item.status === "live" ? (
                     <button className="bg-red-600 text-white text-xs font-bold px-4 py-2 rounded-lg hover:bg-red-700 transition-colors flex items-center justify-center gap-2 w-full sm:w-auto">
@@ -296,7 +306,6 @@ export default function FanHubMediaPage() {
               </div>
             ))}
             
-            {/* Fallback if no streams scheduled */}
             {TV_GUIDE_DATA[selectedDay].length === 0 && (
               <div className="p-8 text-center text-zinc-500">
                 <Calendar className="w-8 h-8 mx-auto mb-3 opacity-50" />
@@ -307,7 +316,7 @@ export default function FanHubMediaPage() {
         </div>
       </div>
 
-      {/* 3. CATEGORIZED CREATOR ROWS */}
+      {/* 3. CATEGORIZED CREATOR ROWS (INCLUDING CREATOR HIGHLIGHTS) */}
       <div className="mt-8">
         {CONTENT_SECTIONS.map((section) => (
           <VideoCarousel key={section.id} section={section} />
@@ -371,7 +380,7 @@ export default function FanHubMediaPage() {
 
         <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-5">
           {PODCASTS.map((pod) => (
-            <div key={pod.id} className="bg-zinc-900/90 border border-zinc-800 rounded-xl p-5 hover:border-zinc-600 transition-colors cursor-pointer group flex flex-col justify-between">
+            <div key={pod.id} className="bg-zinc-900/90 border border-zinc-800 rounded-xl p-5 hover:border-zinc-600 transition-colors group flex flex-col justify-between">
               <div>
                 <div className="flex justify-between items-start mb-3">
                   <span className="text-[10px] font-bold text-red-400 uppercase tracking-wider bg-red-950/50 border border-red-800/40 px-2 py-0.5 rounded">
