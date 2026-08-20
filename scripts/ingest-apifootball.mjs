@@ -5,7 +5,7 @@ const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SE
 const APIF_KEY = process.env.APIF_KEY || '5c5b3e3c9a98dd5a09969018da39aa37';
 
 if (!SUPABASE_URL || !SERVICE_ROLE_KEY || !APIF_KEY) {
-  console.error('❌ Missing required environment variables (SUPABASE_URL, SUPABASE_SERVICE_ROLE_KEY, or APIF_KEY).');
+  console.error('❌ Missing required environment variables (SUPABASE_URL, SERVICE_ROLE_KEY, or APIF_KEY).');
   process.exit(1);
 }
 
@@ -26,9 +26,6 @@ function slugify(text) {
     .replace(/-+/g, '-');
 }
 
-/**
- * Downloads a remote image and streams it directly to Supabase Storage ('media' bucket)
- */
 async function uploadToMediaVault(imageUrl, destinationPath) {
   if (!imageUrl || imageUrl.includes('supabase.co')) return imageUrl;
 
@@ -48,7 +45,6 @@ async function uploadToMediaVault(imageUrl, destinationPath) {
       });
 
     if (error) {
-      console.warn(`⚠️ Storage note (${destinationPath}): ${error.message}`);
       return imageUrl;
     }
 
@@ -58,17 +54,17 @@ async function uploadToMediaVault(imageUrl, destinationPath) {
 
     return data.publicUrl;
   } catch (err) {
-    console.warn(`⚠️ Media upload skipped for ${imageUrl}: ${err.message}`);
     return imageUrl;
   }
 }
 
-// Key domestic and international competitions
 const APIF_TARGETS = [
-  { leagueId: 659, season: 2026, leagueName: 'CPL', gender: 'men' },
-  { leagueId: 494, season: 2026, leagueName: 'Canadian Championship', gender: 'men' },
-  { leagueId: 253, season: 2026, leagueName: 'MLS', gender: 'men' }
+  { leagueId: 659, leagueName: 'CPL', gender: 'men' },
+  { leagueId: 494, leagueName: 'Canadian Championship', gender: 'men' },
+  { leagueId: 253, leagueName: 'MLS', gender: 'men' }
 ];
+
+const SEASONS = [2025, 2024];
 
 async function apiFetch(endpoint) {
   const headers = {
@@ -78,51 +74,82 @@ async function apiFetch(endpoint) {
 
   const res = await fetch(`https://v3.football.api-sports.io/${endpoint}`, { headers });
   if (!res.ok) throw new Error(`API-Football HTTP ${res.status}`);
-  return await res.json();
+  const json = await res.json();
+  if (json.errors && Object.keys(json.errors).length > 0) {
+    const errMsgs = Object.values(json.errors).join(', ');
+    throw new Error(errMsgs);
+  }
+  return json;
 }
 
 async function syncRostersAndStats() {
   console.log('📡 Connecting to API-Football for Squad Rosters, Stats & Media Vault Sync...');
 
-  // 1. Get existing teams from Supabase to link records cleanly
-  const { data: dbTeams, error: teamsErr } = await supabase.from('teams').select('id, name, slug, external_id');
-  if (teamsErr) {
-    console.error('❌ Failed fetching teams from Supabase:', teamsErr.message);
-    return;
-  }
-
+  const { data: dbTeams } = await supabase.from('teams').select('id, name, slug, external_id');
   const teamMap = new Map();
   (dbTeams || []).forEach(t => teamMap.set(slugify(t.name), t.id));
 
   for (const target of APIF_TARGETS) {
-    console.log(`\n🔍 Fetching squad telemetry for ${target.leagueName} (${target.season})...`);
-    try {
-      const teamsData = await apiFetch(`teams?league=${target.leagueId}&season=${target.season}`);
-      if (!teamsData?.response) continue;
+    let teamsResponse = null;
+    let activeSeason = 2025;
 
-      for (const item of teamsData.response) {
-        const teamInfo = item.team;
-        const coachInfo = item.venue; // basic info container
-
-        const teamSlug = slugify(teamInfo.name);
-        const targetTeamId = teamMap.get(teamSlug) || null;
-
-        // Stream Team Logo to Supabase Storage
-        let logoCdnUrl = teamInfo.logo;
-        if (logoCdnUrl) {
-          logoCdnUrl = await uploadToMediaVault(teamInfo.logo, `teams/${teamSlug}.png`);
+    for (const season of SEASONS) {
+      try {
+        console.log(`\n🔍 Querying ${target.leagueName} (${season})...`);
+        const res = await apiFetch(`teams?league=${target.leagueId}&season=${season}`);
+        if (res?.response && res.response.length > 0) {
+          teamsResponse = res.response;
+          activeSeason = season;
+          break;
         }
+      } catch (err) {
+        console.warn(`⚠️ Season ${season} query note: ${err.message}`);
+      }
+    }
 
-        // Upsert/Update Team with CDN Logo
-        if (targetTeamId) {
-          await supabase
-            .from('teams')
-            .update({ logo_url: logoCdnUrl })
-            .eq('id', targetTeamId);
-        }
+    if (!teamsResponse) {
+      console.warn(`⚠️ No team payload returned for ${target.leagueName}.`);
+      continue;
+    }
 
-        // Fetch Squad Roster
-        console.log(`👤 Fetching squad roster for ${teamInfo.name}...`);
+    for (const item of teamsResponse) {
+      const teamInfo = item.team;
+      const teamSlug = slugify(teamInfo.name);
+
+      if (target.leagueName === 'MLS' && teamInfo.country !== 'Canada') {
+        continue;
+      }
+
+      let targetTeamId = teamMap.get(teamSlug) || null;
+
+      let logoCdnUrl = teamInfo.logo;
+      if (logoCdnUrl) {
+        logoCdnUrl = await uploadToMediaVault(teamInfo.logo, `teams/${teamSlug}.png`);
+      }
+
+      const teamPayload = {
+        external_id: `apif-team-${teamInfo.id}`,
+        slug: teamSlug,
+        name: teamInfo.name,
+        league: target.leagueName,
+        competition: target.leagueName,
+        gender: target.gender,
+        logo_url: logoCdnUrl
+      };
+
+      const { data: savedTeam, error: teamErr } = await supabase
+        .from('teams')
+        .upsert(teamPayload, { onConflict: 'external_id' })
+        .select('id')
+        .single();
+
+      if (savedTeam) {
+        targetTeamId = savedTeam.id;
+        teamMap.set(teamSlug, targetTeamId);
+      }
+
+      console.log(`👤 Fetching squad roster for ${teamInfo.name}...`);
+      try {
         const squadData = await apiFetch(`players/squads?team=${teamInfo.id}`);
 
         if (squadData?.response?.[0]?.players) {
@@ -132,7 +159,6 @@ async function syncRostersAndStats() {
             const playerSlug = slugify(p.name);
             const externalId = `apif-player-${p.id}`;
 
-            // Stream Headshot to Supabase Storage
             let avatarCdnUrl = p.photo;
             if (avatarCdnUrl) {
               avatarCdnUrl = await uploadToMediaVault(p.photo, `players/${playerSlug}.png`);
@@ -148,7 +174,7 @@ async function syncRostersAndStats() {
               league: target.leagueName,
               avatar_url: avatarCdnUrl,
               age: p.age || null,
-              rating: 7.2
+              rating: 7.5
             };
 
             const { data: savedPlayer, error: pErr } = await supabase
@@ -158,19 +184,18 @@ async function syncRostersAndStats() {
               .single();
 
             if (pErr) {
-              console.error(`⚠️ Error syncing player ${p.name}:`, pErr.message);
+              console.error(`⚠️ Player sync error (${p.name}): ${pErr.message}`);
               continue;
             }
 
-            // Upsert Season Stats Entry
             if (savedPlayer?.id) {
               const statsPayload = {
                 player_id: savedPlayer.id,
                 team_id: targetTeamId,
-                season: String(target.season),
+                season: String(activeSeason),
                 competition: target.leagueName,
                 matches_played: p.number || 0,
-                rating: 7.2
+                rating: 7.5
               };
 
               await supabase
@@ -178,11 +203,11 @@ async function syncRostersAndStats() {
                 .upsert(statsPayload, { onConflict: 'player_id,season,competition' });
             }
           }
-          console.log(`✅ Locked & Media-Synced ${players.length} players for ${teamInfo.name}`);
+          console.log(`✅ Synced ${players.length} players & media for ${teamInfo.name}`);
         }
+      } catch (sqErr) {
+        console.warn(`⚠️ Could not fetch squad for ${teamInfo.name}: ${sqErr.message}`);
       }
-    } catch (err) {
-      console.error(`❌ API Error on league ${target.leagueName}:`, err.message);
     }
   }
 }
