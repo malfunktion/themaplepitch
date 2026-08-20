@@ -58,11 +58,12 @@ async function importTeams() {
 
   const finalDeduper = new Map();
   for (const row of initialRows) {
-    finalDeduper.set(`${row.league}::${row.name}`, row);
+    finalDeduper.set(row.external_id, row);
   }
   const uniqueRows = Array.from(finalDeduper.values());
 
-  const { error } = await supabase.from('teams').upsert(uniqueRows, { onConflict: 'league,name' });
+  // Fixed: Upsert conflicting on external_id to match your database schema constraint
+  const { error } = await supabase.from('teams').upsert(uniqueRows, { onConflict: 'external_id' });
   if (error) throw new Error(`teams upsert failed: ${error.message}`);
   console.log(`Upserted ${uniqueRows.length} unique CPL teams.`);
 }
@@ -80,7 +81,6 @@ async function importMatches(teamIdMap) {
   const { matches, total } = await res.json();
   console.log(`API reports ${total} total matches, fetched ${matches.length}.`);
 
-  // Fetch existing matches to execute smart-sync checks
   const { data: existingMatches } = await supabase
     .from('matches')
     .select('external_id, home_score, away_score, status');
@@ -107,7 +107,6 @@ async function importMatches(teamIdMap) {
     let awayScore = m.away_goals;
     let matchStatus = 'Finished';
 
-    // Smart Sync Guard: Protect finished match scores from being wiped out by blank API states
     if (existing) {
       const existingHasScore = existing.home_score !== null && existing.away_score !== null;
       const incomingHasScore = homeScore !== null && awayScore !== null;
