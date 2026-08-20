@@ -40,6 +40,15 @@ async function importTeams() {
   if (!res.ok) throw new Error(`/api/teams failed: ${res.status}`);
   const { teams } = await res.json();
 
+  // Fetch existing teams to perform smart manual checks and avoid multi-constraint clashes
+  const { data: existingTeams } = await supabase
+    .from('teams')
+    .select('id, external_id, name, league')
+    .eq('league', 'CPL');
+
+  const existingByExtId = new Map((existingTeams || []).map((t) => [t.external_id, t]));
+  const existingByName = new Map((existingTeams || []).map((t) => [`${t.league}::${t.name.toLowerCase().trim()}`, t]));
+
   const teamMap = new Map();
   for (const t of teams) {
     const displayName = normalizeTeamName(t.name);
@@ -59,15 +68,37 @@ async function importTeams() {
   }
 
   const uniqueTeams = Array.from(teamMap.values());
-  console.log(`Upserting ${uniqueTeams.length} unique CPL teams individually...`);
+  console.log(`Syncing ${uniqueTeams.length} unique CPL teams...`);
 
   for (const teamRow of uniqueTeams) {
-    const { error } = await supabase
-      .from('teams')
-      .upsert(teamRow, { onConflict: 'external_id' });
+    const matchByName = existingByName.get(`${teamRow.league}::${teamRow.name.toLowerCase().trim()}`);
+    const matchByExtId = existingByExtId.get(teamRow.external_id);
+
+    let error;
+    if (matchByExtId) {
+      // Update existing record by ID
+      const { error: updateError } = await supabase
+        .from('teams')
+        .update(teamRow)
+        .eq('id', matchByExtId.id);
+      error = updateError;
+    } else if (matchByName) {
+      // Update existing record found via name match
+      const { error: updateError } = await supabase
+        .from('teams')
+        .update(teamRow)
+        .eq('id', matchByName.id);
+      error = updateError;
+    } else {
+      // Insert new record safely
+      const { error: insertError } = await supabase
+        .from('teams')
+        .insert(teamRow);
+      error = insertError;
+    }
 
     if (error) {
-      console.error(`Failed to upsert team ${teamRow.name}:`, error.message);
+      console.error(`Failed to sync team ${teamRow.name}:`, error.message);
     }
   }
 
