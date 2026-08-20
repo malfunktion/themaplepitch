@@ -27,6 +27,7 @@ const TEAM_NAME_OVERRIDES = {
   'york9 fc': 'Inter Toronto FC',
   'quebec supra': 'FC Supra du Québec',
   'québec supra': 'FC Supra du Québec',
+  'atletico ottawa': 'Atlético Ottawa',
 };
 
 function normalizeTeamName(name) {
@@ -61,7 +62,6 @@ async function importTeams() {
   console.log(`Upserting ${uniqueTeams.length} unique CPL teams individually...`);
 
   for (const teamRow of uniqueTeams) {
-    // Target external_id to match the teams_external_id_key constraint cleanly
     const { error } = await supabase
       .from('teams')
       .upsert(teamRow, { onConflict: 'external_id' });
