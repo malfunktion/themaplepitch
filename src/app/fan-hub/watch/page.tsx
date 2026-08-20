@@ -33,7 +33,7 @@ const HERO_FEATURE = {
   embedId: "jfKfPfyJRkM", 
 };
 
-// --- NEW TV GUIDE MOCK DATA ---
+// --- MAPLEPITCH LIVE GUIDE MOCK DATA ---
 const TV_GUIDE_DATA: Record<string, any[]> = {
   "Today": [
     { id: "t1", time: "3:00 PM", title: "CanMNT Roster Reveal Reaction", creator: "The Boys On The Field", type: "Live Stream", platform: "YouTube", status: "upcoming" },
@@ -218,7 +218,7 @@ export default function FanHubMediaPage() {
         </div>
       </div>
 
-      {/* 2. CREATOR TV GUIDE (NEW SECTION) */}
+      {/* 2. MAPLEPITCH LIVE GUIDE */}
       <div className="max-w-7xl mx-auto px-4 md:px-8 my-12">
         <div className="bg-zinc-900/50 border border-zinc-800 rounded-2xl overflow-hidden">
           
@@ -226,7 +226,7 @@ export default function FanHubMediaPage() {
           <div className="bg-zinc-900 border-b border-zinc-800 p-4 flex flex-col sm:flex-row sm:items-center justify-between gap-4">
             <div className="flex items-center gap-2">
               <Tv className="w-5 h-5 text-red-500" />
-              <h2 className="text-lg font-bold text-white tracking-tight">Creator TV Guide</h2>
+              <h2 className="text-lg font-bold text-white tracking-tight">MaplePitch Live Guide</h2>
             </div>
             
             <div className="flex items-center gap-2 overflow-x-auto pb-1 sm:pb-0 hide-scrollbar">
@@ -439,4 +439,3 @@ export default function FanHubMediaPage() {
     </div>
   );
 }
-
