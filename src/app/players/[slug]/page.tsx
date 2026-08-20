@@ -1,7 +1,6 @@
 // src/app/players/[slug]/page.tsx
 import type { Metadata } from 'next';
 import Link from 'next/link';
-import Image from 'next/image';
 import { notFound } from 'next/navigation';
 import HubHeader from '@/components/entity/HubHeader';
 import SourceStamp from '@/components/entity/SourceStamp';
@@ -45,6 +44,12 @@ async function getPlayerData(slugParam: string) {
 
   if (!player) return null;
 
+  // Resolve image URL fallback safely from root columns or JSON metadata
+  const resolvedHeadshot = 
+    player.headshot_url || 
+    player.avatar_url || 
+    (player.metadata && typeof player.metadata === 'object' ? (player.metadata as any).photo || (player.metadata as any).avatar : null);
+
   // Fetch season stats, match logs, and tagged media/news
   const [seasonStatsRes, clubMatchesRes, mediaRes] = await Promise.all([
     supabase
@@ -74,7 +79,7 @@ async function getPlayerData(slugParam: string) {
   ]);
 
   return {
-    player,
+    player: { ...player, headshot_url: resolvedHeadshot },
     seasonStats: seasonStatsRes.data || [],
     clubMatches: clubMatchesRes.data || [],
     mediaClips: mediaRes.data || [],
@@ -164,14 +169,14 @@ export default async function PlayerProfilePage({
       {/* HEADER WITH SUPABASE STORAGE HEADSHOT & CLUB LOGO */}
       <div className="border border-border bg-card p-6 mb-6 flex flex-col md:flex-row items-center gap-6">
         <div className="relative w-28 h-28 rounded-full border-2 border-crimson overflow-hidden bg-neutral-900 flex items-center justify-center shrink-0">
-          {player.headshot_url || player.avatar_url ? (
+          {player.headshot_url ? (
             <img
-              src={player.headshot_url || player.avatar_url}
+              src={player.headshot_url}
               alt={player.name}
               className="w-full h-full object-cover"
             />
           ) : (
-            <span className="font-mono text-2xl text-neutral-500 font-bold">
+            <span className="font-mono text-2xl text-neutral-400 font-bold">
               {player.name ? player.name.split(' ').map((n: string) => n[0]).join('') : 'MP'}
             </span>
           )}
