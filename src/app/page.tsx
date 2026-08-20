@@ -19,8 +19,6 @@ import { client } from '@/lib/sanity';
 import { getWireFeed } from '@/lib/data/newsWire';
 import { getCplStandings, getNslStandings } from '@/lib/data/standings';
 
-export const revalidate = 300; // Cache and serve from edge for 5 minutes
-
 export const dynamic = 'force-dynamic';
 
 async function getSiteSettings() {
@@ -87,7 +85,7 @@ export default async function HomePage() {
     'collegiate-watchlist': <CollegiateWatchlist />,
     'fan-hub': <FanHubSection />,
     'player-provincial': <PlayerAndProvincialSection />,
-    'stats-dashboard': <StatsDashboard />,
+    'stats-dashboard': <StatsDashboard standings={standings} nslStandings={nslStandings} />,
     'legends-gallery': <LegendsGallery />,
     'conversion-section': <ConversionSection />,
     'local-club-spotlight': <LocalClubSpotlight />,
