@@ -14,6 +14,9 @@ type Match = {
 
 const supabase = createClient();
 
+// Clubs that have suspended operations or folded but whose historical records remain
+const FOLDED_CLUBS = ['valour fc', 'fc edmonton'];
+
 function matchesLeague(teamLeague: string | null | undefined, targetLeague: string): boolean {
   if (!teamLeague) return false;
   const normalized = teamLeague.toUpperCase();
@@ -39,7 +42,12 @@ export async function computeStandings(competition: string): Promise<StandingsRo
       return [];
     }
 
-    const filteredTeams = teamsData.filter((t: any) => matchesLeague(t.league, competition));
+    // Filter by league and exclude folded/defunct clubs from active standings
+    const filteredTeams = teamsData.filter((t: any) => {
+      const isCorrectLeague = matchesLeague(t.league, competition);
+      const isNotFolded = !FOLDED_CLUBS.includes(t.name.toLowerCase().trim());
+      return isCorrectLeague && isNotFolded;
+    });
 
     if (filteredTeams.length === 0) {
       return [];
@@ -103,7 +111,7 @@ export async function computeStandings(competition: string): Promise<StandingsRo
         const ga = s.ga;
         return {
           id: team.id,
-          slug: team.slug || team.external_id, // Expose true database slug
+          slug: team.slug || team.external_id,
           external_id: team.external_id,
           position: 1,
           clubName: team.name,
