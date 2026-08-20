@@ -25,7 +25,6 @@ function slugify(name) {
 async function runFullCatalogueImport() {
   console.log('🚀 Initializing Full Catalogue Ingestion for The Maple Pitch...');
 
-  // 1. Full Master Club List (CPL, NSL, MLS Canadian, National & Abroad)
   const masterTeams = [
     // CPL
     { name: 'Forge FC', league: 'CPL', gender: 'men' },
@@ -63,45 +62,71 @@ async function runFullCatalogueImport() {
     { name: 'Portland Thorns', league: 'NWSL', gender: 'women' },
     { name: 'Chelsea FC', league: 'FA WSL', gender: 'women' },
     { name: 'Utah Royals', league: 'NWSL', gender: 'women' },
-    { name: 'Sporting CP', league: 'Abroad', gender: 'women' }
+    { name: 'Sporting CP', league: 'Abroad', gender: 'women' },
+    // Additional Clubs for Abroad Players
+    { name: 'Middlesbrough', league: 'Abroad', gender: 'men' },
+    { name: 'Portland Timbers', league: 'MLS', gender: 'men' },
+    { name: 'Minnesota United', league: 'MLS', gender: 'men' },
+    { name: 'San Diego Wave', league: 'NWSL', gender: 'women' },
+    { name: 'Manchester United', league: 'FA WSL', gender: 'women' },
+    { name: 'Chicago Red Stars', league: 'NWSL', gender: 'women' },
+    { name: 'Seattle Reign', league: 'NWSL', gender: 'women' },
+    { name: 'Lyon', league: 'Abroad', gender: 'women' },
+    { name: 'Grasshoppers', league: 'Abroad', gender: 'men' },
+    { name: 'Rosenborg', league: 'Abroad', gender: 'men' },
+    { name: 'Hajduk Split', league: 'Abroad', gender: 'men' },
+    { name: 'Fulham', league: 'Abroad', gender: 'men' }
   ];
 
   const teamMap = {};
-  console.log('🏟️ Upserting full club & team catalogue...');
-  
+  console.log('🏟️ Resolving & syncing full club & team catalogue...');
+
   for (const t of masterTeams) {
     const slug = slugify(t.name);
-    const payload = {
-      name: t.name,
-      short_name: t.name,
-      league: t.league,
-      gender: t.gender,
-      slug: slug,
-      external_id: slug
-    };
-
-    const { data, error } = await supabase
+    
+    // First check if team already exists by name or slug
+    const { data: existing } = await supabase
       .from('teams')
-      .upsert(payload, { onConflict: 'slug' })
-      .select('id, name, slug')
+      .select('id, name')
+      .or(`slug.eq.${slug},name.eq.${t.name}`)
       .maybeSingle();
 
-    if (error) {
-      // Fallback query if conflict target differs
-      const { data: existing } = await supabase.from('teams').select('id, name, slug').eq('slug', slug).maybeSingle();
-      if (existing) {
-        teamMap[t.name] = existing.id;
-        console.log(`✅ Linked Team via Fallback: ${t.name} (ID: ${existing.id})`);
-      } else {
-        console.error(`❌ Failed team ${t.name}: ${error.message}`);
+    if (existing) {
+      teamMap[t.name] = existing.id;
+      console.log(`🔗 Linked Existing Team: ${t.name} (ID: ${existing.id})`);
+    } else {
+      const payload = {
+        name: t.name,
+        short_name: t.name,
+        league: t.league,
+        gender: t.gender,
+        slug: slug,
+        external_id: slug
+      };
+
+      const { data, error } = await supabase
+        .from('teams')
+        .insert(payload)
+        .select('id, name')
+        .maybeSingle();
+
+      if (error) {
+        // Fallback: fetch again if concurrent insert happened
+        const { data: fallback } = await supabase.from('teams').select('id').eq('name', t.name).maybeSingle();
+        if (fallback) {
+          teamMap[t.name] = fallback.id;
+          console.log(`✅ Synced Team via Fallback: ${t.name} (ID: ${fallback.id})`);
+        } else {
+          console.warn(`⚠️ Team note for ${t.name}: ${error.message}`);
+        }
+      } else if (data) {
+        teamMap[t.name] = data.id;
+        console.log(`✅ Synced New Team: ${t.name} (ID: ${data.id})`);
       }
-    } else if (data) {
-      teamMap[t.name] = data.id;
-      console.log(`✅ Synced Team: ${t.name} (ID: ${data.id})`);
     }
   }
 
-  // 2. Comprehensive Player Rosters (Expanded Full Catalogue Across Pro Leagues & National Pool)
+  // 2. Comprehensive Player Rosters
   const cataloguePlayers = [
     // --- MARQUEE & ABROAD STARS ---
     { name: 'Jonathan David', club: 'Lille OSC', league: 'Abroad', gender: 'men', position: 'ST', rating: 8.4, goals: 18, assists: 4, caps: 54, squad_type: 'SENIOR' },
@@ -132,7 +157,7 @@ async function runFullCatalogueImport() {
     { name: 'Vanessa Gilles', club: 'Lyon', league: 'Abroad', gender: 'women', position: 'CB', rating: 8.0, goals: 4, assists: 0, caps: 45, squad_type: 'SENIOR' },
     { name: 'Jade Rose', club: 'Harvard / National Pool', league: 'NCAA', gender: 'women', position: 'CB', rating: 7.6, goals: 1, assists: 1, caps: 22, squad_type: 'SENIOR' },
 
-    // --- CPL DOMESTIC SQUADS (Sample Expanded Depth) ---
+    // --- CPL DOMESTIC SQUADS ---
     { name: 'Tristan Borges', club: 'Forge FC', league: 'CPL', gender: 'men', position: 'AM', rating: 7.2, goals: 6, assists: 8, caps: 2, squad_type: 'SENIOR' },
     { name: 'Kyle Bekker', club: 'Forge FC', league: 'CPL', gender: 'men', position: 'CM', rating: 7.1, goals: 4, assists: 7, caps: 3, squad_type: 'SENIOR' },
     { name: 'Alexander Achinioti-Jönsson', club: 'Forge FC', league: 'CPL', gender: 'men', position: 'CB', rating: 7.3, goals: 2, assists: 1, caps: 0, squad_type: 'SENIOR' },
@@ -149,7 +174,7 @@ async function runFullCatalogueImport() {
     { name: 'Marie-Yasmine Alidou', club: 'Montreal Roses FC', league: 'NSL', gender: 'women', position: 'CM', rating: 7.5, goals: 6, assists: 8, caps: 8, squad_type: 'SENIOR' },
     { name: 'Sarah Stratigakis', club: 'AFC Toronto', league: 'NSL', gender: 'women', position: 'CM', rating: 7.3, goals: 4, assists: 5, caps: 5, squad_type: 'SENIOR' },
 
-    // --- CANADIAN MLS CLUBS & U-23 / U-20 PATHWAYS ---
+    // --- CANADIAN MLS CLUBS & PATHWAYS ---
     { name: 'Jonathan Osorio', club: 'Toronto FC', league: 'MLS', gender: 'men', position: 'CM', rating: 7.5, goals: 6, assists: 5, caps: 71, squad_type: 'SENIOR' },
     { name: 'Richie Laryea', club: 'Toronto FC', league: 'MLS', gender: 'men', position: 'RB', rating: 7.6, goals: 2, assists: 6, caps: 52, squad_type: 'SENIOR' },
     { name: 'Kamal Miller', club: 'Portland Timbers', league: 'MLS', gender: 'men', position: 'CB', rating: 7.4, goals: 1, assists: 2, caps: 44, squad_type: 'SENIOR' },
