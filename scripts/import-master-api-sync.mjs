@@ -19,15 +19,22 @@ function slugify(name) {
 async function fetchCplOpenData() {
   console.log('📡 Fetching historical CPL data from canadasoccerapi.com...');
   try {
-    // CanadaSoccerAPI root endpoint or matching route
-    const res = await fetch('https://canadasoccerapi.com/api/matches');
-    const data = await res.json();
+    const res = await fetch('https://canadasoccerapi.com/api/matches', {
+      headers: {
+        'User-Agent': 'TheMaplePitch-SyncEngine/1.0 (Contact: admin@themaplepitch.ca)',
+        'Accept': 'application/json'
+      }
+    });
     
-    // Handle both direct array or wrapped object responses safely
+    if (!res.ok) {
+      throw new Error(`HTTP error! status: ${res.status}`);
+    }
+
+    const data = await res.json();
     const matches = Array.isArray(data) ? data : (data.matches || data.data || []);
     return matches;
   } catch (err) {
-    console.warn('⚠️ CanadaSoccerAPI fetch warning:', err.message);
+    console.warn('⚠️ CanadaSoccerAPI fetch note:', err.message);
     return [];
   }
 }
@@ -83,7 +90,7 @@ async function syncPlayerToSupabase(playerPayload) {
 
   const { error: statsErr } = await supabase
     .from('player_season_stats')
-    .upsert(statsPayload, { onConflict: 'player_id, season, competition' });
+    .upsert(statsPayload, { onConflict: 'player_id,season,competition' });
 
   if (statsErr) {
     console.error(`❌ Season stats error for ${playerPayload.name}:`, statsErr.message);
