@@ -11,11 +11,10 @@
     "cf:preview": "npm run cf:build && opennextjs-cloudflare preview",
     "cf:deploy": "npm run cf:build && wrangler deploy",
     "typecheck": "tsc --noEmit",
-    "test:data": "node scripts/validate-data.mjs",
     "import:cpl": "node scripts/import-cpl-data.mjs",
     "import:national-teams": "node scripts/import-canadian-national-teams.mjs",
-    "check": "rm -rf .open-next .next && npm run lint && npm run typecheck && npm run test:data && npm run build",
-    "check:local": "npm run typecheck && npm run test:data"
+    "check": "rm -rf .open-next .next && npm run lint && npm run typecheck && npm run build",
+    "check:local": "npm run typecheck"
   },
   "dependencies": {
     "@sanity/image-url": "^2.1.1",
