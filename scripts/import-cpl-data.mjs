@@ -1,57 +1,25 @@
-// scripts/import-cpl-data.mjs
-//
-// One-time (but safe to re-run) import of real CPL teams and match
-// history from canadasoccerapi.com (free, CC-BY-4.0, no auth needed —
-// see workers/wire-ingest/README.md-style docs for the site's own
-// verified-source notes) into Supabase.
-//
-// Safe to re-run: everything upserts on a stable external_id, so running
-// this twice updates existing rows instead of duplicating them.
-//
-// Needs two env vars, set ONLY in your shell for this run — never
-// committed, never NEXT_PUBLIC_:
-//   SUPABASE_URL               — same value as NEXT_PUBLIC_SUPABASE_URL
-//   SUPABASE_SERVICE_ROLE_KEY  — from Supabase dashboard: Settings > API
-//                                 > service_role secret. This key bypasses
-//                                 Row Level Security, which is exactly why
-//                                 it must never end up in the app itself —
-//                                 it's only for trusted scripts like this
-//                                 one, run by hand.
-//
-// Run from Termux:
-//   SUPABASE_URL="https://xxxx.supabase.co" SUPABASE_SERVICE_ROLE_KEY="..." node scripts/import-cpl-data.mjs
-
 import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
-  console.error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY env vars. See the comment at the top of this file.');
+  console.error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY env vars.');
   process.exit(1);
 }
 
 const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
-
 const API_BASE = 'https://canadasoccerapi.com/api';
-
 
 function slugify(name) {
   return name
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '') // strip accents (Atlético -> Atletico)
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/(^-|-$)/g, '');
 }
 
-// canadasoccerapi.com's team list is a historical snapshot, not
-// live-updated for the current season — it still returns pre-rebrand /
-// dissolved names. Normalize known franchise renames here so the CURRENT
-// team identity is always correct on import, regardless of what the
-// upstream source calls it. Historical match data under the old name
-// still links correctly since this maps to the SAME row (same slug),
-// it just corrects the display name.
 const TEAM_NAME_OVERRIDES = {
   'york united': 'Inter Toronto FC',
   'york united fc': 'Inter Toronto FC',
@@ -60,17 +28,17 @@ const TEAM_NAME_OVERRIDES = {
   'quebec supra': 'FC Supra du Québec',
   'québec supra': 'FC Supra du Québec',
 };
+
 function normalizeTeamName(name) {
   return TEAM_NAME_OVERRIDES[name.trim().toLowerCase()] || name;
 }
 
 async function importTeams() {
-  console.log('Fetching CPL teams (including inactive — historical matches reference them)...');
+  console.log('Fetching CPL teams from canadasoccerapi.com...');
   const res = await fetch(`${API_BASE}/teams`);
   if (!res.ok) throw new Error(`/api/teams failed: ${res.status}`);
   const { teams } = await res.json();
 
-  // Step 1: Format rows dynamically
   const initialRows = [];
   for (const t of teams) {
     const displayName = normalizeTeamName(t.name);
@@ -88,7 +56,6 @@ async function importTeams() {
     });
   }
 
-  // Step 2: Strict final deduplication by external_id to guarantee unique batch keys
   const finalDeduper = new Map();
   for (const row of initialRows) {
     finalDeduper.set(`${row.league}::${row.name}`, row);
@@ -97,7 +64,7 @@ async function importTeams() {
 
   const { error } = await supabase.from('teams').upsert(uniqueRows, { onConflict: 'league,name' });
   if (error) throw new Error(`teams upsert failed: ${error.message}`);
-  console.log(`Upserted ${uniqueRows.length} unique teams (${teams.filter((t) => t.status === 'active').length} active, ${teams.filter((t) => t.status !== 'active').length} inactive).`);
+  console.log(`Upserted ${uniqueRows.length} unique CPL teams.`);
 }
 
 async function getTeamIdMap() {
@@ -107,29 +74,59 @@ async function getTeamIdMap() {
 }
 
 async function importMatches(teamIdMap) {
-  console.log('Fetching CPL match history (2019-2026)...');
+  console.log('Fetching CPL match history with Smart Sync protection...');
   const res = await fetch(`${API_BASE}/matches?limit=500`);
   if (!res.ok) throw new Error(`/api/matches failed: ${res.status}`);
   const { matches, total } = await res.json();
   console.log(`API reports ${total} total matches, fetched ${matches.length}.`);
 
+  // Fetch existing matches to execute smart-sync checks
+  const { data: existingMatches } = await supabase
+    .from('matches')
+    .select('external_id, home_score, away_score, status');
+
+  const existingMap = new Map();
+  (existingMatches || []).forEach((m) => existingMap.set(m.external_id, m));
+
   const initialRows = [];
   let skipped = 0;
+  let matchesProtected = 0;
+
   for (const m of matches) {
     const homeId = teamIdMap.get(slugify(m.home_team));
     const awayId = teamIdMap.get(slugify(m.away_team));
     if (!homeId || !awayId) {
       skipped += 1;
-      continue; // team name didn't match anything we just imported — skip rather than guess
+      continue;
     }
+
     const extId = slugify(`${m.date}-${m.home_team}-${m.away_team}`);
+    const existing = existingMap.get(extId);
+
+    let homeScore = m.home_goals;
+    let awayScore = m.away_goals;
+    let matchStatus = 'Finished';
+
+    // Smart Sync Guard: Protect finished match scores from being wiped out by blank API states
+    if (existing) {
+      const existingHasScore = existing.home_score !== null && existing.away_score !== null;
+      const incomingHasScore = homeScore !== null && awayScore !== null;
+
+      if (existingHasScore && !incomingHasScore) {
+        homeScore = existing.home_score;
+        awayScore = existing.away_score;
+        matchStatus = existing.status;
+        matchesProtected++;
+      }
+    }
+
     initialRows.push({
       home_team_id: homeId,
       away_team_id: awayId,
       match_date: m.date,
-      status: 'Finished',
-      home_score: m.home_goals,
-      away_score: m.away_goals,
+      status: matchStatus,
+      home_score: homeScore,
+      away_score: awayScore,
       competition: 'CPL',
       gender: 'men',
       affiliate_ticket_link: null,
@@ -138,23 +135,23 @@ async function importMatches(teamIdMap) {
     });
   }
 
-  // Strict final deduplication by external_id to guarantee unique match keys
   const finalDeduper = new Map();
   for (const row of initialRows) {
-    finalDeduper.set(`${row.match_date}::${row.home_team_id}::${row.away_team_id}`, row);
+    finalDeduper.set(row.external_id, row);
   }
   const uniqueRows = Array.from(finalDeduper.values());
 
-  const { error } = await supabase.from('matches').upsert(uniqueRows, { onConflict: 'match_date,home_team_id,away_team_id' });
+  const { error } = await supabase.from('matches').upsert(uniqueRows, { onConflict: 'external_id' });
   if (error) throw new Error(`matches upsert failed: ${error.message}`);
-  console.log(`Upserted ${uniqueRows.length} unique matches. Skipped ${skipped} (team name didn't match).`);
+  
+  console.log(`Smart-synced ${uniqueRows.length} matches. Protected ${matchesProtected} finished scores. Skipped ${skipped} unmatched teams.`);
 }
 
 async function main() {
   await importTeams();
   const teamIdMap = await getTeamIdMap();
   await importMatches(teamIdMap);
-  console.log('Done.');
+  console.log('CPL data import complete.');
 }
 
 main().catch((err) => {
