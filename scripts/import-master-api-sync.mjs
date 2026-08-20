@@ -1,7 +1,7 @@
 // scripts/import-master-comprehensive.mjs
 // Comprehensive Master Ingestion Engine for The Maple Pitch
-// Ingests teams, full rosters, coaches, matches, multi-season player stats,
-// national teams (both genders & youth pathways), and abroad Canadians.
+// Ingests teams (including historical/folded clubs), full rosters, coaches, 
+// multi-season player stats, national teams (both genders & youth), and abroad Canadians.
 
 import { createClient } from '@supabase/supabase-js';
 import fetch from 'node-fetch';
@@ -27,23 +27,27 @@ function slugify(name) {
 }
 
 // ==========================================
-// 1. MASTER SEED DATASETS (Clubs, Rosters, National Teams, Staff)
+// 1. MASTER SEED DATASETS (Current, Historical, Folded Clubs & National Teams)
 // ==========================================
 
 const TEAMS_DATA = [
-  // CPL Clubs
+  // CPL Clubs (Active & Historical / Folded for Match Vault Depth)
   { name: 'Forge FC', league: 'CPL', gender: 'men', division_level: 'Professional', manager: 'Bobby Smyrniotis' },
   { name: 'Cavalry FC', league: 'CPL', gender: 'men', division_level: 'Professional', manager: 'Tommy Wheeldon Jr.' },
   { name: 'Pacific FC', league: 'CPL', gender: 'men', division_level: 'Professional', manager: 'James Merriman' },
   { name: 'York United FC', league: 'CPL', gender: 'men', division_level: 'Professional', manager: 'Benjamin Mora' },
+  { name: 'York 9 FC', league: 'CPL', gender: 'men', division_level: 'Historical', manager: 'Jimmy Brennan' }, // Historical alias
   { name: 'Valour FC', league: 'CPL', gender: 'men', division_level: 'Professional', manager: 'Philip Dos Santos' },
   { name: 'HFX Wanderers FC', league: 'CPL', gender: 'men', division_level: 'Professional', manager: 'Patrice Gheisar' },
   { name: 'Vancouver FC', league: 'CPL', gender: 'men', division_level: 'Professional', manager: 'Ghotbi Afshin' },
   { name: 'Atlético Ottawa', league: 'CPL', gender: 'men', division_level: 'Professional', manager: 'Carlos González' },
+  { name: 'FC Edmonton', league: 'CPL', gender: 'men', division_level: 'Folded / Historical', manager: 'Alan Koch' }, // Folded club for historical 2019-2022 matches
+  { name: 'Ottawa Fury', league: 'USL / Championship', gender: 'men', division_level: 'Historical', manager: 'Paul Dalglish' }, // Historical Canadian Championship vault
 
-  // Canadian MLS Franchises (Full Squads + Non-Canadian Internationals)
+  // Canadian MLS Franchises (Full Squads + Historical Aliases)
   { name: 'Toronto FC', league: 'MLS', gender: 'men', division_level: 'Professional', manager: 'John Herdman' },
   { name: 'CF Montréal', league: 'MLS', gender: 'men', division_level: 'Professional', manager: 'Laurent Courtois' },
+  { name: 'Montreal Impact', league: 'MLS', gender: 'men', division_level: 'Historical', manager: 'Wilfried Nancy' }, // Historical alias for 2014-2020 matches
   { name: 'Vancouver Whitecaps', league: 'MLS', gender: 'men', division_level: 'Professional', manager: 'Vanni Sartini' },
 
   // NSL Clubs (Women's Professional)
@@ -63,9 +67,16 @@ const TEAMS_DATA = [
   { name: 'Bayern Munich', league: 'Abroad', gender: 'men', division_level: 'European Pro' },
   { name: 'FC Porto', league: 'Abroad', gender: 'men', division_level: 'European Pro' },
   { name: 'Villarreal', league: 'Abroad', gender: 'men', division_level: 'European Pro' },
+  { name: 'Celtic FC', league: 'Abroad', gender: 'men', division_level: 'European Pro' },
+  { name: 'Marseille', league: 'Abroad', gender: 'men', division_level: 'European Pro' },
+  { name: 'Nice', league: 'Abroad', gender: 'men', division_level: 'European Pro' },
+  { name: 'Mallorca', league: 'Abroad', gender: 'men', division_level: 'European Pro' },
+  { name: 'Nashville SC', league: 'Abroad', gender: 'men', division_level: 'Professional' },
   { name: 'AS Roma', league: 'Abroad', gender: 'women', division_level: 'European Pro' },
   { name: 'Portland Thorns', league: 'Abroad', gender: 'women', division_level: 'NWSL' },
-  { name: 'Chelsea FC', league: 'Abroad', gender: 'women', division_level: 'European Pro' }
+  { name: 'Chelsea FC', league: 'Abroad', gender: 'women', division_level: 'European Pro' },
+  { name: 'Utah Royals', league: 'Abroad', gender: 'women', division_level: 'NWSL' },
+  { name: 'Sporting CP', league: 'Abroad', gender: 'women', division_level: 'European Pro' }
 ];
 
 const PLAYERS_MASTER_PAYLOAD = [
@@ -80,7 +91,7 @@ const PLAYERS_MASTER_PAYLOAD = [
   { name: 'Derek Cornelius', clubName: 'Marseille', league: 'Abroad', competition: 'Ligue 1', gender: 'men', position: 'CB', squad_type: 'SENIOR', national_team: 'CanMNT', age: 28, caps: 27, goals: 1, assists: 0, rating: 7.7, season: '2026', apps: 20, minutes: 1800 },
   { name: 'Jonathan Osorio', clubName: 'Toronto FC', league: 'MLS', competition: 'MLS', gender: 'men', position: 'CM', squad_type: 'SENIOR', national_team: 'CanMNT', age: 33, caps: 78, goals: 9, assists: 14, rating: 7.7, season: '2026', apps: 26, minutes: 1980 },
   { name: 'Cyle Larin', clubName: 'Mallorca', league: 'Abroad', competition: 'La Liga', gender: 'men', position: 'ST', squad_type: 'SENIOR', national_team: 'CanMNT', age: 31, caps: 75, goals: 30, assists: 6, rating: 7.9, season: '2026', apps: 24, minutes: 1890 },
-  { name: 'Jacob Shaffelburg', clubName: 'Nashville SC', league: 'MLS', competition: 'MLS', gender: 'men', position: 'LW', squad_type: 'SENIOR', national_team: 'CanMNT', age: 26, caps: 20, goals: 4, assists: 5, rating: 7.8, season: '2026', apps: 22, minutes: 1650 },
+  { name: 'Jacob Shaffelburg', clubName: 'Nashville SC', league: 'Abroad', competition: 'MLS', gender: 'men', position: 'LW', squad_type: 'SENIOR', national_team: 'CanMNT', age: 26, caps: 20, goals: 4, assists: 5, rating: 7.8, season: '2026', apps: 22, minutes: 1650 },
 
   // --- CanWNT Senior Stars & Expats ---
   { name: 'Jessie Fleming', clubName: 'Portland Thorns', league: 'Abroad', competition: 'NWSL', gender: 'women', position: 'CM', squad_type: 'SENIOR', national_team: 'CanWNT', age: 28, caps: 132, goals: 20, assists: 25, rating: 8.6, season: '2026', apps: 21, minutes: 1890 },
@@ -99,8 +110,8 @@ const PLAYERS_MASTER_PAYLOAD = [
 async function runMasterComprehensiveSync() {
   console.log('🚀 Initializing Comprehensive Master Ingestion for The Maple Pitch...');
 
-  // Step 1: Upsert Teams & Build Lookup Map
-  console.log('🏟️ Upserting clubs, national teams, and leagues...');
+  // Step 1: Upsert Teams & Build Lookup Map (Using slug as conflict target)
+  console.log('🏟️ Upserting clubs, historical teams, national teams, and leagues...');
   const teamMap = new Map();
 
   for (const team of TEAMS_DATA) {
@@ -117,7 +128,7 @@ async function runMasterComprehensiveSync() {
 
     const { data: savedTeam, error: teamErr } = await supabase
       .from('teams')
-      .upsert(teamPayload, { onConflict: 'external_id' })
+      .upsert(teamPayload, { onConflict: 'slug' })
       .select('id, name')
       .single();
 
@@ -162,7 +173,7 @@ async function runMasterComprehensiveSync() {
 
     const { data: savedPlayer, error: playerErr } = await supabase
       .from('players')
-      .upsert(playerRow, { onConflict: 'external_id' })
+      .upsert(playerRow, { onConflict: 'slug' })
       .select('id')
       .single();
 
