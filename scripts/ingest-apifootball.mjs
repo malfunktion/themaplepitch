@@ -10,7 +10,9 @@ if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
   process.exit(1);
 }
 
-const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
+const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
+  auth: { persistSession: false }
+});
 
 function slugify(name) {
   if (!name) return '';
@@ -41,12 +43,19 @@ const VERIFIED_CANADIAN_API_TEAMS = [
 ];
 
 async function ingestApiFootball() {
-  console.log('🚀 Starting Scope-Locked API-Football & Media Vault Ingestion...');
+  console.log('🚀 Starting Scope-Locked API-Football & Squad Ingestion...');
 
   if (!APIF_KEY || APIF_KEY === '5c5b3e3c9a98dd5a09969018da39aa37') {
-    console.warn('⚠️ APIF_KEY appears to be missing or using TheSportsDB test key.');
-    console.warn('⚠️ Using local verified Canadian registry to safely sync Supabase without invalid API calls.');
+    console.warn('⚠️ APIF_KEY appears to be missing or using a test key.');
+    console.warn('⚠️ Aborting external API fetch to protect quotas.');
+    return;
   }
+
+  const headers = {
+    'x-apisports-key': APIF_KEY,
+    'User-Agent': 'TheMaplePitch-ScoutTerminal/1.0',
+    'Accept': 'application/json'
+  };
 
   for (const team of VERIFIED_CANADIAN_API_TEAMS) {
     const teamSlug = slugify(team.name);
@@ -72,9 +81,54 @@ async function ingestApiFootball() {
     }
 
     console.log(`✅ Synced Canadian Club: ${team.name} (ID: ${dbTeam.id})`);
+
+    // 2. Fetch Squad from API-Football
+    try {
+      const squadRes = await fetch(`https://v3.football.api-sports.io/players/squads?team=${team.id}`, { headers });
+      if (!squadRes.ok) {
+        console.warn(`⚠️ Failed to fetch squad for ${team.name}: HTTP ${squadRes.status}`);
+        continue;
+      }
+
+      const squadData = await squadRes.json();
+      const playersList = squadData?.response?.[0]?.players || [];
+
+      if (playersList.length === 0) {
+        console.log(`ℹ️ No players found via API for ${team.name}.`);
+        continue;
+      }
+
+      const playerPayloads = playersList.map(p => ({
+        external_id: `apif-player-${p.id}`,
+        slug: slugify(p.name),
+        name: p.name,
+        position: p.position || 'Unknown',
+        team_id: dbTeam.id,
+        gender: 'men',
+        league: team.league,
+        nationality: p.nationality || 'Canada',
+        metadata: { age: p.age, photo: p.photo }
+      }));
+
+      const { error: playerErr } = await supabase
+        .from('players')
+        .upsert(playerPayloads, { onConflict: 'external_id' });
+
+      if (playerErr) {
+        console.error(`⚠️ Error syncing roster for ${team.name}:`, playerErr.message);
+      } else {
+        console.log(`👤 Successfully synced ${playerPayloads.length} players for ${team.name}`);
+      }
+
+      // Small delay to respect rate limits
+      await new Promise(r => setTimeout(r, 350));
+
+    } catch (apiErr) {
+      console.error(`❌ Network error fetching squad for ${team.name}:`, apiErr.message);
+    }
   }
 
-  console.log('✨ Scope-Locked Ingestion Complete! Zero foreign teams added.');
+  console.log('✨ Scope-Locked Ingestion & Squad Sync Complete!');
 }
 
 ingestApiFootball().catch(err => {
