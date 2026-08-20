@@ -14,8 +14,19 @@ type Match = {
 
 const supabase = createClient();
 
-// Clubs that have suspended operations or folded but whose historical records remain
-const FOLDED_CLUBS = ['valour fc', 'fc edmonton'];
+// Official active 2026 CPL clubs whitelist
+const ACTIVE_CPL_CLUBS = [
+  'cavalry fc',
+  'forge fc',
+  'vancouver fc',
+  'atlético ottawa',
+  'inter toronto fc',
+  'hfx wanderers fc',
+  'halifax wanderers fc',
+  'pacific fc',
+  'fc supra du québec',
+  'fc supra du quebec'
+];
 
 function matchesLeague(teamLeague: string | null | undefined, targetLeague: string): boolean {
   if (!teamLeague) return false;
@@ -42,11 +53,19 @@ export async function computeStandings(competition: string): Promise<StandingsRo
       return [];
     }
 
-    // Filter by league and exclude folded/defunct clubs from active standings
+    const targetUpper = competition.toUpperCase();
+
+    // Filter teams by league and enforce active CPL whitelist if applicable
     const filteredTeams = teamsData.filter((t: any) => {
       const isCorrectLeague = matchesLeague(t.league, competition);
-      const isNotFolded = !FOLDED_CLUBS.includes(t.name.toLowerCase().trim());
-      return isCorrectLeague && isNotFolded;
+      if (!isCorrectLeague) return false;
+
+      if (targetUpper === 'CPL') {
+        const cleanName = (t.name || '').toLowerCase().trim();
+        return ACTIVE_CPL_CLUBS.includes(cleanName);
+      }
+
+      return true;
     });
 
     if (filteredTeams.length === 0) {
@@ -54,8 +73,6 @@ export async function computeStandings(competition: string): Promise<StandingsRo
     }
 
     const { data: matchesData } = await supabase.from('matches').select('*');
-
-    const targetUpper = competition.toUpperCase();
 
     const matches: Match[] = (matchesData || []).filter((m: any) => {
       const comp = String(m.competition || m.competition_id || '').toUpperCase();
