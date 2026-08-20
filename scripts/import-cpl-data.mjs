@@ -1,10 +1,10 @@
 import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
-const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY;
+const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SERVICE_ROLE_KEY;
 
 if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
-  console.error('Missing SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY env vars.');
+  console.error('Missing required environment variables (SUPABASE_URL, and SUPABASE_SERVICE_ROLE_KEY or SERVICE_ROLE_KEY).');
   process.exit(1);
 }
 
@@ -12,6 +12,7 @@ const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY);
 const API_BASE = 'https://canadasoccerapi.com/api';
 
 function slugify(name) {
+  if (!name) return '';
   return name
     .toLowerCase()
     .normalize('NFD')
@@ -28,10 +29,14 @@ const TEAM_NAME_OVERRIDES = {
   'quebec supra': 'FC Supra du Québec',
   'québec supra': 'FC Supra du Québec',
   'atletico ottawa': 'Atlético Ottawa',
+  'atletico ottawa fc': 'Atlético Ottawa',
+  'edmonton': 'FC Edmonton',
 };
 
 function normalizeTeamName(name) {
-  return TEAM_NAME_OVERRIDES[name.trim().toLowerCase()] || name;
+  if (!name) return '';
+  const trimmed = name.trim().toLowerCase();
+  return TEAM_NAME_OVERRIDES[trimmed] || name.trim();
 }
 
 async function importTeams() {
@@ -40,7 +45,7 @@ async function importTeams() {
   if (!res.ok) throw new Error(`/api/teams failed: ${res.status}`);
   const { teams } = await res.json();
 
-  // Self-healing step: Fetch existing CPL teams and clean up any legacy duplicates causing constraint clashes
+  // Self-healing step: Clean up legacy duplicate team records causing constraint conflicts
   const { data: existingTeams } = await supabase
     .from('teams')
     .select('id, external_id, name, league')
@@ -49,7 +54,7 @@ async function importTeams() {
   if (existingTeams && existingTeams.length > 0) {
     const seenSlugs = new Map();
     for (const t of existingTeams) {
-      const slug = slugify(t.name);
+      const slug = slugify(normalizeTeamName(t.name));
       if (seenSlugs.has(slug)) {
         console.log(`Cleaning up duplicate team record for ${t.name} (ID: ${t.id})...`);
         await supabase.from('teams').delete().eq('id', t.id);
@@ -59,10 +64,10 @@ async function importTeams() {
     }
   }
 
-  // Re-fetch clean list after cleanup
+  // Re-fetch clean team list post-cleanup
   const { data: cleanExisting } = await supabase
     .from('teams')
-    .select('id, external_id, name, league')
+    .select('id, external_id, name, league, logo_url, short_name')
     .eq('league', 'CPL');
 
   const existingByExtId = new Map((cleanExisting || []).map((t) => [t.external_id, t]));
@@ -75,12 +80,9 @@ async function importTeams() {
     
     teamMap.set(extId, {
       name: displayName,
-      short_name: null,
       league: 'CPL',
       gender: 'men',
       division_level: 'Professional',
-      logo_url: null,
-      youtube_search_tag: null,
       slug: extId,
       external_id: extId,
     });
@@ -92,24 +94,34 @@ async function importTeams() {
   for (const teamRow of uniqueTeams) {
     const matchByName = existingByName.get(`${teamRow.league}::${teamRow.name.toLowerCase().trim()}`);
     const matchByExtId = existingByExtId.get(teamRow.external_id);
+    const targetMatch = matchByExtId || matchByName;
 
     let error;
-    if (matchByExtId) {
+    if (targetMatch) {
+      // Update core fields without overwriting existing non-null logos/short_names with null
+      const updatePayload = {
+        name: teamRow.name,
+        league: teamRow.league,
+        gender: teamRow.gender,
+        division_level: teamRow.division_level,
+        slug: teamRow.slug,
+        external_id: teamRow.external_id,
+      };
+
       const { error: updateError } = await supabase
         .from('teams')
-        .update(teamRow)
-        .eq('id', matchByExtId.id);
-      error = updateError;
-    } else if (matchByName) {
-      const { error: updateError } = await supabase
-        .from('teams')
-        .update(teamRow)
-        .eq('id', matchByName.id);
+        .update(updatePayload)
+        .eq('id', targetMatch.id);
       error = updateError;
     } else {
       const { error: insertError } = await supabase
         .from('teams')
-        .insert(teamRow);
+        .insert({
+          ...teamRow,
+          short_name: null,
+          logo_url: null,
+          youtube_search_tag: null,
+        });
       error = insertError;
     }
 
@@ -122,9 +134,17 @@ async function importTeams() {
 }
 
 async function getTeamIdMap() {
-  const { data, error } = await supabase.from('teams').select('id, external_id, name').eq('league', 'CPL');
+  const { data, error } = await supabase.from('teams').select('id, external_id, name, slug').eq('league', 'CPL');
   if (error) throw new Error(`teams lookup failed: ${error.message}`);
-  return new Map(data.map((t) => [slugify(t.name), t.id]));
+  
+  const map = new Map();
+  (data || []).forEach((t) => {
+    const normalized = slugify(normalizeTeamName(t.name));
+    map.set(normalized, t.id);
+    if (t.external_id) map.set(t.external_id, t.id);
+    if (t.slug) map.set(t.slug, t.id);
+  });
+  return map;
 }
 
 async function importMatches(teamIdMap) {
@@ -132,7 +152,7 @@ async function importMatches(teamIdMap) {
   const res = await fetch(`${API_BASE}/matches?limit=500`);
   if (!res.ok) throw new Error(`/api/matches failed: ${res.status}`);
   const { matches, total } = await res.json();
-  console.log(`API reports ${total} total matches, fetched ${matches.length}.`);
+  console.log(`API reports ${total || matches.length} total matches, fetched ${matches.length}.`);
 
   const { data: existingMatches } = await supabase
     .from('matches')
@@ -160,18 +180,19 @@ async function importMatches(teamIdMap) {
     const extId = slugify(`${m.date}-${normalizedHome}-${normalizedAway}`);
     const existing = existingMap.get(extId);
 
-    let homeScore = m.home_goals;
-    let awayScore = m.away_goals;
-    let matchStatus = 'Finished';
+    let homeScore = m.home_goals ?? m.home_score ?? null;
+    let awayScore = m.away_goals ?? m.away_score ?? null;
+    let matchStatus = (homeScore !== null && awayScore !== null) ? 'Finished' : 'Scheduled';
 
     if (existing) {
       const existingHasScore = existing.home_score !== null && existing.away_score !== null;
       const incomingHasScore = homeScore !== null && awayScore !== null;
 
+      // Smart Sync: Protect existing verified score & status if incoming feed drops to null
       if (existingHasScore && !incomingHasScore) {
         homeScore = existing.home_score;
         awayScore = existing.away_score;
-        matchStatus = existing.status;
+        matchStatus = existing.status || 'Finished';
         matchesProtected++;
       }
     }
@@ -189,6 +210,7 @@ async function importMatches(teamIdMap) {
     });
   }
 
+  // Deduplicate by external_id before upserting
   const finalDeduper = new Map();
   for (const row of initialRows) {
     finalDeduper.set(row.external_id, row);
