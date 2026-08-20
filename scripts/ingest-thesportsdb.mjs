@@ -2,10 +2,15 @@ import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://wsbyyvtcvyhidvijvwuo.supabase.co';
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SERVICE_ROLE_KEY;
-const THESPORTSDB_KEY = process.env.THESPORTSDB_KEY || '5c5b3e3c9a98dd5a09969018da39aa37';
+
+// Default to free key '3' if key is missing or invalid
+let TSDB_KEY = process.env.THESPORTSDB_KEY || '3';
+if (TSDB_KEY.length > 10) {
+  TSDB_KEY = '3';
+}
 
 if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
-  console.error('❌ Missing required environment variables (SUPABASE_URL or SUPABASE_SERVICE_ROLE_KEY).');
+  console.error('❌ Missing required environment variables (SUPABASE_URL or SERVICE_ROLE_KEY).');
   process.exit(1);
 }
 
@@ -36,21 +41,23 @@ const LEAGUES_TO_IMPORT = [
 
 async function fetchTeamsForLeague(leagueObj) {
   console.log(`🔍 Fetching team profiles & assets for ${leagueObj.name}...`);
-  const url = `https://www.thesportsdb.com/api/v1/json/${THESPORTSDB_KEY}/search_all_teams.php?l=${encodeURIComponent(leagueObj.name)}`;
+  const url = `https://www.thesportsdb.com/api/v1/json/${TSDB_KEY}/search_all_teams.php?l=${encodeURIComponent(leagueObj.name)}`;
 
   try {
     const res = await fetch(url);
-    if (!res.ok) throw new Error(`HTTP Error ${res.status}`);
+    if (!res.ok) {
+      console.warn(`⚠️ TheSportsDB returned status ${res.status} for ${leagueObj.name}.`);
+      return;
+    }
     const data = await res.json();
 
     if (!data || !data.teams) {
-      console.warn(`⚠️ No team records found for ${leagueObj.name}.`);
+      console.warn(`ℹ️ No team records found for ${leagueObj.name}.`);
       return;
     }
 
     let count = 0;
     for (const t of data.teams) {
-      // Filter non-Canadian teams for MLS/NWSL if desired
       if ((leagueObj.code === 'MLS' || leagueObj.code === 'NWSL') && t.strCountry !== 'Canada') {
         continue;
       }
@@ -89,7 +96,7 @@ async function fetchTeamsForLeague(leagueObj) {
 }
 
 async function run() {
-  console.log('🚀 Starting TheSportsDB Ingestion Pipeline...');
+  console.log(`🚀 Starting TheSportsDB Ingestion Pipeline (Key: ${TSDB_KEY})...`);
   for (const league of LEAGUES_TO_IMPORT) {
     await fetchTeamsForLeague(league);
   }
