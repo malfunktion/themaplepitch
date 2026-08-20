@@ -1,8 +1,6 @@
-// src/app/players/[slug]/page.tsx
 import type { Metadata } from 'next';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
-import { cache } from 'react';
 import HubHeader from '@/components/entity/HubHeader';
 import SourceStamp from '@/components/entity/SourceStamp';
 import { createClient } from '@supabase/supabase-js';
@@ -15,9 +13,9 @@ const supabase = createClient(
 export const revalidate = 3600;
 
 export async function generateStaticParams() {
-  const { data: players } = await supabase.from('players').select('id, external_id, slug');
+  const { data: players } = await supabase.from('players').select('id, slug, external_id');
   const params: { slug: string }[] = [];
-  
+
   (players || []).forEach((p) => {
     if (p.slug) params.push({ slug: String(p.slug) });
     if (p.external_id && p.external_id !== p.slug) params.push({ slug: String(p.external_id) });
@@ -27,67 +25,86 @@ export async function generateStaticParams() {
   return params;
 }
 
-function safeFormatDate(dateVal: any): string {
-  if (!dateVal) return 'TBD';
-  try {
-    const parsed = new Date(dateVal);
-    if (isNaN(parsed.getTime())) return 'TBD';
-    return parsed.toLocaleDateString('en-CA', { year: 'numeric', month: 'short', day: 'numeric' });
-  } catch {
-    return 'TBD';
-  }
+async function getPlayerData(slugParam: string) {
+  const isNumeric = !isNaN(Number(slugParam));
+  
+  const flexQuery = isNumeric
+    ? `id.eq.${slugParam},slug.eq.${slugParam},external_id.eq.${slugParam}`
+    : `slug.eq.${slugParam},external_id.eq.${slugParam},slug.ilike.%${slugParam}%`;
+
+  const { data: player } = await supabase
+    .from('players')
+    .select(`
+      *,
+      current_team:teams!current_team_id(id, name, slug, league)
+    `)
+    .or(flexQuery)
+    .maybeSingle();
+
+  if (!player) return null;
+
+  // Fetch season stats & historical match logs
+  const [seasonStatsRes, clubMatchesRes] = await Promise.all([
+    supabase
+      .from('player_season_stats')
+      .select('season, competition, matches_played, goals, assists, minutes, rating, team:teams(name, slug)')
+      .eq('player_id', player.id)
+      .order('season', { ascending: false }),
+    supabase
+      .from('matches')
+      .select(`
+        id,
+        match_date,
+        home_score,
+        away_score,
+        home_team:teams!home_team_id(name, slug),
+        away_team:teams!away_team_id(name, slug)
+      `)
+      .or(`home_team_id.eq.${player.current_team_id},away_team_id.eq.${player.current_team_id}`)
+      .limit(6),
+  ]);
+
+  return {
+    player,
+    seasonStats: seasonStatsRes.data || [],
+    clubMatches: clubMatchesRes.data || [],
+  };
 }
 
-// Cached data fetcher to share execution between generateMetadata and PlayerProfilePage
-const getPlayer = cache(async (slug: string) => {
-  // Try looking up by slug first
-  let { data: player } = await supabase
-    .from('players')
-    .select('*')
-    .eq('slug', slug)
-    .single();
-
-  if (!player) {
-    // Try external_id
-    const { data: extPlayer } = await supabase
-      .from('players')
-      .select('*')
-      .eq('external_id', slug)
-      .single();
-    player = extPlayer;
-  }
-
-  if (!player && !isNaN(Number(slug))) {
-    // Try numeric id
-    const { data: idPlayer } = await supabase
-      .from('players')
-      .select('*')
-      .eq('id', slug)
-      .single();
-    player = idPlayer;
-  }
-
-  return player;
-});
-
-export async function generateMetadata({ params }: { params: Promise<{ slug: string }> }): Promise<Metadata> {
+export async function generateMetadata({
+  params,
+  searchParams,
+}: {
+  params: Promise<{ slug: string }>;
+  searchParams: Promise<{ tab?: string }>;
+}): Promise<Metadata> {
   const { slug } = await params;
-  const player = await getPlayer(slug);
+  const data = await getPlayerData(slug);
 
-  if (!player) {
-    return { title: 'Player Not Found — The Maple Pitch' };
+  if (!data?.player) {
+    return { title: 'Player Not Found | The Maple Pitch' };
   }
 
-  const title = `${player.name} (${player.position || 'Player'}) — Player Dossier`;
-  const description = `Comprehensive career statistics, club performance, and international squad records for ${player.name} on The Maple Pitch.`;
+  const { player } = data;
+  const rawTeam = player.current_team as any;
+  const clubName = Array.isArray(rawTeam) ? rawTeam[0]?.name : rawTeam?.name || player.league || 'Free Agent';
+  const title = `${player.name || 'Player'} | The Maple Pitch`;
+  const description = `${player.name || 'Player'} — ${player.position || 'Player'} (${clubName}). Nationality: ${player.nationality || 'Canada'}. Stats and dossier on The Maple Pitch.`;
 
   return {
     title,
     description,
+    alternates: { canonical: `/players/${player.slug || player.external_id || player.id}` },
     openGraph: {
+      type: 'profile',
       title,
       description,
-      type: 'profile',
+      url: `/players/${player.slug || player.external_id || player.id}`,
+    },
+    twitter: {
+      card: 'summary_large_image',
+      title,
+      description,
     },
   };
 }
@@ -100,97 +117,194 @@ export default async function PlayerProfilePage({
   searchParams: Promise<{ tab?: string }>;
 }) {
   const { slug } = await params;
-  const resolvedSearchParams = await searchParams;
-  const rawTab = resolvedSearchParams.tab?.toUpperCase();
+  const { tab } = await searchParams;
+  const data = await getPlayerData(slug);
 
-  const player = await getPlayer(slug);
+  if (!data?.player) notFound();
 
-  if (!player) {
-    notFound();
-  }
+  const { player, seasonStats, clubMatches } = data;
+  const activeTab = tab === 'national' ? 'national' : 'club';
 
-  const isNationalDefault = rawTab === 'NATIONAL' || rawTab === 'CANMNT' || rawTab === 'CANWNT';
-  const activeTab = isNationalDefault ? 'national' : 'club';
+  const club = Array.isArray(player.current_team) ? (player.current_team as any)[0] : (player.current_team as any);
+  const clubName = club?.name || (player.league ? `${player.league} League` : 'Unattached');
   const playerSlug = player.slug || player.external_id || player.id;
+  const isWomen = player.gender?.toLowerCase() === 'women';
+  const nationalTag = isWomen ? 'CANWNT' : 'CANMNT';
+
+  const clubStatTiles: [string, string | number][] = [
+    ['RATING', player.rating ? Number(player.rating).toFixed(1) : '—'],
+    ['GOALS', player.goals ?? 0],
+    ['ASSISTS', player.assists ?? 0],
+    ['POSITION', player.position || '—'],
+    ['GENDER', player.gender ? player.gender.toUpperCase() : '—'],
+    ['NATIONALITY', player.nationality || 'CAN'],
+  ];
+
+  const internationalStatTiles: [string, string | number][] = [
+    ['INTL CAPS', player.caps ?? 0],
+    ['INTL GOALS', player.intl_goals ?? player.goals ?? 0],
+    ['SQUAD STATUS', player.squad_type || 'SENIOR'],
+    ['POSITION', player.position || '—'],
+    ['PATHWAY', player.excel_pathway || 'Youth EXCEL to Senior'],
+    ['PROGRAM', nationalTag],
+  ];
+
+  const activeTiles = activeTab === 'national' ? internationalStatTiles : clubStatTiles;
 
   return (
     <>
-      <div className="max-w-7xl mx-auto px-4 py-8">
-        <HubHeader 
-          title={player.name} 
-          subtitle={`PLAYER DOSSIER // ${player.position || 'ATHLETE'}`} 
-          tag={player.nationality || 'Canada'} 
-        />
+      <HubHeader
+        eyebrow={`Player Dossier // ${activeTab === 'national' ? `${nationalTag} International Program` : clubName}`}
+        title={(player.name || 'Player').toUpperCase()}
+        description={`${player.position || 'Player'} • ${player.nationality || 'Canada'} • ${activeTab === 'national' ? `Active ${nationalTag} Representative` : `Playing in ${player.league || 'Domestic'}`}. Live profile powered by Supabase telemetry.`}
+      />
 
-        {/* Interactive Context Switcher Bar */}
-        <div className="flex items-center gap-2 mb-6 border-b border-border pb-4">
-          <Link
-            href={`/players/${playerSlug}`}
-            className={`px-4 py-2 text-xs font-mono uppercase tracking-wider rounded-sm transition-colors ${
-              activeTab === 'club'
-                ? 'bg-crimson text-white font-bold'
-                : 'bg-card text-neutral-400 hover:text-white border border-border'
-            }`}
-          >
-            [ CLUB DOSSIER ]
-          </Link>
-          <Link
-            href={`/players/${playerSlug}?tab=national`}
-            className={`px-4 py-2 text-xs font-mono uppercase tracking-wider rounded-sm transition-colors ${
-              activeTab === 'national'
-                ? 'bg-crimson text-white font-bold'
-                : 'bg-card text-neutral-400 hover:text-white border border-border'
-            }`}
-          >
-            [ INTERNATIONAL / SQUAD STATS ]
-          </Link>
-        </div>
+      {/* CONTEXT SWITCHER TOGGLE BAR */}
+      <div className="mb-6 flex items-center gap-2 border border-border bg-card p-2">
+        <Link
+          href={`/players/${playerSlug}`}
+          className={`flex-1 px-4 py-2 text-xs font-mono font-bold uppercase text-center transition-colors border rounded-sm ${
+            activeTab === 'club'
+              ? 'bg-crimson text-white border-crimson'
+              : 'bg-transparent text-charcoal-soft border-border hover:text-charcoal'
+          }`}
+        >
+          [ CLUB &amp; DOMESTIC CAREER ]
+        </Link>
+        <Link
+          href={`/players/${playerSlug}?tab=national`}
+          className={`flex-1 px-4 py-2 text-xs font-mono font-bold uppercase text-center transition-colors border rounded-sm ${
+            activeTab === 'national'
+              ? 'bg-crimson text-white border-crimson'
+              : 'bg-transparent text-charcoal-soft border-border hover:text-charcoal'
+          }`}
+        >
+          [ {nationalTag} INTERNATIONAL PROGRAM ]
+        </Link>
+      </div>
 
-        {/* Profile Content Grid */}
-        <div className="grid grid-cols-1 lg:grid-cols-12 gap-8">
-          <main className="lg:col-span-8 flex flex-col gap-6">
-            <div className="border border-border bg-card p-6 rounded-sm">
-              <h2 className="text-sm font-mono font-bold text-crimson uppercase mb-4">
-                {activeTab === 'national' ? 'INTERNATIONAL PERFORMANCE & CAPS' : 'DOMESTIC CLUB PERFORMANCE'}
-              </h2>
-              <p className="text-sm font-mono text-neutral-300">
-                {activeTab === 'national'
-                  ? `Viewing senior international squad metrics and tournament appearances for ${player.name}.`
-                  : `Viewing current club fixtures, season stats, and performance ratings for ${player.name} at ${player.club || 'Unattached'}.`}
-              </p>
+      <div className="grid gap-6 lg:grid-cols-3">
+        {/* Main Content Area */}
+        <section className="lg:col-span-2 space-y-6">
+          
+          {/* Quick Stat Tiles Matrix */}
+          <div className="border border-border p-5 bg-card">
+            <div className="text-[10px] font-mono uppercase text-crimson mb-3">
+              {activeTab === 'national' ? `${nationalTag} Program Metrics` : 'Current Season Performance'}
             </div>
-          </main>
+            <div className="grid grid-cols-2 sm:grid-cols-3 gap-3">
+              {activeTiles.map(([label, val], idx) => (
+                <div key={idx} className="border border-border/60 p-3 bg-neutral-900/5">
+                  <div className="text-neutral-400 text-[9px] font-mono">{label}</div>
+                  <div className="text-base font-bold mt-1 font-mono text-charcoal dark:text-white">
+                    {val}
+                  </div>
+                </div>
+              ))}
+            </div>
+          </div>
 
-          <aside className="lg:col-span-4 flex flex-col gap-6">
-            <div className="border border-border bg-card p-6 rounded-sm">
-              <h3 className="text-xs font-mono font-bold uppercase text-neutral-400 mb-4">
-                ATHLETE METRICS
-              </h3>
-              <div className="space-y-3 text-xs">
-                <div className="flex justify-between">
-                  <span>Database ID</span>
-                  <span className="font-mono text-charcoal dark:text-neutral-200">{player.id}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Slug Target</span>
-                  <span className="font-mono text-charcoal dark:text-neutral-200">{playerSlug}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Primary Position</span>
-                  <span className="font-mono uppercase text-charcoal dark:text-neutral-200">{player.position || 'N/A'}</span>
-                </div>
-                <div className="flex justify-between">
-                  <span>Active Context</span>
-                  <span className="font-mono uppercase text-crimson font-bold">{activeTab}</span>
-                </div>
+          {/* Multi-Season Career Breakdown Table */}
+          <div className="border border-border p-5 bg-card overflow-x-auto">
+            <div className="text-[10px] font-mono uppercase text-crimson mb-3">
+              Multi-Season Career Archive
+            </div>
+            {seasonStats.length > 0 ? (
+              <table className="w-full text-left font-mono text-xs">
+                <thead>
+                  <tr className="border-b border-border text-neutral-400 text-[10px]">
+                    <th className="pb-2">SEASON</th>
+                    <th className="pb-2">CLUB / PROG</th>
+                    <th className="pb-2">COMP</th>
+                    <th className="pb-2 text-right">APPS</th>
+                    <th className="pb-2 text-right">MINS</th>
+                    <th className="pb-2 text-right">GLS</th>
+                    <th className="pb-2 text-right">AST</th>
+                    <th className="pb-2 text-right">RTG</th>
+                  </tr>
+                </thead>
+                <tbody className="divide-y divide-border/40">
+                  {seasonStats.map((s: any, idx: number) => {
+                    const teamObj = Array.isArray(s.team) ? s.team[0] : s.team;
+                    return (
+                      <tr key={idx} className="hover:bg-neutral-900/5">
+                        <td className="py-2.5 font-bold text-crimson">{s.season}</td>
+                        <td className="py-2.5">{teamObj?.name || clubName}</td>
+                        <td className="py-2.5 uppercase text-[10px] text-neutral-400">{s.competition || 'CPL'}</td>
+                        <td className="py-2.5 text-right">{s.matches_played ?? 0}</td>
+                        <td className="py-2.5 text-right">{s.minutes ?? 0}</td>
+                        <td className="py-2.5 text-right font-bold text-crimson">{s.goals ?? 0}</td>
+                        <td className="py-2.5 text-right">{s.assists ?? 0}</td>
+                        <td className="py-2.5 text-right">{s.rating ? Number(s.rating).toFixed(1) : '—'}</td>
+                      </tr>
+                    );
+                  })}
+                </tbody>
+              </table>
+            ) : (
+              <div className="text-xs text-charcoal-soft font-mono">
+                No granular multi-season stats indexed for this player yet.
+              </div>
+            )}
+          </div>
+
+          {/* Recent Club Matches / Fixtures */}
+          <div className="border border-border p-5 bg-card">
+            <div className="text-[10px] font-mono uppercase text-crimson mb-3">
+              Recent Club Match Log
+            </div>
+            {clubMatches.length > 0 ? (
+              <div className="divide-y divide-border text-xs font-mono">
+                {clubMatches.map((m: any) => {
+                  const hTeam = Array.isArray(m.home_team) ? m.home_team[0] : m.home_team;
+                  const aTeam = Array.isArray(m.away_team) ? m.away_team[0] : m.away_team;
+                  return (
+                    <div key={m.id} className="py-2.5 flex justify-between items-center">
+                      <span className="text-neutral-400 text-[10px]">{m.match_date ? new Date(m.match_date).toLocaleDateString() : 'TBD'}</span>
+                      <span className="font-bold">{hTeam?.name || 'Home'} vs {aTeam?.name || 'Away'}</span>
+                      <span className="text-crimson font-bold">{m.home_score ?? 0} - {m.away_score ?? 0}</span>
+                    </div>
+                  );
+                })}
+              </div>
+            ) : (
+              <div className="text-xs text-charcoal-soft font-mono">No recent match logs recorded.</div>
+            )}
+          </div>
+        </section>
+
+        {/* Sidebar Info */}
+        <aside className="space-y-6">
+          <div className="border border-border bg-card p-5">
+            <div className="text-[10px] font-mono uppercase text-crimson">Player Profile Vitals</div>
+            <div className="mt-4 space-y-3 text-xs text-charcoal-soft font-mono">
+              <div className="flex justify-between border-b border-border/40 pb-2">
+                <span>Full Name</span>
+                <span className="font-mono text-charcoal dark:text-neutral-200">{player.name}</span>
+              </div>
+              <div className="flex justify-between border-b border-border/40 pb-2">
+                <span>Database ID</span>
+                <span className="font-mono text-charcoal dark:text-neutral-200">{player.id}</span>
+              </div>
+              <div className="flex justify-between border-b border-border/40 pb-2">
+                <span>Slug Target</span>
+                <span className="font-mono text-charcoal dark:text-neutral-200">{playerSlug}</span>
+              </div>
+              <div className="flex justify-between border-b border-border/40 pb-2">
+                <span>Primary Position</span>
+                <span className="font-mono uppercase text-charcoal dark:text-neutral-200">{player.position || 'N/A'}</span>
+              </div>
+              <div className="flex justify-between">
+                <span>Active Context</span>
+                <span className="font-mono uppercase text-crimson font-bold">{activeTab}</span>
               </div>
             </div>
-          </aside>
-        </div>
+          </div>
+        </aside>
+      </div>
 
-        <div className="mt-6">
-          <SourceStamp source={{ name: 'The Maple Pitch Unified Player Vault', accessedAt: new Date().toISOString() }} />
-        </div>
+      <div className="mt-6">
+        <SourceStamp source={{ name: 'The Maple Pitch Unified Player Vault', accessedAt: new Date().toISOString() }} />
       </div>
     </>
   );
