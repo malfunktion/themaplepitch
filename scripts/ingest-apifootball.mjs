@@ -45,8 +45,9 @@ const VERIFIED_CANADIAN_API_TEAMS = [
 async function ingestApiFootball() {
   console.log('🚀 Starting Scope-Locked API-Football & Squad Ingestion...');
 
-  if (!APIF_KEY) {
-    console.warn('⚠️ APIF_KEY appears to be missing.');
+  if (!APIF_KEY || APIF_KEY === '5c5b3e3c9a98dd5a09969018da39aa37_test_lock') {
+    console.warn('⚠️ APIF_KEY appears to be missing or using a test key.');
+    console.warn('⚠️ Aborting external API fetch to protect quotas.');
     return;
   }
 
@@ -59,7 +60,7 @@ async function ingestApiFootball() {
   for (const team of VERIFIED_CANADIAN_API_TEAMS) {
     const teamSlug = slugify(team.name);
     
-    // 1. Sync Team Record
+    // 1. Sync Team Record (Targeting composite constraint `league, name` to eliminate collision errors)
     const teamPayload = {
       external_id: `apif-${team.id}`,
       slug: teamSlug,
@@ -70,7 +71,7 @@ async function ingestApiFootball() {
 
     const { data: dbTeam, error: teamErr } = await supabase
       .from('teams')
-      .upsert(teamPayload, { onConflict: 'slug' })
+      .upsert(teamPayload, { onConflict: 'league, name' })
       .select()
       .single();
 
@@ -109,6 +110,7 @@ async function ingestApiFootball() {
         metadata: { age: p.age, photo: p.photo }
       }));
 
+      // Upsert players targeting external_id explicitly
       const { error: playerErr } = await supabase
         .from('players')
         .upsert(playerPayloads, { onConflict: 'external_id' });
