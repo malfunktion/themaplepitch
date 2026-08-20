@@ -7,8 +7,8 @@ const quotes = [
 
 export default function PressRoomTranscripts() {
   return (
-    <div className="bg-card dark:bg-[#171717] border border-border dark:border-neutral-800 rounded-sm p-4 flex flex-col gap-3">
-      <div className="flex justify-between items-center text-xs font-mono text-neutral-400">
+    <div className="bg-card border border-border rounded-sm p-4 flex flex-col gap-3">
+      <div className="flex justify-between items-center text-xs font-mono text-charcoal-soft">
         <span>PRESS ROOM TRANSCRIPTS</span>
         <span className="text-red-600 font-bold">AUDIO &amp; QUOTES</span>
       </div>
@@ -19,7 +19,7 @@ export default function PressRoomTranscripts() {
         {quotes.map((q, i) => (
           <div key={i} className="border-l-2 border-crimson pl-3">
             <p className="text-[11px] text-charcoal dark:text-neutral-300 italic">&ldquo;{q.quote}&rdquo;</p>
-            <span className="text-[9px] font-mono text-charcoal-soft dark:text-neutral-500 mt-1 block">
+            <span className="text-[9px] font-mono text-charcoal-soft mt-1 block">
               {q.speaker} &middot; {q.role}
             </span>
           </div>

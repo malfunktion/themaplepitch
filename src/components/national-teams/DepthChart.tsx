@@ -47,7 +47,7 @@ export default function DepthChart({ activeGender = 'MEN' }: DepthChartProps) {
       <div className="overflow-x-auto">
         <table className="w-full text-left border-collapse font-mono text-xs">
           <thead>
-            <tr className="border-b border-border text-[10px] text-charcoal-soft dark:text-neutral-400 uppercase">
+            <tr className="border-b border-border text-[10px] text-charcoal-soft uppercase">
               <th className="py-2 px-3">Position</th>
               <th className="py-2 px-3">Starting XI Preference</th>
               <th className="py-2 px-3">Primary Deputy</th>
@@ -60,7 +60,7 @@ export default function DepthChart({ activeGender = 'MEN' }: DepthChartProps) {
                 <td className="py-3 px-3 font-bold text-crimson">{row.pos}</td>
                 <td className="py-3 px-3 font-bold text-charcoal dark:text-white">{row.starter}</td>
                 <td className="py-3 px-3 text-charcoal dark:text-neutral-200">{row.deputy}</td>
-                <td className="py-3 px-3 text-right text-charcoal-soft dark:text-neutral-400">{row.reserve}</td>
+                <td className="py-3 px-3 text-right text-charcoal-soft">{row.reserve}</td>
               </tr>
             ))}
           </tbody>
