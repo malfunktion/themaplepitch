@@ -1,4 +1,3 @@
-// scripts/import-national-teams.mjs
 import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
@@ -21,9 +20,8 @@ function slugify(name) {
 }
 
 async function importNationalTeams() {
-  console.log('Importing Canadian National Teams & Squads...');
+  console.log('Importing Canadian National Teams & Squads with Smart Sync...');
 
-  // 1. Upsert National Team entities
   const nationalTeams = [
     { external_id: 'nat-canmnt', name: "Canada Men's National Team", short_name: 'CanMNT', league: 'National Teams', gender: 'men', division_level: 'International', slug: 'canmnt' },
     { external_id: 'nat-canwnt', name: "Canada Women's National Team", short_name: 'CanWNT', league: 'National Teams', gender: 'women', division_level: 'International', slug: 'canwnt' },
@@ -33,12 +31,9 @@ async function importNationalTeams() {
     const { error } = await supabase.from('teams').upsert(team, { onConflict: 'external_id' });
     if (error) {
       console.error(`Failed to upsert team ${team.name}:`, error.message);
-    } else {
-      console.log(`Successfully upserted: ${team.name}`);
     }
   }
 
-  // 2. Fetch team IDs from Supabase
   const { data: dbTeams, error: fetchTeamError } = await supabase.from('teams').select('id, short_name');
   if (fetchTeamError) {
     console.error('Failed to fetch teams:', fetchTeamError.message);
@@ -50,9 +45,8 @@ async function importNationalTeams() {
     teamMap[t.short_name] = t.id;
   });
 
-  // 3. Define Complete Dual-Gender Squad Pools
   const completeSquads = [
-    // --- CANMNT (Men's Senior) ---
+    // --- CANMNT ---
     { name: 'Alphonso Davies', position: 'LB', league: 'Abroad', gender: 'men', squad_type: 'SENIOR', national_team: 'CanMNT', club: 'Bayern Munich', caps: 55, goals: 15, assists: 12, rating: 8.9 },
     { name: 'Jonathan David', position: 'ST', league: 'Abroad', gender: 'men', squad_type: 'SENIOR', national_team: 'CanMNT', club: 'Lille OSC', caps: 54, goals: 29, assists: 8, rating: 8.8 },
     { name: 'Stephen Eustáquio', position: 'CM', league: 'Abroad', gender: 'men', squad_type: 'SENIOR', national_team: 'CanMNT', club: 'FC Porto', caps: 42, goals: 5, assists: 6, rating: 8.3 },
@@ -68,8 +62,7 @@ async function importNationalTeams() {
     { name: 'Ali Ahmed', position: 'LM', league: 'MLS', gender: 'men', squad_type: 'SENIOR', national_team: 'CanMNT', club: 'Vancouver Whitecaps', caps: 8, goals: 0, assists: 2, rating: 7.3 },
     { name: 'Jacob Shaffelburg', position: 'LW', league: 'MLS', gender: 'men', squad_type: 'SENIOR', national_team: 'CanMNT', club: 'Nashville SC', caps: 16, goals: 3, assists: 4, rating: 7.6 },
     { name: 'Cyle Larin', position: 'ST', league: 'Abroad', gender: 'men', squad_type: 'SENIOR', national_team: 'CanMNT', club: 'Mallorca', caps: 78, goals: 30, assists: 5, rating: 8.1 },
-
-    // --- CANWNT (Women's Senior) ---
+    // --- CANWNT ---
     { name: 'Jessie Fleming', position: 'CM', league: 'Abroad', gender: 'women', squad_type: 'SENIOR', national_team: 'CanWNT', club: 'Portland Thorns FC', caps: 135, goals: 30, assists: 15, rating: 8.6 },
     { name: 'Kadeisha Buchanan', position: 'CB', league: 'Abroad', gender: 'women', squad_type: 'SENIOR', national_team: 'CanWNT', club: 'Chelsea FC', caps: 154, goals: 5, assists: 2, rating: 8.5 },
     { name: 'Ashley Lawrence', position: 'FB', league: 'Abroad', gender: 'women', squad_type: 'SENIOR', national_team: 'CanWNT', club: 'Chelsea FC', caps: 132, goals: 8, assists: 20, rating: 8.4 },
@@ -83,28 +76,55 @@ async function importNationalTeams() {
     { name: 'Jade Rose', position: 'CB', league: 'Collegiate', gender: 'women', squad_type: 'SENIOR', national_team: 'CanWNT', club: 'Harvard / CanWNT', caps: 22, goals: 1, assists: 2, rating: 7.8 }
   ];
 
-  const formattedPlayers = completeSquads.map(p => ({
-    external_id: slugify(p.name),
-    name: p.name,
-    position: p.position,
-    league: p.league,
-    gender: p.gender,
-    squad_type: p.squad_type,
-    team_id: teamMap[p.national_team] || null,
-    caps: p.caps,
-    goals: p.goals,
-    assists: p.assists,
-    rating: p.rating
-  }));
+  // Fetch existing records to compare stats/caps/goals before writing
+  const { data: existingPlayers } = await supabase.from('players').select('external_id, caps, goals, assists');
+  const existingMap = new Map();
+  (existingPlayers || []).forEach(p => existingMap.set(p.external_id, p));
 
-  const { error: upsertError } = await supabase
-    .from('players')
-    .upsert(formattedPlayers, { onConflict: 'external_id' });
+  const rowsToUpsert = [];
+  let skippedUnchanged = 0;
 
-  if (upsertError) {
-    console.error('Player upsert failed:', upsertError.message);
+  for (const p of completeSquads) {
+    const extId = slugify(p.name);
+    const incomingData = {
+      external_id: extId,
+      slug: extId,
+      name: p.name,
+      position: p.position,
+      league: p.league,
+      gender: p.gender,
+      squad_type: p.squad_type,
+      team_id: teamMap[p.national_team] || null,
+      caps: p.caps,
+      goals: p.goals,
+      assists: p.assists,
+      rating: p.rating,
+    };
+
+    const existing = existingMap.get(extId);
+    if (existing) {
+      // Smart Sync Check: Skip DB write if caps, goals, and assists are completely identical
+      if (existing.caps === incomingData.caps && existing.goals === incomingData.goals && existing.assists === incomingData.assists) {
+        skippedUnchanged++;
+        continue;
+      }
+    }
+
+    rowsToUpsert.push(incomingData);
+  }
+
+  if (rowsToUpsert.length > 0) {
+    const { error: upsertError } = await supabase
+      .from('players')
+      .upsert(rowsToUpsert, { onConflict: 'external_id' });
+
+    if (upsertError) {
+      console.error('Player upsert failed:', upsertError.message);
+    } else {
+      console.log(`Successfully smart-synced ${rowsToUpsert.length} player profiles (${skippedUnchanged} unchanged profiles skipped).`);
+    }
   } else {
-    console.log(`Successfully upserted ${formattedPlayers.length} dual-gender national team players into Supabase!`);
+    console.log('All national team player records are already up to date. No database writes required.');
   }
 }
 
