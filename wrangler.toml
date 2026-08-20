@@ -2,8 +2,6 @@ name = "maplepitch-dev"
 main = ".open-next/worker.js"
 compatibility_date = "2024-09-23"
 compatibility_flags = ["nodejs_compat"]
-
-
 workers_dev = true
 
 routes = [
@@ -34,6 +32,17 @@ run_worker_first = true
 NEXT_PUBLIC_SANITY_PROJECT_ID = "uvf97j3d"
 NEXT_PUBLIC_SANITY_DATASET = "production"
 NEXT_PUBLIC_SANITY_API_VERSION = "2026-08-01"
+# NEXT_PUBLIC_* vars here are what actually reaches process.env at runtime
+# on the deployed Worker — GitHub Actions secrets only affect the build
+# step (next build), which is a *different* thing: that's what's inlined
+# into the client-side JS bundle, but Server Components and API routes
+# read process.env at request time, straight from this file. Missing here
+# is why players/teams/stats/home all showed nothing despite Supabase
+# having real data — every server-side query was running with an empty
+# anon key. Safe to commit — anon key is public by design, RLS controls
+# what it can actually read.
+NEXT_PUBLIC_SUPABASE_URL = "https://wsbyyvtcvyhidvijvwuo.supabase.co"
+NEXT_PUBLIC_SUPABASE_ANON_KEY = "PASTE_YOUR_REAL_ANON_KEY_HERE"
 
 # Cloudflare Workers Rate Limiting
 [[ratelimits]]
