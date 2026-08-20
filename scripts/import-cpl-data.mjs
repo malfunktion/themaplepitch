@@ -56,22 +56,24 @@ async function importTeams() {
     });
   }
 
-  // Deduplicate strictly by external_id to eliminate batch duplicates before upserting
+  // Deduplicate strictly by league and normalized name to match teams_league_name_key constraint
   const finalDeduper = new Map();
   for (const row of initialRows) {
-    finalDeduper.set(row.external_id, row);
+    const dedupeKey = `${row.league}::${row.name.toLowerCase().trim()}`;
+    finalDeduper.set(dedupeKey, row);
   }
   const uniqueRows = Array.from(finalDeduper.values());
 
-  const { error } = await supabase.from('teams').upsert(uniqueRows, { onConflict: 'external_id' });
+  // Target the exact constraint columns 'league,name' matching teams_league_name_key
+  const { error } = await supabase.from('teams').upsert(uniqueRows, { onConflict: 'league,name' });
   if (error) throw new Error(`teams upsert failed: ${error.message}`);
   console.log(`Upserted ${uniqueRows.length} unique CPL teams.`);
 }
 
 async function getTeamIdMap() {
-  const { data, error } = await supabase.from('teams').select('id, external_id').eq('league', 'CPL');
+  const { data, error } = await supabase.from('teams').select('id, external_id, name').eq('league', 'CPL');
   if (error) throw new Error(`teams lookup failed: ${error.message}`);
-  return new Map(data.map((t) => [t.external_id, t.id]));
+  return new Map(data.map((t) => [slugify(t.name), t.id]));
 }
 
 async function importMatches(teamIdMap) {
@@ -93,14 +95,18 @@ async function importMatches(teamIdMap) {
   let matchesProtected = 0;
 
   for (const m of matches) {
-    const homeId = teamIdMap.get(slugify(normalizeTeamName(m.home_team)));
-    const awayId = teamIdMap.get(slugify(normalizeTeamName(m.away_team)));
+    const normalizedHome = normalizeTeamName(m.home_team);
+    const normalizedAway = normalizeTeamName(m.away_team);
+    
+    const homeId = teamIdMap.get(slugify(normalizedHome));
+    const awayId = teamIdMap.get(slugify(normalizedAway));
+    
     if (!homeId || !awayId) {
       skipped += 1;
       continue;
     }
 
-    const extId = slugify(`${m.date}-${normalizeTeamName(m.home_team)}-${normalizeTeamName(m.away_team)}`);
+    const extId = slugify(`${m.date}-${normalizedHome}-${normalizedAway}`);
     const existing = existingMap.get(extId);
 
     let homeScore = m.home_goals;
