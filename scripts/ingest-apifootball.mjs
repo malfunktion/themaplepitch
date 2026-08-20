@@ -45,9 +45,8 @@ const VERIFIED_CANADIAN_API_TEAMS = [
 async function ingestApiFootball() {
   console.log('🚀 Starting Scope-Locked API-Football & Squad Ingestion...');
 
-  if (!APIF_KEY || APIF_KEY === '5c5b3e3c9a98dd5a09969018da39aa37') {
-    console.warn('⚠️ APIF_KEY appears to be missing or using a test key.');
-    console.warn('⚠️ Aborting external API fetch to protect quotas.');
+  if (!APIF_KEY) {
+    console.warn('⚠️ APIF_KEY appears to be missing.');
     return;
   }
 
