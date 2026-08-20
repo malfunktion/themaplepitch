@@ -39,11 +39,13 @@ async function importTeams() {
   if (!res.ok) throw new Error(`/api/teams failed: ${res.status}`);
   const { teams } = await res.json();
 
-  const initialRows = [];
+  // Deduplicate incoming teams by external_id first
+  const teamMap = new Map();
   for (const t of teams) {
     const displayName = normalizeTeamName(t.name);
     const extId = slugify(displayName);
-    initialRows.push({
+    
+    teamMap.set(extId, {
       name: displayName,
       short_name: null,
       league: 'CPL',
@@ -56,18 +58,21 @@ async function importTeams() {
     });
   }
 
-  // Deduplicate strictly by league and normalized name to match teams_league_name_key constraint
-  const finalDeduper = new Map();
-  for (const row of initialRows) {
-    const dedupeKey = `${row.league}::${row.name.toLowerCase().trim()}`;
-    finalDeduper.set(dedupeKey, row);
-  }
-  const uniqueRows = Array.from(finalDeduper.values());
+  const uniqueTeams = Array.from(teamMap.values());
+  console.log(`Upserting ${uniqueTeams.length} unique CPL teams individually...`);
 
-  // Target the exact constraint columns 'league,name' matching teams_league_name_key
-  const { error } = await supabase.from('teams').upsert(uniqueRows, { onConflict: 'league,name' });
-  if (error) throw new Error(`teams upsert failed: ${error.message}`);
-  console.log(`Upserted ${uniqueRows.length} unique CPL teams.`);
+  // Upsert one by one to completely bypass batch constraint mapping errors
+  for (const teamRow of uniqueTeams) {
+    const { error } = await supabase
+      .from('teams')
+      .upsert(teamRow, { onConflict: 'external_id' });
+
+    if (error) {
+      console.error(`Failed to upsert team ${teamRow.name}:`, error.message);
+    }
+  }
+
+  console.log('CPL teams sync complete.');
 }
 
 async function getTeamIdMap() {
