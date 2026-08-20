@@ -4,8 +4,8 @@ const SUPABASE_URL = process.env.SUPABASE_URL;
 const SERVICE_ROLE_KEY = process.env.SERVICE_ROLE_KEY;
 const APIF_KEY = process.env.APIF_KEY;
 
-if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
-  console.error('❌ Missing SUPABASE_URL or SERVICE_ROLE_KEY.');
+if (!SUPABASE_URL || !SERVICE_ROLE_KEY || !APIF_KEY) {
+  console.error('❌ Missing SUPABASE_URL, SERVICE_ROLE_KEY, or APIF_KEY.');
   process.exit(1);
 }
 
@@ -21,7 +21,6 @@ function slugify(name) {
     .replace(/(^-|-$)/g, '');
 }
 
-// 1. DEFINE THIS FIRST (Before any loops use it)
 const VERIFIED_CANADIAN_API_TEAMS = [
   // CPL Clubs (API-Football IDs)
   { id: 15121, name: 'Forge FC', league: 'CPL' },
@@ -41,10 +40,77 @@ const VERIFIED_CANADIAN_API_TEAMS = [
 async function runIngestion() {
   console.log('🚀 Starting Scope-Locked API-Football & Squad Ingestion...');
 
-  // 2. NOW THE LOOP WILL FIND IT
   for (const team of VERIFIED_CANADIAN_API_TEAMS) {
-    // Your fetch, database check, and upsert logic goes here...
+    try {
+      // 1. Look up the internal team ID from Supabase using the team name
+      const { data: dbTeam, error: teamErr } = await supabase
+        .from('teams')
+        .select('id')
+        .ilike('name', team.name)
+        .maybeSingle();
+
+      if (teamErr || !dbTeam) {
+        console.warn(`⚠️ Could not find database record for team: ${team.name}`);
+        continue;
+      }
+
+      // 2. Fetch squad data from API-Football
+      const squadRes = await fetch(`https://v3.football.api-sports.io/players/squads?team=${team.id}`, {
+        headers: { 'x-apisports-key': APIF_KEY }
+      });
+
+      if (squadRes.status === 429) {
+        console.warn(`⚠️ Rate limit hit (429) for ${team.name}. Pausing for cooldown...`);
+        await new Promise(r => setTimeout(r, 6000));
+        continue;
+      }
+
+      if (!squadRes.ok) {
+        console.warn(`⚠️ Failed to fetch squad for ${team.name}: HTTP ${squadRes.status}`);
+        continue;
+      }
+
+      const squadData = await squadRes.json();
+      const playersList = squadData?.response?.[0]?.players || [];
+
+      if (playersList.length === 0) {
+        console.log(`ℹ️ No players found via API for ${team.name}.`);
+        continue;
+      }
+
+      // 3. Map players payload
+      const playerPayloads = playersList.map(p => ({
+        external_id: `apif-player-${p.id}`,
+        slug: slugify(p.name),
+        name: p.name,
+        position: p.position || 'Unknown',
+        team_id: dbTeam.id,
+        gender: 'men',
+        league: team.league,
+        nationality: p.nationality || 'Canada',
+        metadata: { age: p.age, photo: p.photo }
+      }));
+
+      // 4. Upsert players into Supabase safely
+      const { error: playerErr } = await supabase
+        .from('players')
+        .upsert(playerPayloads, { onConflict: 'external_id' });
+
+      if (playerErr) {
+        console.error(`⚠️ Error syncing roster for ${team.name}:`, playerErr.message);
+      } else {
+        console.log(`👤 Successfully synced ${playerPayloads.length} players for ${team.name}`);
+      }
+
+      // 5. Throttling delay between requests to protect daily limits
+      await new Promise(r => setTimeout(r, 500));
+
+    } catch (err) {
+      console.error(`❌ Network error processing ${team.name}:`, err.message);
+    }
   }
+
+  console.log('✨ Scope-Locked Ingestion & Squad Sync Complete!');
 }
 
 runIngestion().catch(err => {
