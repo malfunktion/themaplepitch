@@ -107,7 +107,7 @@ async function importTeams() {
   const uniqueRows = Array.from(finalDeduper.values());
 
   if (uniqueRows.length > 0) {
-    const { error } = await supabase.from('teams').upsert(uniqueRows, { onConflict: 'league,name' });
+    const { error } = await supabase.from('teams').upsert(uniqueRows, { onConflict: 'external_id' });
     if (error) throw new Error(`Teams upsert failed: ${error.message}`);
     console.log(`Successfully upserted ${uniqueRows.length} official teams into Supabase.`);
   }
