@@ -62,7 +62,7 @@ export default async function HomePage() {
     supabase
       .from('players')
       .select(`
-        id, name, slug, external_id, goals, assists, gender, league, is_canadian,
+        *,
         current_team:teams!current_team_id (name)
       `),
   ]);
