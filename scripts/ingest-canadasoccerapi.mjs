@@ -35,7 +35,10 @@ const TEAM_NAME_OVERRIDES = {
   'inter toronto': 'Inter Toronto FC',
   'york united': 'Inter Toronto FC',
   'york united fc': 'Inter Toronto FC',
-  'atletico ottawa': 'Atlético Ottawa'
+  'atletico ottawa': 'Atlético Ottawa',
+  'supra': 'FC Supra du Québec',
+  'quebec supra': 'FC Supra du Québec',
+  'québec supra': 'FC Supra du Québec'
 };
 
 function normalizeTeamName(name) {
