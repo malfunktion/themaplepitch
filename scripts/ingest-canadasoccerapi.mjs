@@ -1,3 +1,4 @@
+// scripts/ingest-canadasoccerapi.mjs
 import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://wsbyyvtcvyhidvijvwuo.supabase.co';
@@ -25,6 +26,24 @@ function slugify(text) {
     .replace(/-+/g, '-');
 }
 
+const TEAM_NAME_OVERRIDES = {
+  'york united': 'Inter Toronto FC',
+  'york united fc': 'Inter Toronto FC',
+  'york9': 'Inter Toronto FC',
+  'york9 fc': 'Inter Toronto FC',
+  'quebec supra': 'FC Supra du Québec',
+  'québec supra': 'FC Supra du Québec',
+  'atletico ottawa': 'Atlético Ottawa',
+  'atletico ottawa fc': 'Atlético Ottawa',
+  'edmonton': 'FC Edmonton',
+};
+
+function normalizeTeamName(name) {
+  if (!name) return '';
+  const trimmed = name.trim().toLowerCase();
+  return TEAM_NAME_OVERRIDES[trimmed] || name.trim();
+}
+
 async function ingestTeams() {
   console.log('🏟️ Ingesting CPL Teams from CanadaSoccerAPI...');
   try {
@@ -33,30 +52,43 @@ async function ingestTeams() {
     const body = await res.json();
     const teams = Array.isArray(body) ? body : (body.teams || []);
 
+    // Query existing teams to preserve non-null data and cross-reference IDs
+    const { data: existingTeams } = await supabase
+      .from('teams')
+      .select('*')
+      .eq('league', 'CPL');
+
+    const existingMap = new Map();
+    (existingTeams || []).forEach(t => existingMap.set(slugify(normalizeTeamName(t.name)), t));
+
     const teamMap = new Map();
 
     for (const team of teams) {
-      const name = team.name || team.team_name || team.team;
-      if (!name) continue;
+      const rawName = team.name || team.team_name || team.team;
+      if (!rawName) continue;
 
-      const slug = slugify(name);
+      const displayName = normalizeTeamName(rawName);
+      const slug = slugify(displayName);
       const externalId = `cpl-${slug}`;
+      const existing = existingMap.get(slug);
 
       const payload = {
         external_id: externalId,
         slug: slug,
-        name: name,
-        short_name: team.short_name || team.code || null,
+        name: displayName,
+        short_name: team.short_name || team.code || existing?.short_name || null,
         league: 'CPL',
         competition: 'CPL',
         gender: 'men',
-        venue: team.venue || team.stadium || null,
-        city: team.city || null
+        venue: team.venue || team.stadium || existing?.venue || null,
+        city: team.city || existing?.city || null,
+        logo_url: existing?.logo_url || null,
+        csapi_id: String(team.id || slug)
       };
 
       const { data, error } = await supabase
         .from('teams')
-        .upsert(payload, { onConflict: 'external_id' })
+        .upsert(payload, { onConflict: 'slug' })
         .select('id, name, external_id')
         .single();
 
@@ -65,6 +97,7 @@ async function ingestTeams() {
       } else if (data) {
         teamMap.set(data.name.toLowerCase(), data.id);
         teamMap.set(data.name.toLowerCase().replace(' fc', ''), data.id);
+        teamMap.set(slug, data.id);
         console.log(`✅ Synced Team: ${data.name} (ID: ${data.id})`);
       }
     }
@@ -79,27 +112,49 @@ async function ingestTeams() {
 async function ingestMatches(teamMap) {
   console.log('⚽ Ingesting CPL Match History & Telemetry (with xG)...');
   try {
-    const res = await fetch('https://canadasoccerapi.com/api/matches?limit=300');
+    const res = await fetch('https://canadasoccerapi.com/api/matches?limit=500');
     if (!res.ok) throw new Error(`HTTP Error ${res.status}`);
     const body = await res.json();
     const matches = Array.isArray(body) ? body : (body.matches || []);
 
+    const { data: existingMatches } = await supabase
+      .from('matches')
+      .select('external_id, home_score, away_score, home_xg, away_xg, status');
+
+    const existingMatchMap = new Map();
+    (existingMatches || []).forEach(m => existingMatchMap.set(m.external_id, m));
+
     let syncedCount = 0;
+    let skippedCount = 0;
 
     for (const m of matches) {
-      const homeName = m.home_team || m.homeTeam || m.home_team_name;
-      const awayName = m.away_team || m.awayTeam || m.away_team_name;
+      const homeName = normalizeTeamName(m.home_team || m.homeTeam || m.home_team_name);
+      const awayName = normalizeTeamName(m.away_team || m.awayTeam || m.away_team_name);
 
       if (!homeName || !awayName) continue;
 
-      const homeId = teamMap.get(homeName.toLowerCase()) || teamMap.get(homeName.toLowerCase().replace(' fc', '')) || null;
-      const awayId = teamMap.get(awayName.toLowerCase()) || teamMap.get(awayName.toLowerCase().replace(' fc', '')) || null;
+      const homeId = teamMap.get(slugify(homeName)) || teamMap.get(homeName.toLowerCase()) || null;
+      const awayId = teamMap.get(slugify(awayName)) || teamMap.get(awayName.toLowerCase()) || null;
+
+      if (!homeId || !awayId) {
+        skippedCount++;
+        continue;
+      }
 
       const matchDate = m.date || m.match_date || new Date().toISOString();
       const externalId = `cpl-match-${slugify(homeName)}-vs-${slugify(awayName)}-${matchDate.split('T')[0]}`;
+      const existing = existingMatchMap.get(externalId);
 
-      const homeScore = m.home_goals ?? m.home_score ?? m.homeScore ?? null;
-      const awayScore = m.away_goals ?? m.away_score ?? m.awayScore ?? null;
+      let homeScore = m.home_goals ?? m.home_score ?? m.homeScore ?? existing?.home_score ?? null;
+      let awayScore = m.away_goals ?? m.away_score ?? m.awayScore ?? existing?.away_score ?? null;
+      let homeXg = m.home_xg ?? m.homeXg ?? existing?.home_xg ?? null;
+      let awayXg = m.away_xg ?? m.awayXg ?? existing?.away_xg ?? null;
+      let matchStatus = existing?.status || ((homeScore !== null && awayScore !== null) ? 'FT' : 'NS');
+
+      // Rule 4: Skip re-writing completed historical matches unless filling missing xG or scores
+      if (existing && existing.status === 'FT' && existing.home_score !== null && existing.home_xg !== null) {
+        continue;
+      }
 
       const matchPayload = {
         external_id: externalId,
@@ -107,10 +162,10 @@ async function ingestMatches(teamMap) {
         away_team_id: awayId,
         home_score: homeScore,
         away_score: awayScore,
-        home_xg: m.home_xg || m.homeXg || null,
-        away_xg: m.away_xg || m.awayXg || null,
+        home_xg: homeXg,
+        away_xg: awayXg,
         venue: m.venue || m.stadium || null,
-        status: m.status || (homeScore !== null ? 'FT' : 'NS'),
+        status: matchStatus,
         match_date: matchDate,
         competition: 'CPL'
       };
@@ -126,7 +181,7 @@ async function ingestMatches(teamMap) {
       }
     }
 
-    console.log(`🎉 Successfully synced ${syncedCount} CPL matches with xG into Supabase!`);
+    console.log(`🎉 Successfully synced ${syncedCount} CPL matches into Supabase! (${skippedCount} skipped)`);
   } catch (err) {
     console.error('❌ Failed to ingest matches:', err.message);
   }
