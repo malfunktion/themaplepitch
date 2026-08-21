@@ -1,40 +1,49 @@
+// src/app/api/stats/route.ts
 import { NextResponse } from 'next/server';
-import { supabase } from '@/lib/supabase/client';
-import { checkRateLimit, rateLimitResponse } from '@/lib/rateLimit';
+import { createClient } from '@supabase/supabase-js';
 
-// src/app/stats/page.tsx fetches this route client-side (via fetch, not a
-// direct Supabase call) specifically so the query runs where it's cheap
-// to retry/cache, and so the anon key isn't the only thing standing
-// between the browser and the database. This route was referenced by
-// that page already — it just never existed, which is the actual reason
-// "SYNCED PLAYERS: 0" always showed regardless of what was in the table.
+const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://wsbyyvtcvyhidvijvwuo.supabase.co';
+const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'mock-key';
+
+const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
 export const revalidate = 60;
 
-export async function GET(request: Request) {
-  if (!(await checkRateLimit(request))) return rateLimitResponse();
+export async function GET() {
+  try {
+    const [playersRes, teamsRes] = await Promise.all([
+      supabase.from('players').select('*'),
+      supabase.from('teams').select('*'),
+    ]);
 
-  const [playersRes, teamsRes] = await Promise.all([
-    supabase.from('players').select('*'),
-    supabase.from('teams').select('*'),
-  ]);
+    if (playersRes.error) {
+      console.error('/api/stats players query error:', playersRes.error);
+    }
+    if (teamsRes.error) {
+      console.error('/api/stats teams query error:', teamsRes.error);
+    }
 
-  if (playersRes.error) {
-    console.error('/api/stats players query failed:', playersRes.error);
-  }
-  if (teamsRes.error) {
-    console.error('/api/stats teams query failed:', teamsRes.error);
-  }
-
-  return NextResponse.json(
-    {
-      players: playersRes.data ?? [],
-      teams: teamsRes.data ?? [],
-      meta: {
-        status: 'live',
-        playersError: playersRes.error?.message ?? null,
-        teamsError: teamsRes.error?.message ?? null,
+    return NextResponse.json(
+      {
+        players: playersRes.data ?? [],
+        teams: teamsRes.data ?? [],
+        meta: {
+          status: 'live',
+          playersCount: playersRes.data?.length ?? 0,
+          teamsCount: teamsRes.data?.length ?? 0,
+        },
       },
-    },
-    { headers: { 'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300' } }
-  );
+      {
+        headers: {
+          'Cache-Control': 'public, s-maxage=60, stale-while-revalidate=300',
+        },
+      }
+    );
+  } catch (err: any) {
+    console.error('/api/stats route exception:', err);
+    return NextResponse.json(
+      { players: [], teams: [], error: err.message },
+      { status: 500 }
+    );
+  }
 }
