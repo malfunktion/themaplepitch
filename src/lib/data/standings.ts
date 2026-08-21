@@ -1,96 +1,36 @@
-// src/lib/data/standings.ts
 import { createClient } from '@/lib/supabase/client';
-import type { StandingsRow, LiveTickerItem } from '@/lib/types';
-
-type Match = {
-  home_team_id: number;
-  away_team_id: number;
-  home_score?: number;
-  away_score?: number;
-  status?: string;
-  competition?: string;
-  competition_id?: string | number;
-};
+import type { StandingsRow } from '@/lib/types';
 
 const supabase = createClient();
 
-// Official active 2026 CPL clubs whitelist
-const ACTIVE_CPL_CLUBS = [
-  'cavalry fc',
-  'forge fc',
-  'vancouver fc',
-  'atlético ottawa',
-  'inter toronto fc',
-  'hfx wanderers fc',
-  'halifax wanderers fc',
-  'pacific fc',
-  'fc supra du québec',
-  'fc supra du quebec'
-];
-
-function matchesLeague(teamLeague: string | null | undefined, targetLeague: string): boolean {
-  if (!teamLeague) return false;
-  const normalized = teamLeague.toUpperCase();
-  const target = targetLeague.toUpperCase();
-
-  if (target === 'CPL') {
-    return normalized.includes('CPL') || normalized.includes('CANADIAN PREMIER LEAGUE');
-  }
-  if (target === 'NSL') {
-    return normalized.includes('NSL') || normalized.includes('NORTHERN SUPER LEAGUE');
-  }
-  return normalized === target;
-}
-
 export async function computeStandings(competition: string): Promise<StandingsRow[]> {
   try {
-    const { data: teamsData, error: teamsError } = await supabase
-      .from('teams')
-      .select('*')
-      .order('name', { ascending: true });
+    const [teamsRes, matchesRes] = await Promise.all([
+      supabase.from('teams').select('id, name, slug, external_id').eq('league', competition),
+      supabase
+        .from('matches')
+        .select('home_team_id, away_team_id, home_score, away_score, status, competition')
+        .eq('competition', competition),
+    ]);
 
-    if (teamsError || !teamsData || teamsData.length === 0) {
+    if (teamsRes.error || matchesRes.error || !teamsRes.data) {
       return [];
     }
 
-    const targetUpper = competition.toUpperCase();
-
-    // Filter teams by league and enforce active CPL whitelist if applicable
-    const filteredTeams = teamsData.filter((t: any) => {
-      const isCorrectLeague = matchesLeague(t.league, competition);
-      if (!isCorrectLeague) return false;
-
-      if (targetUpper === 'CPL') {
-        const cleanName = (t.name || '').toLowerCase().trim();
-        return ACTIVE_CPL_CLUBS.includes(cleanName);
-      }
-
-      return true;
-    });
-
-    if (filteredTeams.length === 0) {
-      return [];
-    }
-
-    const { data: matchesData } = await supabase.from('matches').select('*');
-
-    const matches: Match[] = (matchesData || []).filter((m: any) => {
-      const comp = String(m.competition || m.competition_id || '').toUpperCase();
-      const status = (m.status || '').toLowerCase();
-      
-      const isFinished = status === 'finished' || status === 'ft' || status === 'aet' || status === 'pen';
-      const matchesComp = comp.includes(targetUpper) || comp === (targetUpper === 'CPL' ? '491' : comp);
-
-      return isFinished && matchesComp;
-    });
+    const teams = teamsRes.data;
+    const matches = matchesRes.data || [];
 
     const statsMap: Record<number, { played: number; won: number; drawn: number; lost: number; gf: number; ga: number; pts: number }> = {};
 
-    filteredTeams.forEach((team: any) => {
+    teams.forEach(team => {
       statsMap[team.id] = { played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, pts: 0 };
     });
 
-    matches.forEach((m: Match) => {
+    matches.forEach(m => {
+      const status = (m.status || '').toLowerCase();
+      const isFinished = status === 'finished' || status === 'ft' || status === 'match finished';
+      if (!isFinished) return;
+
       const home = statsMap[m.home_team_id];
       const away = statsMap[m.away_team_id];
       if (!home || !away) return;
@@ -121,11 +61,9 @@ export async function computeStandings(competition: string): Promise<StandingsRo
       }
     });
 
-    return filteredTeams
-      .map((team: any) => {
+    return teams
+      .map(team => {
         const s = statsMap[team.id] || { played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, pts: 0 };
-        const gf = s.gf;
-        const ga = s.ga;
         return {
           id: team.id,
           slug: team.slug || team.external_id,
@@ -137,19 +75,19 @@ export async function computeStandings(competition: string): Promise<StandingsRo
           won: s.won,
           drawn: s.drawn,
           lost: s.lost,
-          goalsFor: gf,
-          goalsAgainst: ga,
-          goalDifference: gf - ga,
+          goalsFor: s.gf,
+          goalsAgainst: s.ga,
+          goalDifference: s.gf - s.ga,
           points: s.pts,
         };
       })
-      .sort((a: StandingsRow, b: StandingsRow) => 
+      .sort((a, b) => 
         b.points - a.points || 
         b.goalDifference - a.goalDifference || 
-        (b.goalsFor || 0) - (a.goalsFor || 0) ||
+        b.goalsFor - a.goalsFor ||
         a.clubName.localeCompare(b.clubName)
       )
-      .map((row: StandingsRow, idx: number) => ({
+      .map((row, idx) => ({
         ...row,
         position: idx + 1,
       }));
@@ -165,27 +103,4 @@ export async function getCplStandings(): Promise<StandingsRow[]> {
 
 export async function getNslStandings(): Promise<StandingsRow[]> {
   return computeStandings('NSL');
-}
-
-export async function getLiveTicker(): Promise<LiveTickerItem[]> {
-  try {
-    const { data, error } = await supabase.from('matches').select('*').limit(6);
-
-    if (error || !data || data.length === 0) {
-      return [];
-    }
-
-    return data.map((m: any, idx: number) => ({
-      id: String(m.id || idx),
-      competition: m.competition || 'CPL',
-      homeTeam: m.home_team_name || 'Home Team',
-      awayTeam: m.away_team_name || 'Away Team',
-      homeScore: m.home_score || 0,
-      awayScore: m.away_score || 0,
-      minute: m.status === 'Live' ? 75 : null,
-      isLive: m.status === 'Live',
-    }));
-  } catch (err) {
-    return [];
-  }
 }
