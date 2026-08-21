@@ -24,7 +24,6 @@ function slugify(name) {
     .replace(/(^-|-$)/g, '');
 }
 
-// Franchise Renaming Normalization (Matching TheSportsDB and CanadaSoccerAPI scripts)
 const TEAM_NAME_OVERRIDES = {
   'york united': 'Inter Toronto FC',
   'york united fc': 'Inter Toronto FC',
@@ -38,7 +37,6 @@ function normalizeTeamName(name) {
   return TEAM_NAME_OVERRIDES[trimmed] || name.trim();
 }
 
-// Scope-Locked Canadian & MLS Team Registry
 const VERIFIED_CANADIAN_API_TEAMS = [
   // CPL Clubs
   { id: 15121, name: 'Forge FC', league: 'CPL' },
@@ -74,22 +72,14 @@ async function runIngestion() {
     const displayName = normalizeTeamName(team.name);
     const teamSlug = slugify(displayName);
 
-    // 1. Fetch existing team from DB to preserve multi-provider cross-reference IDs
-    const { data: existingTeam } = await supabase
-      .from('teams')
-      .select('id, tsdb_id, csapi_id, logo_url')
-      .eq('slug', teamSlug)
-      .maybeSingle();
-
-    // 2. Build team payload keeping canonical team names consistent across all script runs
+    // Build clean team payload matching only standard Supabase teams table columns
     const teamPayload = {
       external_id: `apif-${team.id}`,
       slug: teamSlug,
       name: displayName,
       league: team.league,
-      apif_id: String(team.id),
-      tsdb_id: existingTeam?.tsdb_id || null,
-      csapi_id: existingTeam?.csapi_id || null
+      competition: team.league,
+      gender: 'men'
     };
 
     const { data: dbTeam, error: teamErr } = await supabase
@@ -105,7 +95,7 @@ async function runIngestion() {
 
     console.log(`✅ Synced Canadian Club: ${displayName} (ID: ${dbTeam.id})`);
 
-    // 3. Smart-Sync Pre-Check: Skip squad fetch if players are already linked
+    // Smart-Sync Pre-Check: Skip squad fetch if players are already linked
     const { data: existingPlayers } = await supabase
       .from('players')
       .select('id')
@@ -116,7 +106,7 @@ async function runIngestion() {
       continue;
     }
 
-    // 4. Fetch live squad from API-Football
+    // Fetch live squad from API-Football
     try {
       console.log(`📡 Fetching live squad for ${displayName}...`);
       const res = await fetch(`https://v3.football.api-sports.io/players/squads?team=${team.id}`, { headers });
@@ -168,7 +158,6 @@ async function runIngestion() {
         console.log(`👤 Successfully synced ${playerPayloads.length} players for ${displayName}`);
       }
 
-      // Safe throttling delay
       await new Promise(r => setTimeout(r, 1500));
 
     } catch (err) {
