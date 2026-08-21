@@ -2,7 +2,6 @@
 
 import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
-import type { StandingsRow } from '@/lib/types';
 
 type Gender = 'MEN' | 'WOMEN';
 
@@ -20,8 +19,6 @@ interface DashboardPlayer {
 }
 
 interface StatsDashboardProps {
-  standings?: StandingsRow[];
-  nslStandings?: StandingsRow[];
   players?: DashboardPlayer[];
 }
 
@@ -48,7 +45,6 @@ function playerRoute(p: DashboardPlayer) {
 export default function StatsDashboard({ players = [] }: StatsDashboardProps) {
   const [gender, setGender] = useState<Gender>('MEN');
 
-  // React Hook invoked strictly inside functional component body
   const eligible = useMemo(() => {
     return players.filter((p) => {
       if (p.is_canadian === false) return false;
@@ -82,7 +78,6 @@ export default function StatsDashboard({ players = [] }: StatsDashboardProps) {
 
   return (
     <section className="bg-[#0a0a0a] border border-neutral-800 rounded-sm p-4 sm:p-5 text-white font-mono">
-      {/* Header with Gender Switcher */}
       <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 border-b border-neutral-800 pb-3 mb-4">
         <div>
           <div className="text-[9px] text-neutral-500 tracking-[0.2em] uppercase">
@@ -117,9 +112,7 @@ export default function StatsDashboard({ players = [] }: StatsDashboardProps) {
         </div>
       </div>
 
-      {/* 2-Column Grid for Leaderboards */}
       <div className="grid grid-cols-1 lg:grid-cols-2 gap-5">
-        {/* Golden Boot Table */}
         <div className="bg-[#171717] border border-neutral-800 rounded-sm p-3">
           <div className="flex items-center justify-between border-b border-neutral-800 pb-2 mb-2">
             <span className="text-[10px] font-bold text-red-500 tracking-wider uppercase">
@@ -166,7 +159,6 @@ export default function StatsDashboard({ players = [] }: StatsDashboardProps) {
           </div>
         </div>
 
-        {/* Top Playmakers Table */}
         <div className="bg-[#171717] border border-neutral-800 rounded-sm p-3">
           <div className="flex items-center justify-between border-b border-neutral-800 pb-2 mb-2">
             <span className="text-[10px] font-bold text-neutral-300 tracking-wider uppercase">
