@@ -19,6 +19,7 @@ import type { WireStory, StandingsRow } from '@/lib/types';
 import { client } from '@/lib/sanity';
 import { getWireFeed } from '@/lib/data/newsWire';
 import { getCplStandings, getNslStandings } from '@/lib/data/standings';
+import { supabase } from '@/lib/supabase/client';
 
 export const dynamic = 'force-dynamic';
 
@@ -52,13 +53,24 @@ async function getPlayerSpotlights() {
 }
 
 export default async function HomePage() {
-  const [settings, spotlights, wireFeed, standings, nslStandings] = await Promise.all([
+  const [settings, spotlights, wireFeed, standings, nslStandings, playersRes] = await Promise.all([
     getSiteSettings(),
     getPlayerSpotlights(),
     getWireFeed({ limit: 6 }),
     getCplStandings(),
     getNslStandings(),
+    supabase
+      .from('players')
+      .select(`
+        id, name, slug, external_id, goals, assists, gender, league, is_canadian,
+        current_team:teams!current_team_id (name)
+      `),
   ]);
+
+  if (playersRes.error) {
+    console.error('Homepage players query failed:', playersRes.error);
+  }
+  const players = playersRes.data || [];
 
   const fallbackFeatured: WireStory = {
     id: 'fallback-1',
@@ -85,7 +97,7 @@ export default async function HomePage() {
     'youth-pipeline': <YouthToProPipeline />,
     'fan-hub': <FanHubSection />,
     'player-provincial': <PlayerAndProvincialSection />,
-    'stats-dashboard': <StatsDashboard standings={standings} nslStandings={nslStandings} />,
+    'stats-dashboard': <StatsDashboard players={players} />,
     'legends-gallery': <LegendsGallery />,
     'conversion-section': <ConversionSection />,
     'local-club-spotlight': <LocalClubSpotlight />,
