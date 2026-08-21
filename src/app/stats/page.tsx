@@ -111,6 +111,23 @@ function isPlayerAbroad(p: any) {
   return true;
 }
 
+function matchesGenderFilter(p: any, targetGender: Gender) {
+  const playerGender = String(p.gender || '').toLowerCase();
+  const target = targetGender.toLowerCase();
+  const leagueUpper = String(p.league || '').toUpperCase();
+
+  if (playerGender) {
+    return playerGender.includes(target) || playerGender === (target === 'women' ? 'female' : 'male');
+  }
+
+  // Fallback inference if gender column is missing
+  if (target === 'women') {
+    return leagueUpper.includes('NSL') || leagueUpper.includes('NWSL') || leagueUpper.includes('WOMEN');
+  } else {
+    return !leagueUpper.includes('NSL') && !leagueUpper.includes('NWSL') && !leagueUpper.includes('WOMEN');
+  }
+}
+
 function MetricCard({
   label,
   value,
@@ -391,19 +408,10 @@ export default function StatsHubPage() {
   const activePlayers = dbPlayers;
   const activeTeams = dbTeams;
 
-  // Strict Gender Filtering
+  // Robust Gender & Competition Filtering
   const filteredPlayers = useMemo(() => {
     return activePlayers.filter((p: any) => {
-      const playerGender = String(p.gender || '').toLowerCase();
-      const targetGender = programGender.toLowerCase();
-      const leagueUpper = String(p.league || '').toUpperCase();
-
-      if (playerGender) {
-        if (playerGender !== targetGender) return false;
-      } else {
-        if (targetGender === 'women' && !leagueUpper.includes('NSL') && !leagueUpper.includes('NWSL')) return false;
-        if (targetGender === 'men' && (leagueUpper.includes('NSL') || leagueUpper.includes('NWSL'))) return false;
-      }
+      if (!matchesGenderFilter(p, programGender)) return false;
 
       const comp = String(p.league || p.competitionName || p.competition || '').toUpperCase();
 
@@ -454,11 +462,8 @@ export default function StatsHubPage() {
   // STRICT GOALKEEPER FILTERING: ONLY players with position === 'GK'
   const computedGoalkeepers = useMemo<PlayerRow[]>(() => {
     const keepers = activePlayers.filter((p: any) => {
+      if (!matchesGenderFilter(p, programGender)) return false;
       const pos = String(p.position || '').trim().toUpperCase();
-      const pGender = String(p.gender || '').toLowerCase();
-      const targetGender = programGender.toLowerCase();
-      
-      if (pGender && pGender !== targetGender) return false;
       return pos === 'GK' || pos === 'GOALKEEPER';
     });
 
@@ -481,11 +486,7 @@ export default function StatsHubPage() {
   // Canadians Abroad Leaderboard
   const computedAbroad = useMemo<PlayerRow[]>(() => {
     const abroad = activePlayers.filter((p: any) => {
-      const playerGender = String(p.gender || '').toLowerCase();
-      const targetGender = programGender.toLowerCase();
-
-      if (playerGender && playerGender !== targetGender) return false;
-
+      if (!matchesGenderFilter(p, programGender)) return false;
       return isPlayerAbroad(p);
     });
 
@@ -601,10 +602,7 @@ export default function StatsHubPage() {
   const computedRecords = useMemo(() => {
     const baseRecords = programGender === 'MEN' ? menRecords : womenRecords;
 
-    const genderPlayers = activePlayers.filter((p: any) => {
-      const g = String(p.gender || '').toLowerCase();
-      return g === programGender.toLowerCase();
-    });
+    const genderPlayers = activePlayers.filter((p: any) => matchesGenderFilter(p, programGender));
 
     const topScorer = [...genderPlayers].sort((a: any, b: any) => (b.goals ?? 0) - (a.goals ?? 0))[0];
     const topAssister = [...genderPlayers].sort((a: any, b: any) => (b.assists ?? 0) - (a.assists ?? 0))[0];
@@ -718,7 +716,7 @@ export default function StatsHubPage() {
             }}
           />
 
-          {(showOverview || showPlayers) && (
+          {showOverview && (
             <>
               <section className="grid grid-cols-2 xl:grid-cols-4 gap-3">
                 <MetricCard
@@ -798,14 +796,7 @@ export default function StatsHubPage() {
             <DataTable
               title={`GLOBAL CANADIAN PERFORMANCE STREAM // ${programGender}`}
               players={activePlayers.filter((p: any) => {
-                const targetIsFemale = programGender === 'WOMEN';
-                const g = String(p.gender || 'men').toUpperCase();
-                const matchesGender = targetIsFemale 
-                  ? (g === 'WOMEN' || String(p.league || '').toUpperCase().includes('NSL') || String(p.league || '').toUpperCase().includes('NWSL'))
-                  : (g === 'MEN' || (!String(p.league || '').toUpperCase().includes('NSL') && !String(p.league || '').toUpperCase().includes('NWSL')));
-
-                if (!matchesGender) return false;
-
+                if (!matchesGenderFilter(p, programGender)) return false;
                 return isPlayerAbroad(p);
               })}
               onAddToCompare={handleAddToCompare}
@@ -878,7 +869,7 @@ export default function StatsHubPage() {
             </div>
           )}
 
-          {(showOverview || showPlayers) && (
+          {showOverview && (
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
               <section className="bg-card border border-border rounded-sm overflow-hidden">
                 <div className="p-4 border-b border-border">
