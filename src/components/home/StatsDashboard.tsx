@@ -1,56 +1,82 @@
 'use client';
 
-import React, { useState } from 'react';
+import React, { useMemo, useState } from 'react';
 import Link from 'next/link';
 
 type Gender = 'MEN' | 'WOMEN';
 
-type PlayerLeader = {
-  rank: number;
+interface DashboardPlayer {
+  id?: number;
   name: string;
-  club: string;
-  stat: string;
-  initials: string;
-  slug: string;
-};
+  slug?: string;
+  external_id?: string;
+  goals?: number;
+  assists?: number;
+  gender?: string;
+  league?: string;
+  is_canadian?: boolean;
+  current_team?: { name?: string } | { name?: string }[] | null;
+}
 
-const menGoldenBoot: PlayerLeader[] = [
-  { rank: 1, name: 'Terran Campbell', club: 'Forge FC', stat: '14 G', initials: 'TC', slug: 'terran-campbell' },
-  { rank: 2, name: 'Moses Dyer', club: 'Vancouver FC', stat: '11 G', initials: 'MD', slug: 'moses-dyer' },
-  { rank: 3, name: 'Brian Wright', club: 'York United', stat: '9 G', initials: 'BW', slug: 'brian-wright' },
-  { rank: 4, name: 'Alejandro Díaz', club: 'Sogndal', stat: '8 G', initials: 'AD', slug: 'alejandro-diaz' },
-  { rank: 5, name: 'Woobens Pacius', club: 'Nashville SC', stat: '7 G', initials: 'WP', slug: 'woobens-pacius' },
-];
+interface StatsDashboardProps {
+  players?: DashboardPlayer[];
+}
 
-const womenGoldenBoot: PlayerLeader[] = [
-  { rank: 1, name: 'Jorian Baucom', club: 'AFC Toronto', stat: '10 G', initials: 'JB', slug: 'jorian-baucom' },
-  { rank: 2, name: 'Evelyne Viens', club: 'Roma', stat: '8 G', initials: 'EV', slug: 'evelyne-viens' },
-  { rank: 3, name: 'Cloé Lacasse', club: 'Utah Royals', stat: '7 G', initials: 'CL', slug: 'cloe-lacasse' },
-  { rank: 4, name: 'Clarissa Larisey', club: 'BK Häcken', stat: '6 G', initials: 'CL', slug: 'clarissa-larisey' },
-  { rank: 5, name: 'Deanne Rose', club: 'Leicester City', stat: '5 G', initials: 'DR', slug: 'deanne-rose' },
-];
+function initials(name: string) {
+  return name
+    .split(' ')
+    .filter(Boolean)
+    .slice(0, 2)
+    .map((part) => part[0]?.toUpperCase() || '')
+    .join('') || '??';
+}
 
-const menPlaymakers: PlayerLeader[] = [
-  { rank: 1, name: 'Kyle Bekker', club: 'Forge FC', stat: '9 AST', initials: 'KB', slug: 'kyle-bekker' },
-  { rank: 2, name: 'Ollie Bassett', club: 'Atlético Ottawa', stat: '7 AST', initials: 'OB', slug: 'ollie-bassett' },
-  { rank: 3, name: 'Alistair Johnston', club: 'Celtic', stat: '5 AST', initials: 'AJ', slug: 'alistair-johnston' },
-  { rank: 4, name: 'Stephen Eustáquio', club: 'FC Porto', stat: '5 AST', initials: 'SE', slug: 'stephen-eustaquio' },
-  { rank: 5, name: 'Tajon Buchanan', club: 'Villarreal', stat: '4 AST', initials: 'TB', slug: 'tajon-buchanan' },
-];
+function clubName(p: DashboardPlayer) {
+  const team = Array.isArray(p.current_team) ? p.current_team[0] : p.current_team;
+  return team?.name || p.league || 'Unattached';
+}
 
-const womenPlaymakers: PlayerLeader[] = [
-  { rank: 1, name: 'Jessie Fleming', club: 'Portland Thorns', stat: '8 AST', initials: 'JF', slug: 'jessie-fleming' },
-  { rank: 2, name: 'Ashley Lawrence', club: 'Chelsea', stat: '6 AST', initials: 'AL', slug: 'ashley-lawrence' },
-  { rank: 3, name: 'Julia Grosso', club: 'Chicago Red Stars', stat: '5 AST', initials: 'JG', slug: 'julia-grosso' },
-  { rank: 4, name: 'Gabrielle Carle', club: 'Washington Spirit', stat: '4 AST', initials: 'GC', slug: 'gabrielle-carle' },
-  { rank: 5, name: 'Quinn', club: 'Seattle Reign', stat: '4 AST', initials: 'QU', slug: 'quinn' },
-];
+function playerRoute(p: DashboardPlayer) {
+  return p.slug || p.external_id || p.id;
+}
 
-export default function StatsDashboard() {
+export default function StatsDashboard({ players = [] }: StatsDashboardProps) {
   const [gender, setGender] = useState<Gender>('MEN');
 
-  const goldenBootData = gender === 'MEN' ? menGoldenBoot : womenGoldenBoot;
-  const playmakersData = gender === 'MEN' ? menPlaymakers : womenPlaymakers;
+  // Same rule as /stats: presume Canadian unless a row is explicitly
+  // flagged otherwise. Most rows never get nationality/is_canadian stamped
+  // by the bulk seed/ingest scripts, so requiring is_canadian === true here
+  // would empty this out the same way it did on the stats page.
+  const eligible = useMemo(() => {
+    return players.filter((p) => {
+      if (p.is_canadian === false) return false;
+      const g = String(p.gender || 'men').toUpperCase();
+      const targetIsFemale = gender === 'WOMEN';
+      const comp = String(p.league || '').toUpperCase();
+      const matchesGender = targetIsFemale
+        ? g === 'WOMEN' || comp.includes('NSL')
+        : g === 'MEN' || !comp.includes('NSL');
+      return matchesGender;
+    });
+  }, [players, gender]);
+
+  const goldenBootData = useMemo(
+    () =>
+      [...eligible]
+        .filter((p) => (p.goals ?? 0) > 0)
+        .sort((a, b) => (b.goals ?? 0) - (a.goals ?? 0))
+        .slice(0, 5),
+    [eligible]
+  );
+
+  const playmakersData = useMemo(
+    () =>
+      [...eligible]
+        .filter((p) => (p.assists ?? 0) > 0)
+        .sort((a, b) => (b.assists ?? 0) - (a.assists ?? 0))
+        .slice(0, 5),
+    [eligible]
+  );
 
   return (
     <section className="bg-[#0a0a0a] border border-neutral-800 rounded-sm p-4 sm:p-5 text-white font-mono">
@@ -100,36 +126,41 @@ export default function StatsDashboard() {
             <span className="text-[8px] text-neutral-500">TOP 5</span>
           </div>
           <div className="space-y-2">
-            {goldenBootData.map((player) => (
-              <div
-                key={player.rank}
-                className="flex items-center justify-between p-1.5 hover:bg-neutral-800/50 rounded-sm transition-colors"
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-[10px] text-neutral-500 w-3 font-bold shrink-0">
-                    {player.rank}.
-                  </span>
-                  {/* Monochrome Avatar Square */}
-                  <span className="w-6 h-6 rounded-sm bg-neutral-900 border border-neutral-700 flex items-center justify-center text-[8px] font-bold text-neutral-300 shrink-0">
-                    {player.initials}
-                  </span>
-                  <div className="min-w-0">
-                    <Link
-                      href={`/players/${player.slug}`}
-                      className="text-xs font-bold text-neutral-200 hover:text-red-500 truncate block transition-colors"
-                    >
-                      {player.name}
-                    </Link>
-                    <span className="text-[8px] text-neutral-500 truncate block">
-                      {player.club}
-                    </span>
-                  </div>
-                </div>
-                <span className="text-xs font-bold text-red-500 shrink-0 pl-2">
-                  {player.stat}
-                </span>
+            {goldenBootData.length === 0 ? (
+              <div className="text-[9px] text-neutral-500 py-3 text-center">
+                NO GOAL DATA SYNCED YET
               </div>
-            ))}
+            ) : (
+              goldenBootData.map((player, idx) => (
+                <div
+                  key={player.id ?? idx}
+                  className="flex items-center justify-between p-1.5 hover:bg-neutral-800/50 rounded-sm transition-colors"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-[10px] text-neutral-500 w-3 font-bold shrink-0">
+                      {idx + 1}.
+                    </span>
+                    <span className="w-6 h-6 rounded-sm bg-neutral-900 border border-neutral-700 flex items-center justify-center text-[8px] font-bold text-neutral-300 shrink-0">
+                      {initials(player.name)}
+                    </span>
+                    <div className="min-w-0">
+                      <Link
+                        href={`/players/${playerRoute(player)}`}
+                        className="text-xs font-bold text-neutral-200 hover:text-red-500 truncate block transition-colors"
+                      >
+                        {player.name}
+                      </Link>
+                      <span className="text-[8px] text-neutral-500 truncate block">
+                        {clubName(player)}
+                      </span>
+                    </div>
+                  </div>
+                  <span className="text-xs font-bold text-red-500 shrink-0 pl-2">
+                    {player.goals ?? 0} G
+                  </span>
+                </div>
+              ))
+            )}
           </div>
         </div>
 
@@ -142,36 +173,41 @@ export default function StatsDashboard() {
             <span className="text-[8px] text-neutral-500">TOP 5</span>
           </div>
           <div className="space-y-2">
-            {playmakersData.map((player) => (
-              <div
-                key={player.rank}
-                className="flex items-center justify-between p-1.5 hover:bg-neutral-800/50 rounded-sm transition-colors"
-              >
-                <div className="flex items-center gap-2 min-w-0">
-                  <span className="text-[10px] text-neutral-500 w-3 font-bold shrink-0">
-                    {player.rank}.
-                  </span>
-                  {/* Monochrome Avatar Square */}
-                  <span className="w-6 h-6 rounded-sm bg-neutral-900 border border-neutral-700 flex items-center justify-center text-[8px] font-bold text-neutral-300 shrink-0">
-                    {player.initials}
-                  </span>
-                  <div className="min-w-0">
-                    <Link
-                      href={`/players/${player.slug}`}
-                      className="text-xs font-bold text-neutral-200 hover:text-red-500 truncate block transition-colors"
-                    >
-                      {player.name}
-                    </Link>
-                    <span className="text-[8px] text-neutral-500 truncate block">
-                      {player.club}
-                    </span>
-                  </div>
-                </div>
-                <span className="text-xs font-bold text-neutral-300 shrink-0 pl-2">
-                  {player.stat}
-                </span>
+            {playmakersData.length === 0 ? (
+              <div className="text-[9px] text-neutral-500 py-3 text-center">
+                NO ASSIST DATA SYNCED YET
               </div>
-            ))}
+            ) : (
+              playmakersData.map((player, idx) => (
+                <div
+                  key={player.id ?? idx}
+                  className="flex items-center justify-between p-1.5 hover:bg-neutral-800/50 rounded-sm transition-colors"
+                >
+                  <div className="flex items-center gap-2 min-w-0">
+                    <span className="text-[10px] text-neutral-500 w-3 font-bold shrink-0">
+                      {idx + 1}.
+                    </span>
+                    <span className="w-6 h-6 rounded-sm bg-neutral-900 border border-neutral-700 flex items-center justify-center text-[8px] font-bold text-neutral-300 shrink-0">
+                      {initials(player.name)}
+                    </span>
+                    <div className="min-w-0">
+                      <Link
+                        href={`/players/${playerRoute(player)}`}
+                        className="text-xs font-bold text-neutral-200 hover:text-red-500 truncate block transition-colors"
+                      >
+                        {player.name}
+                      </Link>
+                      <span className="text-[8px] text-neutral-500 truncate block">
+                        {clubName(player)}
+                      </span>
+                    </div>
+                  </div>
+                  <span className="text-xs font-bold text-neutral-300 shrink-0 pl-2">
+                    {player.assists ?? 0} AST
+                  </span>
+                </div>
+              ))
+            )}
           </div>
         </div>
       </div>
