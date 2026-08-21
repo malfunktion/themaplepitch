@@ -26,6 +26,7 @@ function slugify(text) {
     .replace(/-+/g, '-');
 }
 
+// Canonical Aliases Mapping: Standardizes variant team strings across providers
 const TEAM_NAME_OVERRIDES = {
   'forge': 'Forge FC',
   'cavalry': 'Cavalry FC',
@@ -33,9 +34,9 @@ const TEAM_NAME_OVERRIDES = {
   'valour': 'Valour FC',
   'hfx wanderers': 'HFX Wanderers FC',
   'inter toronto': 'Inter Toronto FC',
-  'atletico ottawa': 'Atlético Ottawa',
   'york united': 'Inter Toronto FC',
-  'york united fc': 'Inter Toronto FC'
+  'york united fc': 'Inter Toronto FC',
+  'atletico ottawa': 'Atlético Ottawa'
 };
 
 function normalizeTeamName(name) {
@@ -52,39 +53,47 @@ async function ingestTeams() {
     const body = await res.json();
     const teams = Array.isArray(body) ? body : (body.teams || []);
 
+    // Fetch existing teams from DB to map provider IDs to canonical slugs
+    const { data: existingTeams } = await supabase
+      .from('teams')
+      .select('id, name, slug, csapi_id');
+
+    const existingMap = new Map();
+    (existingTeams || []).forEach(t => existingMap.set(t.slug, t));
+
     const teamMap = new Map();
 
     for (const team of teams) {
       const rawName = team.name || team.team_name || team.team;
       if (!rawName) continue;
 
-      const name = normalizeTeamName(rawName);
-      const slug = slugify(name);
+      const displayName = normalizeTeamName(rawName);
+      const slug = slugify(displayName);
       const externalId = `cpl-${slug}`;
+      const existing = existingMap.get(slug);
 
       const payload = {
         external_id: externalId,
         slug: slug,
-        name: name,
-        short_name: team.short_name || team.code || null,
+        name: displayName,
+        short_name: team.short_name || team.code || existing?.short_name || null,
         league: 'CPL',
         competition: 'CPL',
         gender: 'men',
-        venue: team.venue || team.stadium || null,
-        city: team.city || null
+        venue: team.venue || team.stadium || existing?.venue || null,
+        city: team.city || existing?.city || null
       };
 
       const { data, error } = await supabase
         .from('teams')
         .upsert(payload, { onConflict: 'slug' })
         .select('id, name, slug')
-        .single();
+        .maybeSingle();
 
-      if (error) {
-        // If slug collision occurs, log gracefully
-      } else if (data) {
+      if (!error && data) {
         teamMap.set(data.name.toLowerCase(), data.id);
         teamMap.set(data.slug, data.id);
+        console.log(`✅ Synced Team: ${data.name} (ID: ${data.id})`);
       }
     }
 
@@ -127,7 +136,7 @@ async function ingestMatches(teamMap) {
       const homeScore = m.home_goals ?? m.home_score ?? m.homeScore ?? null;
       const awayScore = m.away_goals ?? m.away_score ?? m.awayScore ?? null;
 
-      // In-memory deduplication: Only keep the most complete match record
+      // In-Memory Deduplication: Prevents matches_unique_fixture batch constraint errors
       matchPayloadMap.set(externalId, {
         external_id: externalId,
         home_team_id: homeId,
