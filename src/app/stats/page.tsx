@@ -140,19 +140,13 @@ function Leaderboard({
                   {row.initials}
                 </span>
                 <div className="min-w-0">
-                  {row.slug ? (
-                    <Link
-                      href={`/players/${row.slug}`}
-                      prefetch={false}
-                      className="text-[10px] sm:text-[11px] font-bold text-charcoal hover:text-crimson truncate block"
-                    >
-                      {row.name}
-                    </Link>
-                  ) : (
-                    <span className="text-[10px] sm:text-[11px] font-bold text-charcoal truncate block">
-                      {row.name}
-                    </span>
-                  )}
+                  <Link
+                    href={`/players/${row.slug}`}
+                    prefetch={false}
+                    className="text-[10px] sm:text-[11px] font-bold text-charcoal hover:text-crimson truncate block transition-colors"
+                  >
+                    {row.name}
+                  </Link>
                   <div className="text-[8px] sm:text-[9px] text-charcoal-soft truncate">
                     {row.club}
                   </div>
@@ -222,7 +216,7 @@ function DataTable({
                 return (
                   <tr
                     key={`${title}-${p.id || idx}`}
-                    className="border-t border-border/40 hover:bg-surface/50"
+                    className="border-t border-border/40 hover:bg-surface/50 transition-colors"
                   >
                     <td className="px-4 py-2.5 text-charcoal-soft font-bold">
                       {p.rank || idx + 1}
@@ -231,10 +225,15 @@ function DataTable({
                       <Link
                         href={`/players/${entitySlug}`}
                         prefetch={false}
-                        className="text-charcoal font-bold hover:text-crimson"
+                        className="text-charcoal font-bold hover:text-crimson transition-colors"
                       >
                         {playerName}
                       </Link>
+                      {p.is_canadian === false && (
+                        <span className="ml-1.5 text-[8px] text-charcoal-soft border border-border px-1 rounded-xs">
+                          INTL
+                        </span>
+                      )}
                     </td>
                     <td className="px-4 py-2.5 text-charcoal-soft">
                       {playerLeague} {'//'} {p.position || 'GEN'}
@@ -332,6 +331,7 @@ export default function StatsHubPage() {
   const activePlayers = dbPlayers;
   const activeTeams = dbTeams;
 
+  // Primary filtering logic respecting Gender, Citizenship, and Selected Competition Dropdown
   const filteredPlayers = useMemo(() => {
     return activePlayers.filter((p: any) => {
       const g = String(p.gender || 'men').toUpperCase();
@@ -343,9 +343,6 @@ export default function StatsHubPage() {
 
       if (!matchesGender) return false;
 
-      const isCanadian = p.is_canadian !== false;
-      if (!isCanadian) return false;
-
       const comp = String(p.league || p.competitionName || p.competition || '').toUpperCase();
 
       if (competition === 'CPL') {
@@ -353,10 +350,13 @@ export default function StatsHubPage() {
       } else if (competition === 'NSL') {
         return comp.includes('NSL');
       } else if (competition === 'ABROAD') {
-        return comp === 'ABROAD' || comp === 'MLS' || (!comp.includes('CPL') && !comp.includes('NSL'));
+        const isCanadian = p.is_canadian !== false;
+        return isCanadian && (comp === 'ABROAD' || comp === 'MLS' || (!comp.includes('CPL') && !comp.includes('NSL')));
       }
 
-      return true;
+      // 'ALL CANADIAN' includes all Canadian players across domestic leagues and abroad
+      const isCanadian = p.is_canadian !== false;
+      return isCanadian;
     });
   }, [activePlayers, programGender, competition]);
 
@@ -410,12 +410,22 @@ export default function StatsHubPage() {
     });
   }, [filteredPlayers]);
 
+  // Canadians Abroad Leaderboard Reacts strictly to programGender (Men/Women)
   const computedAbroad = useMemo<PlayerRow[]>(() => {
     const abroad = activePlayers.filter((p: any) => {
+      const targetIsFemale = programGender === 'WOMEN';
+      const g = String(p.gender || 'men').toUpperCase();
+      const matchesGender = targetIsFemale 
+        ? (g === 'WOMEN' || String(p.league || '').toUpperCase().includes('NSL'))
+        : (g === 'MEN' || !String(p.league || '').toUpperCase().includes('NSL'));
+
+      if (!matchesGender) return false;
+
       const isC = p.is_canadian !== false;
       const comp = String(p.league || '').toUpperCase();
       return isC && (comp === 'ABROAD' || comp === 'MLS' || (!comp.includes('CPL') && !comp.includes('NSL')));
     });
+
     const sorted = [...abroad].sort((a: any, b: any) => (b.rating ?? 0) - (a.rating ?? 0));
     return sorted.slice(0, 5).map((p: any, idx: number) => {
       const playerName = p.name || p.full_name || 'Player';
@@ -429,7 +439,40 @@ export default function StatsHubPage() {
         slug: p.slug || p.external_id || p.id,
       };
     });
-  }, [activePlayers]);
+  }, [activePlayers, programGender]);
+
+  // Clean, Deduplicated Active Teams List for Team Streams (Excludes fold/defunct teams for 2026)
+  const cleanCplTeams = useMemo(() => {
+    const seen = new Set<string>();
+    const BLACKLIST = new Set(['fc edmonton', 'edmonton', 'valour fc', 'valour', 'supra']); // Folded / Aliased entries
+    return activeTeams.filter((t: any) => {
+      const name = String(t.name || t.clubName || '').trim();
+      const norm = name.toLowerCase();
+      const comp = String(t.competition || t.competitionName || t.league || '').toUpperCase();
+      
+      if (!comp.includes('CPL')) return false;
+      if (BLACKLIST.has(norm)) return false;
+      if (seen.has(norm)) return false;
+
+      seen.add(norm);
+      return true;
+    });
+  }, [activeTeams]);
+
+  const cleanNslTeams = useMemo(() => {
+    const seen = new Set<string>();
+    return activeTeams.filter((t: any) => {
+      const name = String(t.name || t.clubName || '').trim();
+      const norm = name.toLowerCase();
+      const comp = String(t.competition || t.competitionName || t.league || '').toUpperCase();
+      
+      if (!comp.includes('NSL')) return false;
+      if (seen.has(norm)) return false;
+
+      seen.add(norm);
+      return true;
+    });
+  }, [activeTeams]);
 
   const computedDiscipline = useMemo(() => {
     const sorted = [...filteredPlayers].sort((a: any, b: any) => {
@@ -510,7 +553,7 @@ export default function StatsHubPage() {
                   {isLoading ? 'SYNCING DB...' : `${activePlayers.length} DB ENTRIES`}
                 </span>
                 <span className="px-2 py-1 border border-border text-charcoal-soft rounded-sm">
-                  UPDATED // 2026
+                  UPDATED // {season}
                 </span>
               </div>
             </div>
@@ -624,7 +667,7 @@ export default function StatsHubPage() {
                 />
                 <Leaderboard
                   title="Canadian Abroad"
-                  subtitle="GLOBAL PERFORMANCE INDEX"
+                  subtitle={`GLOBAL PERFORMANCE INDEX // ${programGender}`}
                   rows={computedAbroad}
                   valueLabel="RATING"
                 />
@@ -643,20 +686,28 @@ export default function StatsHubPage() {
           {showTeams && (
             <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
               <DataTable
-                title="CPL // CANADIAN PREMIER LEAGUE"
-                players={activeTeams.filter((t: any) => String(t.competition || t.competitionName || t.league || '').includes('CPL'))}
+                title="CPL // CANADIAN PREMIER LEAGUE (2026 ACTIVE)"
+                players={cleanCplTeams}
               />
               <DataTable
-                title="NSL // NORTHERN SUPER LEAGUE"
-                players={activeTeams.filter((t: any) => String(t.competition || t.competitionName || t.league || '').includes('NSL'))}
+                title="NSL // NORTHERN SUPER LEAGUE (2026 ACTIVE)"
+                players={cleanNslTeams}
               />
             </div>
           )}
 
           {showAbroad && (
             <DataTable
-              title="GLOBAL CANADIAN PERFORMANCE STREAM"
+              title={`GLOBAL CANADIAN PERFORMANCE STREAM // ${programGender}`}
               players={activePlayers.filter((p: any) => {
+                const targetIsFemale = programGender === 'WOMEN';
+                const g = String(p.gender || 'men').toUpperCase();
+                const matchesGender = targetIsFemale 
+                  ? (g === 'WOMEN' || String(p.league || '').toUpperCase().includes('NSL'))
+                  : (g === 'MEN' || !String(p.league || '').toUpperCase().includes('NSL'));
+
+                if (!matchesGender) return false;
+
                 const isC = p.is_canadian !== false;
                 const comp = String(p.league || '').toUpperCase();
                 return isC && (comp === 'ABROAD' || comp === 'MLS' || (!comp.includes('CPL') && !comp.includes('NSL')));
@@ -758,7 +809,7 @@ export default function StatsHubPage() {
                           <Link
                             href={`/players/${p.slug}`}
                             prefetch={false}
-                            className="font-bold text-charcoal hover:text-crimson truncate block"
+                            className="font-bold text-charcoal hover:text-crimson truncate block transition-colors"
                           >
                             {p.name}
                           </Link>
@@ -915,4 +966,3 @@ function getProvincialStandings(prov: 'ON' | 'QC' | 'BC' | 'AB') {
     ];
   }
 }
-
