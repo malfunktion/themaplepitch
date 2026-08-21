@@ -915,3 +915,4 @@ function getProvincialStandings(prov: 'ON' | 'QC' | 'BC' | 'AB') {
     ];
   }
 }
+
