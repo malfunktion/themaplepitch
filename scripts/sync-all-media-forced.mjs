@@ -2,7 +2,7 @@
 import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://wsbyyvtcvyhidvijvwuo.supabase.co';
-const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SERVICE_ROLE_KEY;
+const SERVICE_ROLE_KEY = process.env.SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
   console.error('❌ Missing required environment variables (SUPABASE_URL or SERVICE_ROLE_KEY).');
@@ -67,7 +67,6 @@ async function runForcedSync() {
   for (const team of teams) {
     let sourceLogo = team.logo_url;
 
-    // Skip downloading if image is already cached in Supabase Storage
     if (sourceLogo && sourceLogo.includes('/storage/v1/object/public/media/')) {
       continue;
     }
@@ -104,7 +103,6 @@ async function runForcedSync() {
   for (const player of players) {
     let rawPhoto = player.metadata?.photo;
 
-    // Skip downloading if headshot is already cached in Supabase Storage
     if (rawPhoto && rawPhoto.includes('/storage/v1/object/public/media/')) {
       continue;
     }
