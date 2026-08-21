@@ -2,13 +2,8 @@ import Link from 'next/link';
 import HubHeader from '@/components/entity/HubHeader';
 import SourceStamp from '@/components/entity/SourceStamp';
 import SidebarStack from '@/components/sidebar/SidebarStack';
-import { createClient } from '@supabase/supabase-js';
+import { supabase } from '@/lib/supabase/client';
 import { getCplStandings, getNslStandings } from '@/lib/data/standings';
-
-const supabase = createClient(
-  process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://wsbyyvtcvyhidvijvwuo.supabase.co',
-  process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || ''
-);
 
 export const revalidate = 60; // Revalidate every 60s
 
