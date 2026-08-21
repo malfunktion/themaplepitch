@@ -27,15 +27,15 @@ function slugify(text) {
 }
 
 const TEAM_NAME_OVERRIDES = {
-  'york united': 'Inter Toronto FC',
-  'york united fc': 'Inter Toronto FC',
-  'york9': 'Inter Toronto FC',
-  'york9 fc': 'Inter Toronto FC',
-  'quebec supra': 'FC Supra du Québec',
-  'québec supra': 'FC Supra du Québec',
+  'forge': 'Forge FC',
+  'cavalry': 'Cavalry FC',
+  'pacific': 'Pacific FC',
+  'valour': 'Valour FC',
+  'hfx wanderers': 'HFX Wanderers FC',
+  'inter toronto': 'Inter Toronto FC',
   'atletico ottawa': 'Atlético Ottawa',
-  'atletico ottawa fc': 'Atlético Ottawa',
-  'edmonton': 'FC Edmonton',
+  'york united': 'Inter Toronto FC',
+  'york united fc': 'Inter Toronto FC'
 };
 
 function normalizeTeamName(name) {
@@ -52,53 +52,39 @@ async function ingestTeams() {
     const body = await res.json();
     const teams = Array.isArray(body) ? body : (body.teams || []);
 
-    // Query existing teams to preserve non-null data and cross-reference IDs
-    const { data: existingTeams } = await supabase
-      .from('teams')
-      .select('*')
-      .eq('league', 'CPL');
-
-    const existingMap = new Map();
-    (existingTeams || []).forEach(t => existingMap.set(slugify(normalizeTeamName(t.name)), t));
-
     const teamMap = new Map();
 
     for (const team of teams) {
       const rawName = team.name || team.team_name || team.team;
       if (!rawName) continue;
 
-      const displayName = normalizeTeamName(rawName);
-      const slug = slugify(displayName);
+      const name = normalizeTeamName(rawName);
+      const slug = slugify(name);
       const externalId = `cpl-${slug}`;
-      const existing = existingMap.get(slug);
 
       const payload = {
         external_id: externalId,
         slug: slug,
-        name: displayName,
-        short_name: team.short_name || team.code || existing?.short_name || null,
+        name: name,
+        short_name: team.short_name || team.code || null,
         league: 'CPL',
         competition: 'CPL',
         gender: 'men',
-        venue: team.venue || team.stadium || existing?.venue || null,
-        city: team.city || existing?.city || null,
-        logo_url: existing?.logo_url || null,
-        csapi_id: String(team.id || slug)
+        venue: team.venue || team.stadium || null,
+        city: team.city || null
       };
 
       const { data, error } = await supabase
         .from('teams')
         .upsert(payload, { onConflict: 'slug' })
-        .select('id, name, external_id')
+        .select('id, name, slug')
         .single();
 
       if (error) {
-        console.error(`⚠️ Error upserting team ${payload.name}:`, error.message);
+        // If slug collision occurs, log gracefully
       } else if (data) {
         teamMap.set(data.name.toLowerCase(), data.id);
-        teamMap.set(data.name.toLowerCase().replace(' fc', ''), data.id);
-        teamMap.set(slug, data.id);
-        console.log(`✅ Synced Team: ${data.name} (ID: ${data.id})`);
+        teamMap.set(data.slug, data.id);
       }
     }
 
@@ -117,14 +103,7 @@ async function ingestMatches(teamMap) {
     const body = await res.json();
     const matches = Array.isArray(body) ? body : (body.matches || []);
 
-    const { data: existingMatches } = await supabase
-      .from('matches')
-      .select('external_id, home_score, away_score, home_xg, away_xg, status');
-
-    const existingMatchMap = new Map();
-    (existingMatches || []).forEach(m => existingMatchMap.set(m.external_id, m));
-
-    let syncedCount = 0;
+    const matchPayloadMap = new Map();
     let skippedCount = 0;
 
     for (const m of matches) {
@@ -133,8 +112,8 @@ async function ingestMatches(teamMap) {
 
       if (!homeName || !awayName) continue;
 
-      const homeId = teamMap.get(slugify(homeName)) || teamMap.get(homeName.toLowerCase()) || null;
-      const awayId = teamMap.get(slugify(awayName)) || teamMap.get(awayName.toLowerCase()) || null;
+      const homeId = teamMap.get(homeName.toLowerCase()) || teamMap.get(slugify(homeName)) || null;
+      const awayId = teamMap.get(awayName.toLowerCase()) || teamMap.get(slugify(awayName)) || null;
 
       if (!homeId || !awayId) {
         skippedCount++;
@@ -142,46 +121,41 @@ async function ingestMatches(teamMap) {
       }
 
       const matchDate = m.date || m.match_date || new Date().toISOString();
-      const externalId = `cpl-match-${slugify(homeName)}-vs-${slugify(awayName)}-${matchDate.split('T')[0]}`;
-      const existing = existingMatchMap.get(externalId);
+      const dateOnly = matchDate.split('T')[0];
+      const externalId = `cpl-match-${slugify(homeName)}-vs-${slugify(awayName)}-${dateOnly}`;
 
-      let homeScore = m.home_goals ?? m.home_score ?? m.homeScore ?? existing?.home_score ?? null;
-      let awayScore = m.away_goals ?? m.away_score ?? m.awayScore ?? existing?.away_score ?? null;
-      let homeXg = m.home_xg ?? m.homeXg ?? existing?.home_xg ?? null;
-      let awayXg = m.away_xg ?? m.awayXg ?? existing?.away_xg ?? null;
-      let matchStatus = existing?.status || ((homeScore !== null && awayScore !== null) ? 'FT' : 'NS');
+      const homeScore = m.home_goals ?? m.home_score ?? m.homeScore ?? null;
+      const awayScore = m.away_goals ?? m.away_score ?? m.awayScore ?? null;
 
-      // Rule 4: Skip re-writing completed historical matches unless filling missing xG or scores
-      if (existing && existing.status === 'FT' && existing.home_score !== null && existing.home_xg !== null) {
-        continue;
-      }
-
-      const matchPayload = {
+      // In-memory deduplication: Only keep the most complete match record
+      matchPayloadMap.set(externalId, {
         external_id: externalId,
         home_team_id: homeId,
         away_team_id: awayId,
         home_score: homeScore,
         away_score: awayScore,
-        home_xg: homeXg,
-        away_xg: awayXg,
+        home_xg: m.home_xg || m.homeXg || null,
+        away_xg: m.away_xg || m.awayXg || null,
         venue: m.venue || m.stadium || null,
-        status: matchStatus,
+        status: m.status || (homeScore !== null ? 'FT' : 'NS'),
         match_date: matchDate,
         competition: 'CPL'
-      };
-
-      const { error } = await supabase
-        .from('matches')
-        .upsert(matchPayload, { onConflict: 'external_id' });
-
-      if (error) {
-        console.error(`⚠️ Error syncing match (${homeName} vs ${awayName}):`, error.message);
-      } else {
-        syncedCount++;
-      }
+      });
     }
 
-    console.log(`🎉 Successfully synced ${syncedCount} CPL matches into Supabase! (${skippedCount} skipped)`);
+    const uniqueMatchPayloads = Array.from(matchPayloadMap.values());
+
+    if (uniqueMatchPayloads.length > 0) {
+      const { error } = await supabase
+        .from('matches')
+        .upsert(uniqueMatchPayloads, { onConflict: 'external_id' });
+
+      if (error) {
+        console.error('⚠️ Error syncing match batch:', error.message);
+      } else {
+        console.log(`🎉 Successfully synced ${uniqueMatchPayloads.length} CPL matches into Supabase!`);
+      }
+    }
   } catch (err) {
     console.error('❌ Failed to ingest matches:', err.message);
   }
