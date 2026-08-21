@@ -333,20 +333,40 @@ export default function StatsHubPage() {
   const activePlayers = dbPlayers;
   const activeTeams = dbTeams;
 
+  // Corrected filter to strictly pull Canadian players matching program gender & active league toggles
   const filteredPlayers = useMemo(() => {
     return activePlayers.filter((p: any) => {
-      const g = String(p.gender || '').toUpperCase();
+      const g = String(p.gender || 'men').toUpperCase();
+      const targetIsFemale = programGender === 'WOMEN';
+
+      // Gender validation
+      const matchesGender = targetIsFemale 
+        ? (g === 'WOMEN' || String(p.league || '').toUpperCase().includes('NSL'))
+        : (g === 'MEN' || !String(p.league || '').toUpperCase().includes('NSL'));
+
+      if (!matchesGender) return false;
+
+      // Citizenship check (must be Canadian for All Canadian leaderboards)
+      const isCanadian = p.is_canadian === true || String(p.nationality || '').toLowerCase().includes('canada');
+      if (!isCanadian) return false;
+
       const comp = String(p.league || p.competitionName || p.competition || '').toUpperCase();
-      if (programGender === 'WOMEN') {
-        return g === 'WOMEN' || comp.includes('NSL') || comp.includes('WOMEN');
+
+      if (competition === 'CPL') {
+        return comp.includes('CPL');
+      } else if (competition === 'NSL') {
+        return comp.includes('NSL');
+      } else if (competition === 'ABROAD') {
+        return comp === 'ABROAD' || comp === 'MLS' || (!comp.includes('CPL') && !comp.includes('NSL'));
       }
-      return g === 'MEN' || comp.includes('CPL') || comp.includes('MEN') || (!g && !comp.includes('NSL'));
+
+      // 'ALL CANADIAN' includes all Canadian players across domestic leagues and abroad
+      return true;
     });
-  }, [activePlayers, programGender]);
+  }, [activePlayers, programGender, competition]);
 
   const computedGoldenBoot = useMemo<PlayerRow[]>(() => {
-    const source = filteredPlayers.length > 0 ? filteredPlayers : activePlayers;
-    const sorted = [...source].sort((a: any, b: any) => (b.goals ?? 0) - (a.goals ?? 0));
+    const sorted = [...filteredPlayers].sort((a: any, b: any) => (b.goals ?? 0) - (a.goals ?? 0));
     return sorted.slice(0, 5).map((p: any, idx: number) => {
       const playerName = p.name || p.full_name || 'Player';
       const teamObj = Array.isArray(p.current_team) ? p.current_team[0] : p.current_team;
@@ -359,11 +379,10 @@ export default function StatsHubPage() {
         slug: p.slug || p.external_id || p.id,
       };
     });
-  }, [filteredPlayers, activePlayers]);
+  }, [filteredPlayers]);
 
   const computedAssists = useMemo<PlayerRow[]>(() => {
-    const source = filteredPlayers.length > 0 ? filteredPlayers : activePlayers;
-    const sorted = [...source].sort((a: any, b: any) => (b.assists ?? 0) - (a.assists ?? 0));
+    const sorted = [...filteredPlayers].sort((a: any, b: any) => (b.assists ?? 0) - (a.assists ?? 0));
     return sorted.slice(0, 5).map((p: any, idx: number) => {
       const playerName = p.name || p.full_name || 'Player';
       const teamObj = Array.isArray(p.current_team) ? p.current_team[0] : p.current_team;
@@ -376,7 +395,7 @@ export default function StatsHubPage() {
         slug: p.slug || p.external_id || p.id,
       };
     });
-  }, [filteredPlayers, activePlayers]);
+  }, [filteredPlayers]);
 
   const computedGoalkeepers = useMemo<PlayerRow[]>(() => {
     const keepers = filteredPlayers.filter((p: any) => p.position === 'GK');
@@ -397,7 +416,11 @@ export default function StatsHubPage() {
   }, [filteredPlayers]);
 
   const computedAbroad = useMemo<PlayerRow[]>(() => {
-    const abroad = activePlayers.filter((p: any) => p.league === 'ABROAD' || p.league === 'MLS');
+    const abroad = activePlayers.filter((p: any) => {
+      const isC = p.is_canadian === true || String(p.nationality || '').toLowerCase().includes('canada');
+      const comp = String(p.league || '').toUpperCase();
+      return isC && (comp === 'ABROAD' || comp === 'MLS' || (!comp.includes('CPL') && !comp.includes('NSL')));
+    });
     const sorted = [...abroad].sort((a: any, b: any) => (b.rating ?? 0) - (a.rating ?? 0));
     return sorted.slice(0, 5).map((p: any, idx: number) => {
       const playerName = p.name || p.full_name || 'Player';
@@ -414,8 +437,7 @@ export default function StatsHubPage() {
   }, [activePlayers]);
 
   const computedDiscipline = useMemo(() => {
-    const source = filteredPlayers.length > 0 ? filteredPlayers : activePlayers;
-    const sorted = [...source].sort((a: any, b: any) => {
+    const sorted = [...filteredPlayers].sort((a: any, b: any) => {
       const scoreB = (b.yellow_cards || 0) * 1 + (b.red_cards || 0) * 3;
       const scoreA = (a.yellow_cards || 0) * 1 + (a.red_cards || 0) * 3;
       return scoreB - scoreA;
@@ -432,11 +454,10 @@ export default function StatsHubPage() {
         slug: p.slug || p.external_id || p.id,
       };
     });
-  }, [filteredPlayers, activePlayers]);
+  }, [filteredPlayers]);
 
   const computedTeamOfWeek = useMemo(() => {
-    const source = filteredPlayers.length > 0 ? filteredPlayers : activePlayers;
-    const sorted = [...source].sort((a: any, b: any) => (b.rating ?? 0) - (a.rating ?? 0));
+    const sorted = [...filteredPlayers].sort((a: any, b: any) => (b.rating ?? 0) - (a.rating ?? 0));
     return sorted.slice(0, 6).map((p: any) => {
       const teamObj = Array.isArray(p.current_team) ? p.current_team[0] : p.current_team;
       const playerName = p.name || 'Player';
@@ -449,7 +470,7 @@ export default function StatsHubPage() {
         slug: p.slug || p.external_id || p.id,
       };
     });
-  }, [filteredPlayers, activePlayers]);
+  }, [filteredPlayers]);
 
   const computedRecords = useMemo(() => {
     const topScorer = [...activePlayers].sort((a: any, b: any) => (b.goals ?? 0) - (a.goals ?? 0))[0];
@@ -618,7 +639,7 @@ export default function StatsHubPage() {
 
           {showPlayers && (
             <DataTable
-              title={programGender === 'MEN' ? 'CPL & MEN DATABASE LEADERS' : 'NSL & WOMEN DATABASE LEADERS'}
+              title={programGender === 'MEN' ? 'ALL-CANADIAN MEN DATABASE LEADERS' : 'ALL-CANADIAN WOMEN DATABASE LEADERS'}
               players={filteredPlayers}
               onAddToCompare={handleAddToCompare}
             />
@@ -640,7 +661,11 @@ export default function StatsHubPage() {
           {showAbroad && (
             <DataTable
               title="GLOBAL CANADIAN PERFORMANCE STREAM"
-              players={activePlayers.filter((p: any) => p.league === 'ABROAD' || p.league === 'MLS')}
+              players={activePlayers.filter((p: any) => {
+                const isC = p.is_canadian === true || String(p.nationality || '').toLowerCase().includes('canada');
+                const comp = String(p.league || '').toUpperCase();
+                return isC && (comp === 'ABROAD' || comp === 'MLS' || (!comp.includes('CPL') && !comp.includes('NSL')));
+              })}
               onAddToCompare={handleAddToCompare}
             />
           )}
