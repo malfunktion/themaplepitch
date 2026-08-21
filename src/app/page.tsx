@@ -15,7 +15,7 @@ import ConversionSection from '@/components/home/ConversionSection';
 import LocalClubSpotlight from '@/components/home/LocalClubSpotlight';
 import SidebarStack from '@/components/sidebar/SidebarStack';
 import { homeLayout } from '@/lib/homeLayout.config';
-import type { WireStory } from '@/lib/types';
+import type { WireStory, StandingsRow } from '@/lib/types';
 import { client } from '@/lib/sanity';
 import { getWireFeed } from '@/lib/data/newsWire';
 import { getCplStandings, getNslStandings } from '@/lib/data/standings';
@@ -118,4 +118,3 @@ export default async function HomePage() {
     </div>
   );
 }
-
