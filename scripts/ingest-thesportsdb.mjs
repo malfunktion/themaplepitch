@@ -2,9 +2,8 @@ import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://wsbyyvtcvyhidvijvwuo.supabase.co';
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SERVICE_ROLE_KEY;
-
-// Default to free key '3' if key is missing or invalid
 let TSDB_KEY = process.env.THESPORTSDB_KEY || '3';
+
 if (TSDB_KEY.length > 10) {
   TSDB_KEY = '3';
 }
@@ -71,7 +70,6 @@ async function fetchTeamsForLeague(leagueObj) {
         name: t.strTeam,
         short_name: t.strTeamShort || null,
         league: leagueObj.code,
-        competition: leagueObj.code,
         gender: leagueObj.gender,
         logo_url: t.strBadge || t.strLogo || null,
         venue: t.strStadium || null,
