@@ -346,8 +346,15 @@ export default function StatsHubPage() {
 
       if (!matchesGender) return false;
 
-      // Citizenship check (must be Canadian for All Canadian leaderboards)
-      const isCanadian = p.is_canadian === true || String(p.nationality || '').toLowerCase().includes('canada');
+      // Citizenship check (must be Canadian for All Canadian leaderboards).
+      // Only ingest-apifootball.mjs ever stamps is_canadian/nationality on a
+      // row (and always sets both together). seed-clean-database.mjs and
+      // ingest-thesportsdb.mjs, which populate the bulk of the roster, never
+      // set either field, so requiring is_canadian === true here excluded
+      // almost every real player and left every leaderboard empty. Since this
+      // whole database is Canadian-soccer-scoped, presume Canadian unless a
+      // row was explicitly flagged otherwise by the one script that checks.
+      const isCanadian = p.is_canadian !== false;
       if (!isCanadian) return false;
 
       const comp = String(p.league || p.competitionName || p.competition || '').toUpperCase();
@@ -417,7 +424,7 @@ export default function StatsHubPage() {
 
   const computedAbroad = useMemo<PlayerRow[]>(() => {
     const abroad = activePlayers.filter((p: any) => {
-      const isC = p.is_canadian === true || String(p.nationality || '').toLowerCase().includes('canada');
+      const isC = p.is_canadian !== false; // see citizenship-check note above
       const comp = String(p.league || '').toUpperCase();
       return isC && (comp === 'ABROAD' || comp === 'MLS' || (!comp.includes('CPL') && !comp.includes('NSL')));
     });
@@ -662,7 +669,7 @@ export default function StatsHubPage() {
             <DataTable
               title="GLOBAL CANADIAN PERFORMANCE STREAM"
               players={activePlayers.filter((p: any) => {
-                const isC = p.is_canadian === true || String(p.nationality || '').toLowerCase().includes('canada');
+                const isC = p.is_canadian !== false; // see citizenship-check note above
                 const comp = String(p.league || '').toUpperCase();
                 return isC && (comp === 'ABROAD' || comp === 'MLS' || (!comp.includes('CPL') && !comp.includes('NSL')));
               })}
