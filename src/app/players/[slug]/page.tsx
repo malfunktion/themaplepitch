@@ -133,7 +133,12 @@ export default async function PlayerProfilePage({
   const isWomen = player.gender?.toLowerCase() === 'women';
   const nationalTag = isWomen ? 'CANWNT' : 'CANMNT';
 
-  // Extract headshot from metadata (written by sync-media-vault scripts) or direct column fallbacks
+  // scripts/sync-all-media-forced.mjs is the only thing that writes player
+  // headshots, and it writes exclusively to the `metadata.photo` JSONB key
+  // (confirmed by reading the script directly) — there is no dedicated
+  // photo_url/headshot_url column anywhere in this schema. Keeping the old
+  // column-name fallbacks here anyway, at negligible cost, in case a future
+  // import script ever adds one of them.
   const playerPhoto =
     player.metadata?.photo ||
     (player as any).avatar_url ||
