@@ -13,18 +13,23 @@ const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
 async function validate() {
   try {
     const { count, error } = await supabase.from('teams').select('*', { count: 'exact', head: true });
-    
+
     if (error) {
-      console.warn('⚠️ Supabase connection warning during validation test:', error.message);
-    } else {
-      console.log(`✅ Database connectivity confirmed. Teams table record count: ${count ?? 0}`);
+      // A real connectivity/auth failure here means the anon key or URL
+      // this ran with is wrong — that's exactly the class of bug (see
+      // wrangler.toml) that silently breaks every page at once. Failing
+      // the build on it is the point; swallowing it here just moves the
+      // same failure to production, where it's much harder to see.
+      console.error('❌ Supabase connectivity check failed:', error.message);
+      process.exit(1);
     }
 
+    console.log(`✅ Database connectivity confirmed. Teams table record count: ${count ?? 0}`);
     console.log('✨ Data Validation Test Passed Successfully!');
     process.exit(0);
   } catch (err) {
-    console.error('❌ Data validation script warning:', err.message);
-    process.exit(0); // Exit 0 to ensure CI pipeline completes successfully
+    console.error('❌ Data validation script error:', err.message);
+    process.exit(1);
   }
 }
 
