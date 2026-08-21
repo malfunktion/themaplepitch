@@ -5,7 +5,7 @@ import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL;
 const SERVICE_ROLE_KEY = process.env.SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
-const TSDB_KEY = process.env.THESPORTSDB_KEY || process.env.THESPORTSDB_KEY || process.env.APIF_KEY || '123';
+const TSDB_KEY = process.env.THESPORTSDB_KEY || process.env.APIF_KEY || '123';
 
 if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
   console.error('Missing required environment variables (SUPABASE_URL or SERVICE_ROLE_KEY).');
@@ -25,7 +25,8 @@ const CPL_TEAMS = [
   'Valour FC',
   'Vancouver FC',
   'York United FC',
-  'York9'
+  'York9',
+  'FC Supra du Québec'
 ];
 
 const NSL_TEAMS = [
@@ -219,13 +220,15 @@ async function importPlayers() {
     { name: 'Moses Dyer', league: 'CPL', gender: 'men', position: 'ST' }
   ];
 
+  // FIXED: Changed 'full_name' back to 'name' to perfectly match your schema
   const initialPlayers = corePlayers.map(p => ({
-    full_name: p.name,
+    name: p.name,
+    league: p.league,
+    gender: p.gender,
     position: p.position
   }));
 
-  // Matches schema cache constraint using full_name
-  const { error } = await supabase.from('players').upsert(initialPlayers, { onConflict: 'full_name' });
+  const { error } = await supabase.from('players').upsert(initialPlayers, { onConflict: 'name' });
   if (error) {
     console.error(`Player stats upsert failed: ${error.message}`);
   } else {
