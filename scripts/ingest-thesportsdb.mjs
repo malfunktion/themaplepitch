@@ -94,7 +94,6 @@ async function importTeams() {
         gender: leagueConfig.gender,
         division_level: 'Professional',
         logo_url: null,
-        youtube_search_tag: null,
         slug: extId,
         external_id: extId,
       });
