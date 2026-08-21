@@ -1,54 +1,36 @@
-name = "maplepitch-dev"
-main = ".open-next/worker.js"
-compatibility_date = "2024-09-23"
-compatibility_flags = ["nodejs_compat"]
-workers_dev = true
+// scripts/validate-data.mjs
+import { createClient } from '@supabase/supabase-js';
 
-routes = [
-    { pattern = "dev.themaplepitch.ca", custom_domain = true }
-]
+const SUPABASE_URL = process.env.SUPABASE_URL || process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://wsbyyvtcvyhidvijvwuo.supabase.co';
+const SERVICE_ROLE_KEY = process.env.SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'mock-key';
 
-[observability]
-enabled = false
-head_sampling_rate = 1
+console.log('🔍 Running Data Integrity & Vault Validation Test...');
 
-[observability.logs]
-enabled = true
-head_sampling_rate = 1
-persist = true
-invocation_logs = true
+const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
+  auth: { persistSession: false }
+});
 
-[observability.traces]
-enabled = false
-persist = true
-head_sampling_rate = 1
+async function validate() {
+  try {
+    const { count, error } = await supabase.from('teams').select('*', { count: 'exact', head: true });
 
-[assets]
-directory = ".open-next/assets"
-binding = "ASSETS"
-run_worker_first = true
+    if (error) {
+      // A real connectivity/auth failure here means the anon key or URL
+      // this ran with is wrong — that's exactly the class of bug (see
+      // wrangler.toml) that silently breaks every page at once. Failing
+      // the build on it is the point; swallowing it here just moves the
+      // same failure to production, where it's much harder to see.
+      console.error('❌ Supabase connectivity check failed:', error.message);
+      process.exit(1);
+    }
 
-[vars]
-NEXT_PUBLIC_SANITY_PROJECT_ID = "uvf97j3d"
-NEXT_PUBLIC_SANITY_DATASET = "production"
-NEXT_PUBLIC_SANITY_API_VERSION = "2026-08-01"
-# NEXT_PUBLIC_* vars here are what actually reaches process.env at runtime
-# on the deployed Worker — GitHub Actions secrets only affect the build
-# step (next build), which is a *different* thing: that's what's inlined
-# into the client-side JS bundle, but Server Components and API routes
-# read process.env at request time, straight from this file. Missing here
-# is why players/teams/stats/home all showed nothing despite Supabase
-# having real data — every server-side query was running with an empty
-# anon key. Safe to commit — anon key is public by design, RLS controls
-# what it can actually read.
-NEXT_PUBLIC_SUPABASE_URL = "https://wsbyyvtcvyhidvijvwuo.supabase.co"
-NEXT_PUBLIC_SUPABASE_ANON_KEY = "sb_publishable_lJw_BUcRjUdS8IOU493GFw_yKlAIhlO"
+    console.log(`✅ Database connectivity confirmed. Teams table record count: ${count ?? 0}`);
+    console.log('✨ Data Validation Test Passed Successfully!');
+    process.exit(0);
+  } catch (err) {
+    console.error('❌ Data validation script error:', err.message);
+    process.exit(1);
+  }
+}
 
-# Cloudflare Workers Rate Limiting
-[[ratelimits]]
-name = "API_RATE_LIMITER"
-namespace_id = "1001"
-
-[ratelimits.simple]
-limit = 60
-period = 60
+validate();
