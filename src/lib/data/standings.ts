@@ -95,7 +95,7 @@ export async function computeStandings(competition: string): Promise<StandingsRo
     ]);
 
     if (teamsRes.error || matchesRes.error || !teamsRes.data || teamsRes.data.length === 0) {
-      // Fallback arrays guaranteeing clean, exact active teams
+      // Fallback arrays guaranteeing clean, exact active teams across all pages
       if (isCpl) {
         return [
           { id: 1, position: 1, clubName: 'Forge FC', name: 'Forge FC', played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 0, slug: 'forge-fc' },
@@ -132,10 +132,6 @@ export async function computeStandings(competition: string): Promise<StandingsRo
       if (!isWhitelisted) return;
 
       const existing = uniqueTeamsMap.get(canonicalLower);
-      // Prefer whichever row's own name IS the canonical name (the club's
-      // current identity) over a historical/rebrand alias row, so we link
-      // out using the current team's own slug and crest rather than a
-      // retired franchise name's.
       const isCurrentIdentity = cleanName === canonicalLower;
       if (!existing || (isCurrentIdentity && existing.name.toLowerCase() !== canonicalLower)) {
         uniqueTeamsMap.set(canonicalLower, {
@@ -224,7 +220,7 @@ export async function computeStandings(competition: string): Promise<StandingsRo
       .sort((a, b) => 
         b.points - a.points || 
         b.goalDifference - a.goalDifference || 
-        b.goalsFor - a.goalsFor ||
+        (b.goalsFor || 0) - (a.goalsFor || 0) ||
         a.clubName.localeCompare(b.clubName)
       )
       .map((row, idx) => ({
