@@ -38,10 +38,6 @@ function safeFormatDate(dateVal: any): string {
 }
 
 async function getTeamData(slugParam: string, seasonParam: string) {
-  // slugParam comes straight from the URL and gets interpolated into a
-  // PostgREST `.or()` filter string below. Only allow characters that a
-  // real slug/id would ever contain, so a crafted path segment (commas,
-  // parens, `%`, etc.) can't inject extra filter clauses.
   if (!/^[a-zA-Z0-9-]+$/.test(slugParam)) return null;
 
   const isNumeric = !isNaN(Number(slugParam));
@@ -326,15 +322,21 @@ export default async function TeamProfilePage({
         {/* Sidebar Info */}
         <aside className="space-y-6">
           <div className="border border-border bg-card p-5">
-            {team.logo_url && (
-              <div className="mb-4 flex h-20 w-20 items-center justify-center border border-border/60 bg-neutral-900/5 p-3">
+            {team.logo_url ? (
+              <div className="mb-4 flex h-24 w-24 items-center justify-center border border-border/60 bg-neutral-900/5 p-2 rounded-sm">
                 <Image
                   src={team.logo_url}
                   alt={`${team.name || 'Team'} crest`}
-                  width={64}
-                  height={64}
-                  className="h-full w-full object-contain"
+                  width={96}
+                  height={96}
+                  unoptimized
+                  className="h-full w-auto object-contain"
+                  priority
                 />
+              </div>
+            ) : (
+              <div className="mb-4 flex h-24 w-24 items-center justify-center border border-border/60 bg-neutral-900/10 text-xs font-mono font-bold text-crimson">
+                [{team.short_name || team.name?.substring(0, 3).toUpperCase() || 'CLUB'}]
               </div>
             )}
             <div className="text-[10px] font-mono uppercase text-crimson">Club Information</div>
