@@ -113,9 +113,6 @@ function slugify(name: string) {
     .replace(/(^-|-$)/g, '');
 }
 
-/**
- * Determines if a Canadian player counts as "Abroad" based on league and team.
- */
 function isPlayerAbroad(p: any) {
   const isC = p.is_canadian !== false;
   if (!isC) return false;
@@ -136,15 +133,20 @@ function isPlayerAbroad(p: any) {
   return true;
 }
 
+// STRICT EXCLUSIVE GENDER MATCHING (Prevents 'women'.includes('men') substring bug)
 function matchesGenderFilter(p: any, targetGender: Gender) {
-  const playerGender = String(p.gender || '').toLowerCase();
-  const target = targetGender.toLowerCase();
-  const leagueUpper = String(p.league || '').toUpperCase();
+  const playerGender = String(p.gender || '').toLowerCase().trim();
+  const target = targetGender.toLowerCase().trim();
 
   if (playerGender) {
-    return playerGender.includes(target) || playerGender === (target === 'women' ? 'female' : 'male');
+    if (target === 'men') {
+      return playerGender === 'men' || playerGender === 'male' || playerGender === 'm';
+    } else {
+      return playerGender === 'women' || playerGender === 'female' || playerGender === 'w';
+    }
   }
 
+  const leagueUpper = String(p.league || '').toUpperCase();
   if (target === 'women') {
     return leagueUpper.includes('NSL') || leagueUpper.includes('NWSL') || leagueUpper.includes('WOMEN');
   } else {
@@ -432,7 +434,7 @@ export default function StatsHubPage() {
   const activePlayers = dbPlayers;
   const activeTeams = dbTeams;
 
-  // Robust Gender & Competition Filtering
+  // Filtered Players using strict gender matching
   const filteredPlayers = useMemo(() => {
     return activePlayers.filter((p: any) => {
       if (!matchesGenderFilter(p, programGender)) return false;
@@ -485,7 +487,7 @@ export default function StatsHubPage() {
     });
   }, [filteredPlayers]);
 
-  // STRICT GOALKEEPER FILTERING: ONLY players with position === 'GK'
+  // STRICT GOALKEEPER FILTERING: ONLY players with position === 'GK' matching program gender
   const computedGoalkeepers = useMemo<PlayerRow[]>(() => {
     const keepers = activePlayers.filter((p: any) => {
       if (!matchesGenderFilter(p, programGender)) return false;
@@ -531,7 +533,6 @@ export default function StatsHubPage() {
     });
   }, [activePlayers, programGender]);
 
-  // Clean, Normalized CPL Teams List
   const cleanCplTeams = useMemo(() => {
     const seen = new Set<string>();
 
@@ -565,7 +566,6 @@ export default function StatsHubPage() {
     });
   }, [activeTeams]);
 
-  // Clean, Normalized NSL Teams List
   const cleanNslTeams = useMemo(() => {
     const seen = new Set<string>();
 
@@ -596,7 +596,6 @@ export default function StatsHubPage() {
     });
   }, [activeTeams]);
 
-  // Clean, Normalized Canadian MLS Teams List
   const cleanMlsTeams = useMemo(() => {
     const seen = new Set<string>();
     const canadianMlsNames = ['Toronto FC', 'CF Montréal', 'Vancouver Whitecaps'];
