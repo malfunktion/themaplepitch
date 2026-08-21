@@ -1,12 +1,13 @@
+// src/app/page.tsx
 import type { ReactNode } from 'react';
 import Link from 'next/link';
 import StatsDashboard from '@/components/home/StatsDashboard';
 import HeroDossier from '@/components/home/HeroDossier';
 import WireFeedList from '@/components/home/WireFeedList';
+import ScoutDash from '@/components/home/ScoutDash';
 import PlayerDatabaseSpotlights from '@/components/home/PlayerDatabaseSpotlights';
 import ProLeaguesTracker from '@/components/home/ProLeaguesTracker';
 import YouthToProPipeline from '@/components/home/YouthToProPipeline';
-import CollegiateWatchlist from '@/components/home/CollegiateWatchlist';
 import FanHubSection from '@/components/home/FanHubSection';
 import PlayerAndProvincialSection from '@/components/home/PlayerAndProvincialSection';
 import LegendsGallery from '@/components/home/LegendsGallery';
@@ -82,13 +83,13 @@ export default async function HomePage() {
     'player-database': <PlayerDatabaseSpotlights spotlights={spotlights} />,
     'pro-leagues-tracker': <ProLeaguesTracker />,
     'youth-pipeline': <YouthToProPipeline />,
-    'collegiate-watchlist': <CollegiateWatchlist />,
     'fan-hub': <FanHubSection />,
     'player-provincial': <PlayerAndProvincialSection />,
     'stats-dashboard': <StatsDashboard standings={standings} nslStandings={nslStandings} />,
     'legends-gallery': <LegendsGallery />,
     'conversion-section': <ConversionSection />,
     'local-club-spotlight': <LocalClubSpotlight />,
+    'scout-dash': <ScoutDash standings={standings} nslStandings={nslStandings} />,
   };
 
   return (
@@ -117,3 +118,4 @@ export default async function HomePage() {
     </div>
   );
 }
+
