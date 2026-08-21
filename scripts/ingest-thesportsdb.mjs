@@ -1,4 +1,4 @@
-// scripts/import-thesportsdb.mjs
+// scripts/ingest-thesportsdb.mjs
 // Pulls team, match history, and player telemetry from TheSportsDB for CPL, NSL, Canadian Championship, MLS, and NWSL.
 
 import { createClient } from '@supabase/supabase-js';
@@ -219,15 +219,20 @@ async function importPlayers() {
     { name: 'Moses Dyer', league: 'CPL', gender: 'men', position: 'ST' }
   ];
 
-  // FIXED: Changed 'full_name' back to 'name' to perfectly match your schema
+  // Two real players can share a name (e.g. common English names), so
+  // 'name' was never a valid ON CONFLICT target — Postgres was correctly
+  // rejecting it since no unique constraint exists on that column. Every
+  // other upsert in this project (teams, matches) keys on a slugified
+  // external_id instead; doing the same here for consistency.
   const initialPlayers = corePlayers.map(p => ({
+    external_id: slugify(p.name),
     name: p.name,
     league: p.league,
     gender: p.gender,
     position: p.position
   }));
 
-  const { error } = await supabase.from('players').upsert(initialPlayers, { onConflict: 'name' });
+  const { error } = await supabase.from('players').upsert(initialPlayers, { onConflict: 'external_id' });
   if (error) {
     console.error(`Player stats upsert failed: ${error.message}`);
   } else {
