@@ -5,6 +5,8 @@ import type { StandingsRow, LiveTickerItem } from '@/lib/types';
 type Team = {
   id: number;
   name: string;
+  slug: string | null;
+  logo_url: string | null;
   league: string;
 };
 
@@ -69,13 +71,22 @@ function normalizeTeamName(name: string): string {
   return TEAM_NAME_OVERRIDES[trimmed] || name.trim();
 }
 
+function slugify(name: string): string {
+  return (name || '')
+    .toLowerCase()
+    .normalize('NFD')
+    .replace(/[\u0300-\u036f]/g, '') // strip accents (Atlético -> Atletico)
+    .replace(/[^a-z0-9]+/g, '-')
+    .replace(/^-+|-+$/g, '');
+}
+
 export async function computeStandings(competition: string): Promise<StandingsRow[]> {
   try {
     const isCpl = competition.toUpperCase() === 'CPL';
     const targetWhitelist = isCpl ? ACTIVE_CPL_CLUBS : ACTIVE_NSL_CLUBS;
 
     const [teamsRes, matchesRes] = await Promise.all([
-      supabase.from('teams').select('id, name, league').eq('league', competition),
+      supabase.from('teams').select('id, name, slug, logo_url, league').eq('league', competition),
       supabase
         .from('matches')
         .select('home_team_id, away_team_id, home_score, away_score, status, competition')
@@ -120,7 +131,13 @@ export async function computeStandings(competition: string): Promise<StandingsRo
       const isWhitelisted = targetWhitelist.some(w => cleanName.includes(w) || canonicalLower.includes(w));
       if (!isWhitelisted) return;
 
-      if (!uniqueTeamsMap.has(canonicalLower)) {
+      const existing = uniqueTeamsMap.get(canonicalLower);
+      // Prefer whichever row's own name IS the canonical name (the club's
+      // current identity) over a historical/rebrand alias row, so we link
+      // out using the current team's own slug and crest rather than a
+      // retired franchise name's.
+      const isCurrentIdentity = cleanName === canonicalLower;
+      if (!existing || (isCurrentIdentity && existing.name.toLowerCase() !== canonicalLower)) {
         uniqueTeamsMap.set(canonicalLower, {
           ...team,
           name: canonicalName,
@@ -188,8 +205,9 @@ export async function computeStandings(competition: string): Promise<StandingsRo
         const ga = s.ga;
         return {
           id: team.id,
-          slug: team.name,
+          slug: team.slug || slugify(team.name),
           external_id: String(team.id),
+          logoUrl: team.logo_url || null,
           position: 1,
           clubName: team.name,
           name: team.name,
