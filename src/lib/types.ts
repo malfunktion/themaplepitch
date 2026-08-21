@@ -45,6 +45,9 @@ export function mapNewsWireCategoryToLeague(category?: string): League {
 
 export type StandingsRow = {
   id?: number;
+  slug?: string;
+  external_id?: string;
+  logoUrl?: string | null;
   position: number;
   clubName: string;
   name?: string;
