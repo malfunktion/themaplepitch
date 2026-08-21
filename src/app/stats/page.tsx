@@ -1,3 +1,4 @@
+// src/app/stats/page.tsx
 'use client';
 
 import React, { useMemo, useState, useEffect } from 'react';
@@ -89,11 +90,10 @@ function slugify(name: string) {
 
 /**
  * Determines if a Canadian player counts as "Abroad" based on league and team.
- * Canadian MLS teams (TFC, MTL, VAN) are Domestic. All other MLS, NWSL, and global leagues are Abroad.
  */
 function isPlayerAbroad(p: any) {
   const isC = p.is_canadian !== false;
-  if (!isC) return false; // Non-Canadians don't count in the "Canadians Abroad" lists
+  if (!isC) return false;
 
   const comp = String(p.league || p.competitionName || p.competition || '').toUpperCase();
   const teamObj = Array.isArray(p.current_team) ? p.current_team[0] : p.current_team;
@@ -105,13 +105,9 @@ function isPlayerAbroad(p: any) {
     teamName.includes('montreal') || 
     teamName.includes('whitecaps');
 
-  // CPL and NSL are strictly domestic
   if (comp.includes('CPL') || comp.includes('NSL')) return false;
-
-  // Canadian MLS franchises are domestic
   if (comp.includes('MLS') && isCanadianMlsTeam) return false;
 
-  // NWSL, Foreign MLS, and all European/Global leagues are Abroad
   return true;
 }
 
@@ -188,7 +184,7 @@ function Leaderboard({
         </div>
         {rows.length === 0 ? (
           <div className="py-6 text-center text-[10px] text-charcoal-soft">
-            NO RECORDS FOUND FOR SELECT PROGRAM
+            NO RECORDS FOUND
           </div>
         ) : (
           rows.map((row) => (
@@ -400,10 +396,8 @@ export default function StatsHubPage() {
     return activePlayers.filter((p: any) => {
       const playerGender = String(p.gender || '').toLowerCase();
       const targetGender = programGender.toLowerCase();
-      
       const leagueUpper = String(p.league || '').toUpperCase();
 
-      // Ensure exact gender match, fallback to inferring NWSL/NSL = women
       if (playerGender) {
         if (playerGender !== targetGender) return false;
       } else {
@@ -421,7 +415,6 @@ export default function StatsHubPage() {
         return isPlayerAbroad(p);
       }
 
-      // Default 'ALL CANADIAN': Only show Canadian passports in general trackers
       return p.is_canadian !== false;
     });
   }, [activePlayers, programGender, competition]);
@@ -458,25 +451,34 @@ export default function StatsHubPage() {
     });
   }, [filteredPlayers]);
 
+  // STRICT GOALKEEPER FILTERING: ONLY players with position === 'GK'
   const computedGoalkeepers = useMemo<PlayerRow[]>(() => {
-    const keepers = filteredPlayers.filter((p: any) => p.position === 'GK');
-    const source = keepers.length > 0 ? keepers : filteredPlayers;
-    const sorted = [...source].sort((a: any, b: any) => (b.rating ?? 0) - (a.rating ?? 0));
+    const keepers = activePlayers.filter((p: any) => {
+      const pos = String(p.position || '').trim().toUpperCase();
+      const pGender = String(p.gender || '').toLowerCase();
+      const targetGender = programGender.toLowerCase();
+      
+      if (pGender && pGender !== targetGender) return false;
+      return pos === 'GK' || pos === 'GOALKEEPER';
+    });
+
+    const sorted = [...keepers].sort((a: any, b: any) => (b.clean_sheets ?? b.rating ?? 0) - (a.clean_sheets ?? a.rating ?? 0));
     return sorted.slice(0, 5).map((p: any, idx: number) => {
       const playerName = p.name || p.full_name || 'Player';
       const teamObj = Array.isArray(p.current_team) ? p.current_team[0] : p.current_team;
+      const cleanSheetsVal = p.clean_sheets !== undefined ? `${p.clean_sheets} CS` : `${p.rating ? Number(p.rating).toFixed(1) : '7.5'} RTG`;
       return {
         rank: idx + 1,
         name: playerName,
         club: teamObj?.name || p.league || 'Pro Club',
-        value: `${p.rating ? Number(p.rating).toFixed(1) : '7.0'} RTG`,
+        value: cleanSheetsVal,
         initials: playerName.split(' ').map((n: string) => n[0]).join('.'),
         slug: p.slug || p.external_id || p.id,
       };
     });
-  }, [filteredPlayers]);
+  }, [activePlayers, programGender]);
 
-  // Canadians Abroad Leaderboard explicitly powered by the new `isPlayerAbroad` logic
+  // Canadians Abroad Leaderboard
   const computedAbroad = useMemo<PlayerRow[]>(() => {
     const abroad = activePlayers.filter((p: any) => {
       const playerGender = String(p.gender || '').toLowerCase();
@@ -502,7 +504,7 @@ export default function StatsHubPage() {
     });
   }, [activePlayers, programGender]);
 
-  // Clean, Unified CPL Teams List (Normalizes York9 / Inter Toronto & FC Supra du Québec)
+  // Clean, Unified CPL Teams List
   const cleanCplTeams = useMemo(() => {
     const seen = new Set<string>();
 
@@ -596,7 +598,6 @@ export default function StatsHubPage() {
     });
   }, [filteredPlayers]);
 
-  // Dynamic Historical Database / Records & Milestones depending on Gender Toggle
   const computedRecords = useMemo(() => {
     const baseRecords = programGender === 'MEN' ? menRecords : womenRecords;
 
@@ -758,7 +759,7 @@ export default function StatsHubPage() {
                 />
                 <Leaderboard
                   title="Goalkeeping"
-                  subtitle={`TOP PERFORMERS // RATING (${programGender})`}
+                  subtitle={`GOALKEEPER LEADERS // (${programGender})`}
                   rows={computedGoalkeepers}
                   valueLabel="RATING"
                 />
