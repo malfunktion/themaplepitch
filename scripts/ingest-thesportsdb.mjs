@@ -1,9 +1,11 @@
+// scripts/ingest-thesportsdb.mjs
 import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://wsbyyvtcvyhidvijvwuo.supabase.co';
 const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SERVICE_ROLE_KEY;
-let TSDB_KEY = process.env.THESPORTSDB_KEY || '3';
 
+// Default to free key '3' if key is missing or invalid
+let TSDB_KEY = process.env.THESPORTSDB_KEY || '3';
 if (TSDB_KEY.length > 10) {
   TSDB_KEY = '3';
 }
@@ -55,7 +57,17 @@ async function fetchTeamsForLeague(leagueObj) {
       return;
     }
 
-    let count = 0;
+    // 1. Fetch existing teams to compare and prevent redundant database writes
+    const { data: existingTeams } = await supabase
+      .from('teams')
+      .select('external_id, name, logo_url, venue, city');
+
+    const existingMap = new Map();
+    (existingTeams || []).forEach(team => existingMap.set(team.external_id, team));
+
+    let updatedCount = 0;
+    let skippedCount = 0;
+
     for (const t of data.teams) {
       if ((leagueObj.code === 'MLS' || leagueObj.code === 'NWSL') && t.strCountry !== 'Canada') {
         continue;
@@ -63,17 +75,38 @@ async function fetchTeamsForLeague(leagueObj) {
 
       const slug = slugify(t.strTeam);
       const externalId = `tsdb-${t.idTeam || slug}`;
+      const newLogo = t.strBadge || t.strLogo || null;
+      const newVenue = t.strStadium || null;
+      const newCity = t.strLocation || null;
 
+      const existing = existingMap.get(externalId);
+
+      // 2. Smart-Sync Guardrail: Skip if stored record is identical and up-to-date
+      if (existing) {
+        const isIdentical =
+          existing.name === t.strTeam &&
+          (existing.logo_url === newLogo || (!newLogo && existing.logo_url)) &&
+          (existing.venue === newVenue || (!newVenue && existing.venue)) &&
+          (existing.city === newCity || (!newCity && existing.city));
+
+        if (isIdentical) {
+          skippedCount++;
+          continue;
+        }
+      }
+
+      // 3. Preserve existing non-null data if incoming API response contains nulls
       const payload = {
         external_id: externalId,
         slug: slug,
         name: t.strTeam,
-        short_name: t.strTeamShort || null,
+        short_name: t.strTeamShort || existing?.short_name || null,
         league: leagueObj.code,
+        competition: leagueObj.code,
         gender: leagueObj.gender,
-        logo_url: t.strBadge || t.strLogo || null,
-        venue: t.strStadium || null,
-        city: t.strLocation || null
+        logo_url: newLogo || existing?.logo_url || null,
+        venue: newVenue || existing?.venue || null,
+        city: newCity || existing?.city || null
       };
 
       const { error } = await supabase
@@ -83,11 +116,11 @@ async function fetchTeamsForLeague(leagueObj) {
       if (error) {
         console.error(`⚠️ Error syncing ${t.strTeam}:`, error.message);
       } else {
-        count++;
+        updatedCount++;
       }
     }
 
-    console.log(`✅ Synced ${count} official team profiles for ${leagueObj.name}`);
+    console.log(`✅ Synced ${updatedCount} team updates for ${leagueObj.name} (${skippedCount} already up-to-date)`);
   } catch (err) {
     console.error(`❌ Failed fetching ${leagueObj.name}:`, err.message);
   }
