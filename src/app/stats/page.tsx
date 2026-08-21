@@ -87,6 +87,34 @@ function slugify(name: string) {
     .replace(/(^-|-$)/g, '');
 }
 
+/**
+ * Determines if a Canadian player counts as "Abroad" based on league and team.
+ * Canadian MLS teams (TFC, MTL, VAN) are Domestic. All other MLS, NWSL, and global leagues are Abroad.
+ */
+function isPlayerAbroad(p: any) {
+  const isC = p.is_canadian !== false;
+  if (!isC) return false; // Non-Canadians don't count in the "Canadians Abroad" lists
+
+  const comp = String(p.league || p.competitionName || p.competition || '').toUpperCase();
+  const teamObj = Array.isArray(p.current_team) ? p.current_team[0] : p.current_team;
+  const teamName = String(teamObj?.name || p.clubName || p.club || '').trim().toLowerCase();
+
+  const isCanadianMlsTeam = 
+    teamName.includes('toronto fc') || 
+    teamName.includes('montréal') || 
+    teamName.includes('montreal') || 
+    teamName.includes('whitecaps');
+
+  // CPL and NSL are strictly domestic
+  if (comp.includes('CPL') || comp.includes('NSL')) return false;
+
+  // Canadian MLS franchises are domestic
+  if (comp.includes('MLS') && isCanadianMlsTeam) return false;
+
+  // NWSL, Foreign MLS, and all European/Global leagues are Abroad
+  return true;
+}
+
 function MetricCard({
   label,
   value,
@@ -372,15 +400,13 @@ export default function StatsHubPage() {
     return activePlayers.filter((p: any) => {
       const playerGender = String(p.gender || '').toLowerCase();
       const targetGender = programGender.toLowerCase();
-
-      // Ensure exact gender match
-      if (playerGender && playerGender !== targetGender) {
-        return false;
-      }
       
-      // Fallback for entries missing gender property
-      if (!playerGender) {
-        const leagueUpper = String(p.league || '').toUpperCase();
+      const leagueUpper = String(p.league || '').toUpperCase();
+
+      // Ensure exact gender match, fallback to inferring NWSL/NSL = women
+      if (playerGender) {
+        if (playerGender !== targetGender) return false;
+      } else {
         if (targetGender === 'women' && !leagueUpper.includes('NSL') && !leagueUpper.includes('NWSL')) return false;
         if (targetGender === 'men' && (leagueUpper.includes('NSL') || leagueUpper.includes('NWSL'))) return false;
       }
@@ -392,11 +418,10 @@ export default function StatsHubPage() {
       } else if (competition === 'NSL') {
         return comp.includes('NSL');
       } else if (competition === 'ABROAD') {
-        const isCanadian = p.is_canadian !== false;
-        return isCanadian && (comp === 'ABROAD' || comp === 'MLS' || (!comp.includes('CPL') && !comp.includes('NSL')));
+        return isPlayerAbroad(p);
       }
 
-      // Default 'ALL CANADIAN': Canadian players
+      // Default 'ALL CANADIAN': Only show Canadian passports in general trackers
       return p.is_canadian !== false;
     });
   }, [activePlayers, programGender, competition]);
@@ -451,7 +476,7 @@ export default function StatsHubPage() {
     });
   }, [filteredPlayers]);
 
-  // Canadians Abroad Leaderboard Reacts Strictly to Selected Program Gender
+  // Canadians Abroad Leaderboard explicitly powered by the new `isPlayerAbroad` logic
   const computedAbroad = useMemo<PlayerRow[]>(() => {
     const abroad = activePlayers.filter((p: any) => {
       const playerGender = String(p.gender || '').toLowerCase();
@@ -459,9 +484,7 @@ export default function StatsHubPage() {
 
       if (playerGender && playerGender !== targetGender) return false;
 
-      const isC = p.is_canadian !== false;
-      const comp = String(p.league || '').toUpperCase();
-      return isC && (comp === 'ABROAD' || comp === 'MLS' || (!comp.includes('CPL') && !comp.includes('NSL')));
+      return isPlayerAbroad(p);
     });
 
     const sorted = [...abroad].sort((a: any, b: any) => (b.rating ?? 0) - (a.rating ?? 0));
@@ -777,14 +800,12 @@ export default function StatsHubPage() {
                 const targetIsFemale = programGender === 'WOMEN';
                 const g = String(p.gender || 'men').toUpperCase();
                 const matchesGender = targetIsFemale 
-                  ? (g === 'WOMEN' || String(p.league || '').toUpperCase().includes('NSL'))
-                  : (g === 'MEN' || !String(p.league || '').toUpperCase().includes('NSL'));
+                  ? (g === 'WOMEN' || String(p.league || '').toUpperCase().includes('NSL') || String(p.league || '').toUpperCase().includes('NWSL'))
+                  : (g === 'MEN' || (!String(p.league || '').toUpperCase().includes('NSL') && !String(p.league || '').toUpperCase().includes('NWSL')));
 
                 if (!matchesGender) return false;
 
-                const isC = p.is_canadian !== false;
-                const comp = String(p.league || '').toUpperCase();
-                return isC && (comp === 'ABROAD' || comp === 'MLS' || (!comp.includes('CPL') && !comp.includes('NSL')));
+                return isPlayerAbroad(p);
               })}
               onAddToCompare={handleAddToCompare}
             />
