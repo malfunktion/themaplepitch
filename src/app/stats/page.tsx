@@ -43,19 +43,38 @@ const tabs: { id: ViewMode; label: string }[] = [
   { id: 'COLLEGIATE', label: 'COLLEGIATE (NCAA/U SPORTS)' },
 ];
 
-// CPL Team Alias Mapping for 2026 Season
-const CPL_TEAM_NAME_MAP: Record<string, string> = {
+// Unified Team Name Normalization & De-duplication Map
+const TEAM_NAME_OVERRIDES: Record<string, string> = {
+  'forge': 'Forge FC',
+  'forge fc': 'Forge FC',
+  'cavalry': 'Cavalry FC',
+  'cavalry fc': 'Cavalry FC',
+  'pacific': 'Pacific FC',
+  'pacific fc': 'Pacific FC',
+  'hfx wanderers': 'HFX Wanderers FC',
+  'hfx wanderers fc': 'HFX Wanderers FC',
+  'vancouver': 'Vancouver FC',
+  'vancouver fc': 'Vancouver FC',
+  'atletico ottawa': 'Atlético Ottawa',
+  'atlético ottawa': 'Atlético Ottawa',
   'york9': 'Inter Toronto FC',
   'york9 fc': 'Inter Toronto FC',
   'york united': 'Inter Toronto FC',
   'york united fc': 'Inter Toronto FC',
   'inter toronto': 'Inter Toronto FC',
   'inter toronto fc': 'Inter Toronto FC',
-  'supra': 'FC Supra du Québec',
-  'quebec supra': 'FC Supra du Québec',
+  'toronto fc': 'Toronto FC',
+  'toronto': 'Toronto FC',
+  'cf montreal': 'CF Montréal',
+  'montreal': 'CF Montréal',
+  'montréal': 'CF Montréal',
+  'vancouver whitecaps': 'Vancouver Whitecaps',
+  'vancouver whitecaps fc': 'Vancouver Whitecaps',
   'fc supra du quebec': 'FC Supra du Québec',
   'fc supra du québec': 'FC Supra du Québec',
-  'supra du québec': 'FC Supra du Québec',
+  'quebec supra': 'FC Supra du Québec',
+  'québec supra': 'FC Supra du Québec',
+  'supra': 'FC Supra du Québec',
 };
 
 const DEFUNCT_CPL_TEAMS = new Set(['fc edmonton', 'edmonton', 'valour fc', 'valour']);
@@ -78,6 +97,12 @@ const womenRecords = [
   { label: 'CANWNT ALL-TIME TOP SCORER', value: 'Christine Sinclair — 190 Goals' },
   { label: 'CANWNT MOST CAPS', value: 'Christine Sinclair — 331 Caps' },
 ];
+
+function normalizeTeamName(name: string): string {
+  if (!name) return '';
+  const trimmed = name.trim().toLowerCase();
+  return TEAM_NAME_OVERRIDES[trimmed] || name.trim();
+}
 
 function slugify(name: string) {
   return name
@@ -120,7 +145,6 @@ function matchesGenderFilter(p: any, targetGender: Gender) {
     return playerGender.includes(target) || playerGender === (target === 'women' ? 'female' : 'male');
   }
 
-  // Fallback inference if gender column is missing
   if (target === 'women') {
     return leagueUpper.includes('NSL') || leagueUpper.includes('NWSL') || leagueUpper.includes('WOMEN');
   } else {
@@ -287,7 +311,7 @@ function DataTable({
                 const teamObj = Array.isArray(p.current_team) ? p.current_team[0] : p.current_team;
                 const entitySlug = p.slug || p.external_id || p.id || slugify(p.name || 'player');
                 const playerName = p.name || p.full_name || 'Player';
-                const playerClub = teamObj?.name || p.clubName || p.club || 'Pro Club';
+                const playerClub = normalizeTeamName(teamObj?.name || p.clubName || p.club || 'Pro Club');
                 const playerLeague = p.league || p.competitionName || 'Pro';
                 const statSummary = p.goals !== undefined && p.goals !== null ? `${p.goals} G` : 'Active';
                 return (
@@ -419,6 +443,8 @@ export default function StatsHubPage() {
         return comp.includes('CPL');
       } else if (competition === 'NSL') {
         return comp.includes('NSL');
+      } else if (competition === 'MLS') {
+        return comp.includes('MLS');
       } else if (competition === 'ABROAD') {
         return isPlayerAbroad(p);
       }
@@ -435,7 +461,7 @@ export default function StatsHubPage() {
       return {
         rank: idx + 1,
         name: playerName,
-        club: teamObj?.name || p.league || 'Pro Club',
+        club: normalizeTeamName(teamObj?.name || p.league || 'Pro Club'),
         value: `${p.goals ?? 0} G`,
         initials: playerName.split(' ').map((n: string) => n[0]).join('.'),
         slug: p.slug || p.external_id || p.id,
@@ -451,7 +477,7 @@ export default function StatsHubPage() {
       return {
         rank: idx + 1,
         name: playerName,
-        club: teamObj?.name || p.league || 'Pro Club',
+        club: normalizeTeamName(teamObj?.name || p.league || 'Pro Club'),
         value: `${p.assists ?? 0} AST`,
         initials: playerName.split(' ').map((n: string) => n[0]).join('.'),
         slug: p.slug || p.external_id || p.id,
@@ -475,7 +501,7 @@ export default function StatsHubPage() {
       return {
         rank: idx + 1,
         name: playerName,
-        club: teamObj?.name || p.league || 'Pro Club',
+        club: normalizeTeamName(teamObj?.name || p.league || 'Pro Club'),
         value: cleanSheetsVal,
         initials: playerName.split(' ').map((n: string) => n[0]).join('.'),
         slug: p.slug || p.external_id || p.id,
@@ -497,7 +523,7 @@ export default function StatsHubPage() {
       return {
         rank: idx + 1,
         name: playerName,
-        club: teamObj?.name || p.league || 'International',
+        club: normalizeTeamName(teamObj?.name || p.league || 'International'),
         value: `${p.rating ? Number(p.rating).toFixed(1) : '7.5'} RTG`,
         initials: playerName.split(' ').map((n: string) => n[0]).join('.'),
         slug: p.slug || p.external_id || p.id,
@@ -505,7 +531,7 @@ export default function StatsHubPage() {
     });
   }, [activePlayers, programGender]);
 
-  // Clean, Unified CPL Teams List
+  // Clean, Normalized CPL Teams List
   const cleanCplTeams = useMemo(() => {
     const seen = new Set<string>();
 
@@ -517,7 +543,7 @@ export default function StatsHubPage() {
       if (!comp.includes('CPL')) return false;
       if (DEFUNCT_CPL_TEAMS.has(normKey)) return false;
 
-      const canonicalName = CPL_TEAM_NAME_MAP[normKey] || rawName;
+      const canonicalName = normalizeTeamName(rawName);
       const canonicalKey = canonicalName.toLowerCase();
 
       if (seen.has(canonicalKey)) return false;
@@ -527,8 +553,7 @@ export default function StatsHubPage() {
 
     return filtered.map((t: any, idx: number) => {
       const rawName = String(t.name || t.clubName || '').trim();
-      const normKey = rawName.toLowerCase();
-      const canonicalName = CPL_TEAM_NAME_MAP[normKey] || rawName;
+      const canonicalName = normalizeTeamName(rawName);
       return {
         ...t,
         rank: idx + 1,
@@ -540,12 +565,14 @@ export default function StatsHubPage() {
     });
   }, [activeTeams]);
 
+  // Clean, Normalized NSL Teams List
   const cleanNslTeams = useMemo(() => {
     const seen = new Set<string>();
 
     const filtered = activeTeams.filter((t: any) => {
       const rawName = String(t.name || t.clubName || '').trim();
-      const canonicalKey = rawName.toLowerCase();
+      const canonicalName = normalizeTeamName(rawName);
+      const canonicalKey = canonicalName.toLowerCase();
       const comp = String(t.competition || t.competitionName || t.league || '').toUpperCase();
 
       if (!comp.includes('NSL')) return false;
@@ -555,12 +582,54 @@ export default function StatsHubPage() {
       return true;
     });
 
-    return filtered.map((t: any, idx: number) => ({
-      ...t,
-      rank: idx + 1,
-      position: t.position || 'GEN',
-      league: 'NSL',
-    }));
+    return filtered.map((t: any, idx: number) => {
+      const rawName = String(t.name || t.clubName || '').trim();
+      const canonicalName = normalizeTeamName(rawName);
+      return {
+        ...t,
+        rank: idx + 1,
+        name: canonicalName,
+        clubName: canonicalName,
+        position: t.position || 'GEN',
+        league: 'NSL',
+      };
+    });
+  }, [activeTeams]);
+
+  // Clean, Normalized Canadian MLS Teams List
+  const cleanMlsTeams = useMemo(() => {
+    const seen = new Set<string>();
+    const canadianMlsNames = ['Toronto FC', 'CF Montréal', 'Vancouver Whitecaps'];
+
+    const filtered = activeTeams.filter((t: any) => {
+      const rawName = String(t.name || t.clubName || '').trim();
+      const canonicalName = normalizeTeamName(rawName);
+      const comp = String(t.competition || t.competitionName || t.league || '').toUpperCase();
+
+      const isMlsComp = comp.includes('MLS');
+      const isCanadianMls = canadianMlsNames.some(c => canonicalName.toLowerCase().includes(c.toLowerCase()));
+
+      if (!isMlsComp && !isCanadianMls) return false;
+      if (!canadianMlsNames.some(c => canonicalName.toLowerCase() === c.toLowerCase())) return false;
+
+      const canonicalKey = canonicalName.toLowerCase();
+      if (seen.has(canonicalKey)) return false;
+      seen.add(canonicalKey);
+      return true;
+    });
+
+    return filtered.map((t: any, idx: number) => {
+      const rawName = String(t.name || t.clubName || '').trim();
+      const canonicalName = normalizeTeamName(rawName);
+      return {
+        ...t,
+        rank: idx + 1,
+        name: canonicalName,
+        clubName: canonicalName,
+        position: t.position || 'GEN',
+        league: 'MLS',
+      };
+    });
   }, [activeTeams]);
 
   const computedDiscipline = useMemo(() => {
@@ -575,7 +644,7 @@ export default function StatsHubPage() {
         rank: idx + 1,
         playerId: p.id || p.slug,
         name: p.name || 'Player',
-        club: teamObj?.name || p.league || 'Pro Club',
+        club: normalizeTeamName(teamObj?.name || p.league || 'Pro Club'),
         yellows: p.yellow_cards ?? 0,
         reds: p.red_cards ?? 0,
         slug: p.slug || p.external_id || p.id,
@@ -591,7 +660,7 @@ export default function StatsHubPage() {
       return {
         playerId: p.id || p.slug,
         name: playerName,
-        club: teamObj?.name || p.league || 'Pro Club',
+        club: normalizeTeamName(teamObj?.name || p.league || 'Pro Club'),
         league: p.league || 'Domestic',
         initials: playerName.split(' ').map((n: string) => n[0]).join('.'),
         slug: p.slug || p.external_id || p.id,
@@ -601,7 +670,6 @@ export default function StatsHubPage() {
 
   const computedRecords = useMemo(() => {
     const baseRecords = programGender === 'MEN' ? menRecords : womenRecords;
-
     const genderPlayers = activePlayers.filter((p: any) => matchesGenderFilter(p, programGender));
 
     const topScorer = [...genderPlayers].sort((a: any, b: any) => (b.goals ?? 0) - (a.goals ?? 0))[0];
@@ -641,7 +709,7 @@ export default function StatsHubPage() {
                   STATS // MASTER INTELLIGENCE HUB
                 </h1>
                 <p className="text-[10px] sm:text-xs font-mono text-charcoal-soft max-w-2xl mt-2 leading-relaxed">
-                  Live database query telemetry, player rankings, and entity streams across CPL, NSL, and global pathways.
+                  Live database query telemetry, player rankings, and entity streams across CPL, NSL, MLS, and global pathways.
                 </p>
               </div>
               <div className="flex items-center gap-2 font-mono text-[8px] shrink-0">
@@ -685,6 +753,7 @@ export default function StatsHubPage() {
                 <option>ALL CANADIAN</option>
                 <option>CPL</option>
                 <option>NSL</option>
+                <option>MLS</option>
                 <option>ABROAD</option>
               </select>
             </div>
@@ -780,15 +849,25 @@ export default function StatsHubPage() {
           )}
 
           {showTeams && (
-            <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
-              <DataTable
-                title="CPL // CANADIAN PREMIER LEAGUE (2026 ACTIVE)"
-                players={cleanCplTeams}
-              />
-              <DataTable
-                title="NSL // NORTHERN SUPER LEAGUE (2026 ACTIVE)"
-                players={cleanNslTeams}
-              />
+            <div className="space-y-5">
+              {(competition === 'ALL CANADIAN' || competition === 'CPL') && (
+                <DataTable
+                  title="CPL // CANADIAN PREMIER LEAGUE (2026 ACTIVE)"
+                  players={cleanCplTeams}
+                />
+              )}
+              {(competition === 'ALL CANADIAN' || competition === 'NSL') && (
+                <DataTable
+                  title="NSL // NORTHERN SUPER LEAGUE (2026 ACTIVE)"
+                  players={cleanNslTeams}
+                />
+              )}
+              {(competition === 'ALL CANADIAN' || competition === 'MLS') && (
+                <DataTable
+                  title="MLS // CANADIAN FRANCHISES (TORONTO, MONTREAL, WHITECAPS)"
+                  players={cleanMlsTeams}
+                />
+              )}
             </div>
           )}
 
