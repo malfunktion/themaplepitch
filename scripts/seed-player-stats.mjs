@@ -14,6 +14,7 @@ const supabase = createClient(SUPABASE_URL, SERVICE_ROLE_KEY, {
 });
 
 const MARQUEE_CANADIANS = [
+  // Men's Stars
   { name: 'Jonathan David', league: 'Abroad', gender: 'men', position: 'ST', goals: 18, assists: 6, rating: 8.4, is_canadian: true },
   { name: 'Alphonso Davies', league: 'Abroad', gender: 'men', position: 'LB', goals: 3, assists: 8, rating: 8.2, is_canadian: true },
   { name: 'Stephen Eustáquio', league: 'Abroad', gender: 'men', position: 'CM', goals: 4, assists: 5, rating: 7.8, is_canadian: true },
@@ -25,13 +26,19 @@ const MARQUEE_CANADIANS = [
   { name: 'Cyle Larin', league: 'Abroad', gender: 'men', position: 'ST', goals: 9, assists: 3, rating: 7.3, is_canadian: true },
   { name: 'Jacob Shaffelburg', league: 'MLS', gender: 'men', position: 'LW', goals: 7, assists: 5, rating: 7.5, is_canadian: true },
   
-  // Women's Stars
-  { name: 'Jessie Fleming', league: 'Abroad', gender: 'women', position: 'CM', goals: 5, assists: 9, rating: 8.1, is_canadian: true },
+  // Women's Stars (Europe/Abroad)
   { name: 'Evelyne Viens', league: 'Abroad', gender: 'women', position: 'ST', goals: 14, assists: 4, rating: 8.3, is_canadian: true },
   { name: 'Kadeisha Buchanan', league: 'Abroad', gender: 'women', position: 'CB', goals: 2, assists: 1, rating: 7.9, is_canadian: true },
   { name: 'Ashley Lawrence', league: 'Abroad', gender: 'women', position: 'RB', goals: 1, assists: 7, rating: 7.8, is_canadian: true },
   { name: 'Cloé Lacasse', league: 'Abroad', gender: 'women', position: 'RW', goals: 8, assists: 5, rating: 7.7, is_canadian: true },
   { name: 'Olivia Smith', league: 'Abroad', gender: 'women', position: 'ST', goals: 11, assists: 6, rating: 8.2, is_canadian: true },
+
+  // NWSL Stars (Canadian Expats)
+  { name: 'Jessie Fleming', league: 'NWSL', gender: 'women', position: 'CM', goals: 5, assists: 9, rating: 8.1, is_canadian: true },
+  { name: 'Kailen Sheridan', league: 'NWSL', gender: 'women', position: 'GK', goals: 0, assists: 0, rating: 8.0, is_canadian: true },
+  { name: 'Janine Beckie', league: 'NWSL', gender: 'women', position: 'RW', goals: 6, assists: 4, rating: 7.8, is_canadian: true },
+  { name: 'Quinn', league: 'NWSL', gender: 'women', position: 'CM', goals: 2, assists: 5, rating: 7.7, is_canadian: true },
+  { name: 'Jordyn Huitema', league: 'NWSL', gender: 'women', position: 'ST', goals: 9, assists: 3, rating: 7.9, is_canadian: true },
 
   // CPL Stars
   { name: 'Tristan Borges', league: 'CPL', gender: 'men', position: 'RW', goals: 10, assists: 8, rating: 7.8, is_canadian: true },
