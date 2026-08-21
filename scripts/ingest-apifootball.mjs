@@ -6,7 +6,7 @@ const SERVICE_ROLE_KEY = process.env.SERVICE_ROLE_KEY || process.env.SUPABASE_SE
 const APIF_KEY = process.env.APIF_KEY;
 
 if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
-  console.error('❌ Missing SUPABASE_URL or SERVICE_ROLE_KEY.');
+  console.error('❌ Missing required environment variables: SUPABASE_URL or SERVICE_ROLE_KEY.');
   process.exit(1);
 }
 
@@ -24,124 +24,154 @@ function slugify(name) {
     .replace(/(^-|-$)/g, '');
 }
 
-// Scope-Locked Canadian & MLS Team Map in API-Football
-const VERIFIED_CANADIAN_API_TEAMS = [
-  // CPL Clubs
-  { id: 15121, name: 'Forge FC', league: 'CPL' },
-  { id: 15122, name: 'Cavalry FC', league: 'CPL' },
-  { id: 15123, name: 'Atlético Ottawa', league: 'CPL' },
-  { id: 15124, name: 'Pacific FC', league: 'CPL' },
-  { id: 15125, name: 'York United FC', league: 'CPL' },
-  { id: 15126, name: 'Valour FC', league: 'CPL' },
-  { id: 15127, name: 'HFX Wanderers FC', league: 'CPL' },
-  { id: 20265, name: 'Vancouver FC', league: 'CPL' },
-
-  // Canadian MLS Clubs
-  { id: 1603, name: 'Toronto FC', league: 'MLS' },
-  { id: 1614, name: 'CF Montréal', league: 'MLS' },
-  { id: 1601, name: 'Vancouver Whitecaps FC', league: 'MLS' }
+// Scope-Locked Teams
+const TARGET_TEAMS = [
+  // CPL
+  { id: 15121, name: 'Forge FC', league: 'CPL', country: 'Canada' },
+  { id: 15122, name: 'Cavalry FC', league: 'CPL', country: 'Canada' },
+  { id: 15123, name: 'Atlético Ottawa', league: 'CPL', country: 'Canada' },
+  { id: 15124, name: 'Pacific FC', league: 'CPL', country: 'Canada' },
+  { id: 15125, name: 'York United FC', league: 'CPL', country: 'Canada' },
+  { id: 15126, name: 'Valour FC', league: 'CPL', country: 'Canada' },
+  { id: 15127, name: 'HFX Wanderers FC', league: 'CPL', country: 'Canada' },
+  { id: 20265, name: 'Vancouver FC', league: 'CPL', country: 'Canada' },
+  // Canadian MLS
+  { id: 1603, name: 'Toronto FC', league: 'MLS', country: 'Canada' },
+  { id: 1614, name: 'CF Montréal', league: 'MLS', country: 'Canada' },
+  { id: 1601, name: 'Vancouver Whitecaps FC', league: 'MLS', country: 'Canada' }
 ];
 
-async function ingestApiFootball() {
-  console.log('🚀 Starting Scope-Locked API-Football & Squad Ingestion...');
+async function syncApiFootball() {
+  console.log('🚀 Executing Rules-Compliant API-Football Sync...');
 
   if (!APIF_KEY) {
-    console.warn('⚠️ APIF_KEY environment variable is missing.');
+    console.warn('⚠️ APIF_KEY is missing. Aborting external network fetches.');
     return;
   }
 
   const headers = {
     'x-apisports-key': APIF_KEY,
-    'User-Agent': 'TheMaplePitch-ScoutTerminal/1.0',
+    'User-Agent': 'TheMaplePitch-Terminal/1.0',
     'Accept': 'application/json'
   };
 
-  for (const team of VERIFIED_CANADIAN_API_TEAMS) {
-    const teamSlug = slugify(team.name);
+  for (const team of TARGET_TEAMS) {
+    const slug = slugify(team.name);
 
-    // 1. Sync Team Record (Uses composite conflict target 'league, name' to prevent unique key errors)
+    // 1. Fetch existing team from DB to check multi-source mapping
+    const { data: existingTeam } = await supabase
+      .from('teams')
+      .select('*')
+      .eq('slug', slug)
+      .maybeSingle();
+
+    // Fill blanks without replacing filled data
     const teamPayload = {
-      external_id: `apif-${team.id}`,
-      slug: teamSlug,
+      slug: slug,
       name: team.name,
-      league: team.league
+      league: team.league,
+      apif_id: String(team.id),
+      tsdb_id: existingTeam?.tsdb_id || null, // Preserve alternate provider IDs
+      logo_url: existingTeam?.logo_url || null,
+      updated_at: new Date().toISOString()
     };
 
     const { data: dbTeam, error: teamErr } = await supabase
       .from('teams')
-      .upsert(teamPayload, { onConflict: 'league, name' })
+      .upsert(teamPayload, { onConflict: 'slug' })
       .select()
       .single();
 
     if (teamErr || !dbTeam) {
-      console.error(`❌ Error syncing team ${team.name}:`, teamErr?.message || 'Unknown database error');
+      console.error(`❌ Team sync failed for ${team.name}:`, teamErr?.message);
       continue;
     }
 
-    console.log(`✅ Synced Canadian Club: ${team.name} (ID: ${dbTeam.id})`);
-
-    // 2. SMART-SYNC CHECK: Skip external API call if team roster is already populated
+    // 2. Check if active roster is already synced (Skip unnecessary re-fetches)
     const { data: existingPlayers } = await supabase
       .from('players')
-      .select('id')
-      .eq('team_id', dbTeam.id);
+      .select('id, external_id, name, nationality, is_canadian, metadata')
+      .eq('current_team_id', dbTeam.id);
 
-    if (existingPlayers && existingPlayers.length > 0) {
-      console.log(`ℹ️ Roster already up-to-date for ${team.name} (${existingPlayers.length} players found). Skipping write.`);
+    if (existingPlayers && existingPlayers.length > 15) {
+      console.log(`⏩ ${team.name} roster already populated (${existingPlayers.length} players). Skipping API squad fetch.`);
       continue;
     }
 
-    // 3. Fetch Squad from API-Football
+    // 3. Fetch live squad from API-Football
     try {
-      console.log(`📡 Fetching live squad for ${team.name}...`);
-      const squadRes = await fetch(`https://v3.football.api-sports.io/players/squads?team=${team.id}`, { headers });
+      console.log(`📡 Fetching squad for ${team.name} (API ID: ${team.id})...`);
+      const res = await fetch(`https://v3.football.api-sports.io/players/squads?team=${team.id}`, { headers });
       
-      if (!squadRes.ok) {
-        console.warn(`⚠️ API Error for ${team.name}: Status ${squadRes.status}`);
+      if (!res.ok) {
+        console.warn(`⚠️ API error for ${team.name}: Status ${res.status}`);
         continue;
       }
 
-      const squadData = await squadRes.json();
+      const squadData = await res.json();
       const playersList = squadData?.response?.[0]?.players || [];
 
-      if (playersList.length === 0) {
-        console.log(`ℹ️ No players found via API for ${team.name}.`);
-        continue;
+      const existingPlayerMap = new Map();
+      (existingPlayers || []).forEach(p => existingPlayerMap.set(p.external_id, p));
+
+      const playerPayloads = [];
+
+      for (const p of playersList) {
+        const pSlug = slugify(p.name);
+        const externalId = `apif-player-${p.id}`;
+        const existingP = existingPlayerMap.get(externalId);
+
+        // Passport & Citizenship Logic
+        const nationality = p.nationality || existingP?.nationality || 'Canada';
+        const isCanadian = nationality.toLowerCase() === 'canada' || nationality.toLowerCase() === 'canadian';
+
+        // Fill blanks while preserving historical metadata
+        const mergedMetadata = {
+          ...(existingP?.metadata || {}),
+          age: p.age || existingP?.metadata?.age,
+          photo: p.photo || existingP?.metadata?.photo,
+          apif_id: p.id
+        };
+
+        playerPayloads.push({
+          external_id: externalId,
+          slug: pSlug,
+          name: p.name,
+          position: p.position || 'Unknown',
+          current_team_id: dbTeam.id,
+          league: team.league,
+          nationality: nationality,
+          is_canadian: isCanadian,
+          gender: 'men',
+          metadata: mergedMetadata,
+          updated_at: new Date().toISOString()
+        });
       }
 
-      const playerPayloads = playersList.map(p => ({
-        external_id: `apif-player-${p.id}`,
-        slug: slugify(p.name),
-        name: p.name,
-        position: p.position || 'Unknown',
-        team_id: dbTeam.id,
-        gender: 'men',
-        league: team.league,
-        metadata: { age: p.age, photo: p.photo }
-      }));
+      if (playerPayloads.length > 0) {
+        const { error: pErr } = await supabase
+          .from('players')
+          .upsert(playerPayloads, { onConflict: 'external_id' });
 
-      const { error: playerErr } = await supabase
-        .from('players')
-        .upsert(playerPayloads, { onConflict: 'external_id' });
-
-      if (playerErr) {
-        console.error(`⚠️ Error syncing roster for ${team.name}:`, playerErr.message);
-      } else {
-        console.log(`👤 Successfully synced ${playerPayloads.length} players for ${team.name}`);
+        if (pErr) {
+          console.error(`⚠️ Error writing squad for ${team.name}:`, pErr.message);
+        } else {
+          console.log(`✅ Synced ${playerPayloads.length} player profiles for ${team.name}`);
+        }
       }
 
-      // Safe throttling delay (1.5 seconds)
+      // Safe rate-limit throttling
       await new Promise(r => setTimeout(r, 1500));
 
-    } catch (apiErr) {
-      console.error(`❌ Network error fetching squad for ${team.name}:`, apiErr.message);
+    } catch (err) {
+      console.error(`❌ Network error fetching ${team.name}:`, err.message);
     }
   }
 
-  console.log('✨ Scope-Locked Ingestion & Squad Sync Complete!');
+  console.log('✨ API-Football Smart Sync Complete!');
 }
 
-ingestApiFootball().catch(err => {
-  console.error('❌ Fatal ingestion failure:', err);
+syncApiFootball().catch(err => {
+  console.error('❌ Fatal error:', err);
   process.exit(1);
 });
