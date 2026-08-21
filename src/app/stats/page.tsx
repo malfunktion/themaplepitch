@@ -42,6 +42,42 @@ const tabs: { id: ViewMode; label: string }[] = [
   { id: 'COLLEGIATE', label: 'COLLEGIATE (NCAA/U SPORTS)' },
 ];
 
+// CPL Team Alias Mapping for 2026 Season
+const CPL_TEAM_NAME_MAP: Record<string, string> = {
+  'york9': 'Inter Toronto FC',
+  'york9 fc': 'Inter Toronto FC',
+  'york united': 'Inter Toronto FC',
+  'york united fc': 'Inter Toronto FC',
+  'inter toronto': 'Inter Toronto FC',
+  'inter toronto fc': 'Inter Toronto FC',
+  'supra': 'FC Supra du Québec',
+  'quebec supra': 'FC Supra du Québec',
+  'fc supra du quebec': 'FC Supra du Québec',
+  'fc supra du québec': 'FC Supra du Québec',
+  'supra du québec': 'FC Supra du Québec',
+};
+
+const DEFUNCT_CPL_TEAMS = new Set(['fc edmonton', 'edmonton', 'valour fc', 'valour']);
+
+// Program Historical Records & Milestones
+const menRecords = [
+  { label: 'ALL-TIME CPL GOAL LEADER', value: 'Terran Campbell — 38 Goals' },
+  { label: 'MOST CPL APPEARANCES', value: 'Karifa Yao — 130 Matches' },
+  { label: 'LONGEST CPL UNBEATEN RUN', value: 'Forge FC — 23 Matches' },
+  { label: 'FASTEST CPL HAT-TRICK', value: 'Anthony Novak — 19 min' },
+  { label: 'CANMNT ALL-TIME TOP SCORER', value: 'Cyle Larin — 30 Goals' },
+  { label: 'CANMNT MOST CAPS', value: 'Atiba Hutchinson — 104 Caps' },
+];
+
+const womenRecords = [
+  { label: 'INAUGURAL NSL GOLDEN BOOT', value: 'Jorian Baucom — 11 Goals (2025)' },
+  { label: 'FIRST NSL HAT-TRICK', value: 'Evelyne Viens — Montreal Roses' },
+  { label: 'LONGEST NSL CLEAN-SHEET STREAK', value: 'Katelyn Rowland — 4 Matches' },
+  { label: 'HIGHEST NSL SINGLE-MATCH ATTENDANCE', value: 'AFC Toronto — 12,410' },
+  { label: 'CANWNT ALL-TIME TOP SCORER', value: 'Christine Sinclair — 190 Goals' },
+  { label: 'CANWNT MOST CAPS', value: 'Christine Sinclair — 331 Caps' },
+];
+
 function slugify(name: string) {
   return name
     .toLowerCase()
@@ -124,7 +160,7 @@ function Leaderboard({
         </div>
         {rows.length === 0 ? (
           <div className="py-6 text-center text-[10px] text-charcoal-soft">
-            NO RECORDS FOUND
+            NO RECORDS FOUND FOR SELECT PROGRAM
           </div>
         ) : (
           rows.map((row) => (
@@ -331,17 +367,23 @@ export default function StatsHubPage() {
   const activePlayers = dbPlayers;
   const activeTeams = dbTeams;
 
-  // Primary filtering logic respecting Gender, Citizenship, and Selected Competition Dropdown
+  // Strict Gender Filtering
   const filteredPlayers = useMemo(() => {
     return activePlayers.filter((p: any) => {
-      const g = String(p.gender || 'men').toUpperCase();
-      const targetIsFemale = programGender === 'WOMEN';
+      const playerGender = String(p.gender || '').toLowerCase();
+      const targetGender = programGender.toLowerCase();
 
-      const matchesGender = targetIsFemale 
-        ? (g === 'WOMEN' || String(p.league || '').toUpperCase().includes('NSL'))
-        : (g === 'MEN' || !String(p.league || '').toUpperCase().includes('NSL'));
-
-      if (!matchesGender) return false;
+      // Ensure exact gender match
+      if (playerGender && playerGender !== targetGender) {
+        return false;
+      }
+      
+      // Fallback for entries missing gender property
+      if (!playerGender) {
+        const leagueUpper = String(p.league || '').toUpperCase();
+        if (targetGender === 'women' && !leagueUpper.includes('NSL') && !leagueUpper.includes('NWSL')) return false;
+        if (targetGender === 'men' && (leagueUpper.includes('NSL') || leagueUpper.includes('NWSL'))) return false;
+      }
 
       const comp = String(p.league || p.competitionName || p.competition || '').toUpperCase();
 
@@ -354,9 +396,8 @@ export default function StatsHubPage() {
         return isCanadian && (comp === 'ABROAD' || comp === 'MLS' || (!comp.includes('CPL') && !comp.includes('NSL')));
       }
 
-      // 'ALL CANADIAN' includes all Canadian players across domestic leagues and abroad
-      const isCanadian = p.is_canadian !== false;
-      return isCanadian;
+      // Default 'ALL CANADIAN': Canadian players
+      return p.is_canadian !== false;
     });
   }, [activePlayers, programGender, competition]);
 
@@ -410,16 +451,13 @@ export default function StatsHubPage() {
     });
   }, [filteredPlayers]);
 
-  // Canadians Abroad Leaderboard Reacts strictly to programGender (Men/Women)
+  // Canadians Abroad Leaderboard Reacts Strictly to Selected Program Gender
   const computedAbroad = useMemo<PlayerRow[]>(() => {
     const abroad = activePlayers.filter((p: any) => {
-      const targetIsFemale = programGender === 'WOMEN';
-      const g = String(p.gender || 'men').toUpperCase();
-      const matchesGender = targetIsFemale 
-        ? (g === 'WOMEN' || String(p.league || '').toUpperCase().includes('NSL'))
-        : (g === 'MEN' || !String(p.league || '').toUpperCase().includes('NSL'));
+      const playerGender = String(p.gender || '').toLowerCase();
+      const targetGender = programGender.toLowerCase();
 
-      if (!matchesGender) return false;
+      if (playerGender && playerGender !== targetGender) return false;
 
       const isC = p.is_canadian !== false;
       const comp = String(p.league || '').toUpperCase();
@@ -433,7 +471,7 @@ export default function StatsHubPage() {
       return {
         rank: idx + 1,
         name: playerName,
-        club: teamObj?.name || 'International',
+        club: teamObj?.name || p.league || 'International',
         value: `${p.rating ? Number(p.rating).toFixed(1) : '7.5'} RTG`,
         initials: playerName.split(' ').map((n: string) => n[0]).join('.'),
         slug: p.slug || p.external_id || p.id,
@@ -441,37 +479,62 @@ export default function StatsHubPage() {
     });
   }, [activePlayers, programGender]);
 
-  // Clean, Deduplicated Active Teams List for Team Streams (Excludes fold/defunct teams for 2026)
+  // Clean, Unified CPL Teams List (Normalizes York9 / Inter Toronto & FC Supra du Québec)
   const cleanCplTeams = useMemo(() => {
     const seen = new Set<string>();
-    const BLACKLIST = new Set(['fc edmonton', 'edmonton', 'valour fc', 'valour', 'supra']); // Folded / Aliased entries
-    return activeTeams.filter((t: any) => {
-      const name = String(t.name || t.clubName || '').trim();
-      const norm = name.toLowerCase();
-      const comp = String(t.competition || t.competitionName || t.league || '').toUpperCase();
-      
-      if (!comp.includes('CPL')) return false;
-      if (BLACKLIST.has(norm)) return false;
-      if (seen.has(norm)) return false;
 
-      seen.add(norm);
+    const filtered = activeTeams.filter((t: any) => {
+      const rawName = String(t.name || t.clubName || '').trim();
+      const normKey = rawName.toLowerCase();
+      const comp = String(t.competition || t.competitionName || t.league || '').toUpperCase();
+
+      if (!comp.includes('CPL')) return false;
+      if (DEFUNCT_CPL_TEAMS.has(normKey)) return false;
+
+      const canonicalName = CPL_TEAM_NAME_MAP[normKey] || rawName;
+      const canonicalKey = canonicalName.toLowerCase();
+
+      if (seen.has(canonicalKey)) return false;
+      seen.add(canonicalKey);
       return true;
+    });
+
+    return filtered.map((t: any, idx: number) => {
+      const rawName = String(t.name || t.clubName || '').trim();
+      const normKey = rawName.toLowerCase();
+      const canonicalName = CPL_TEAM_NAME_MAP[normKey] || rawName;
+      return {
+        ...t,
+        rank: idx + 1,
+        name: canonicalName,
+        clubName: canonicalName,
+        position: t.position || 'GEN',
+        league: 'CPL',
+      };
     });
   }, [activeTeams]);
 
   const cleanNslTeams = useMemo(() => {
     const seen = new Set<string>();
-    return activeTeams.filter((t: any) => {
-      const name = String(t.name || t.clubName || '').trim();
-      const norm = name.toLowerCase();
-      const comp = String(t.competition || t.competitionName || t.league || '').toUpperCase();
-      
-      if (!comp.includes('NSL')) return false;
-      if (seen.has(norm)) return false;
 
-      seen.add(norm);
+    const filtered = activeTeams.filter((t: any) => {
+      const rawName = String(t.name || t.clubName || '').trim();
+      const canonicalKey = rawName.toLowerCase();
+      const comp = String(t.competition || t.competitionName || t.league || '').toUpperCase();
+
+      if (!comp.includes('NSL')) return false;
+      if (seen.has(canonicalKey)) return false;
+
+      seen.add(canonicalKey);
       return true;
     });
+
+    return filtered.map((t: any, idx: number) => ({
+      ...t,
+      rank: idx + 1,
+      position: t.position || 'GEN',
+      league: 'NSL',
+    }));
   }, [activeTeams]);
 
   const computedDiscipline = useMemo(() => {
@@ -510,16 +573,27 @@ export default function StatsHubPage() {
     });
   }, [filteredPlayers]);
 
+  // Dynamic Historical Database / Records & Milestones depending on Gender Toggle
   const computedRecords = useMemo(() => {
-    const topScorer = [...activePlayers].sort((a: any, b: any) => (b.goals ?? 0) - (a.goals ?? 0))[0];
-    const topAssister = [...activePlayers].sort((a: any, b: any) => (b.assists ?? 0) - (a.assists ?? 0))[0];
-    const topRated = [...activePlayers].sort((a: any, b: any) => (b.rating ?? 0) - (a.rating ?? 0))[0];
-    return [
-      { label: 'ALL-TIME DATABASE GOAL LEADER', value: topScorer ? `${topScorer.name} — ${topScorer.goals ?? 0} Goals` : '—' },
-      { label: 'ALL-TIME DATABASE PLAYMAKER', value: topAssister ? `${topAssister.name} — ${topAssister.assists ?? 0} Assists` : '—' },
-      { label: 'HIGHEST RATED DATABASE ENTITY', value: topRated ? `${topRated.name} — ${topRated.rating ? Number(topRated.rating).toFixed(1) : '—'} RTG` : '—' },
+    const baseRecords = programGender === 'MEN' ? menRecords : womenRecords;
+
+    const genderPlayers = activePlayers.filter((p: any) => {
+      const g = String(p.gender || '').toLowerCase();
+      return g === programGender.toLowerCase();
+    });
+
+    const topScorer = [...genderPlayers].sort((a: any, b: any) => (b.goals ?? 0) - (a.goals ?? 0))[0];
+    const topAssister = [...genderPlayers].sort((a: any, b: any) => (b.assists ?? 0) - (a.assists ?? 0))[0];
+    const topRated = [...genderPlayers].sort((a: any, b: any) => (b.rating ?? 0) - (a.rating ?? 0))[0];
+
+    const dbRecords = [
+      { label: `CURRENT ${programGender} DB GOAL LEADER`, value: topScorer ? `${topScorer.name} — ${topScorer.goals ?? 0} Goals` : '—' },
+      { label: `CURRENT ${programGender} DB PLAYMAKER`, value: topAssister ? `${topAssister.name} — ${topAssister.assists ?? 0} Assists` : '—' },
+      { label: `HIGHEST RATED ${programGender} DB ENTITY`, value: topRated ? `${topRated.name} — ${topRated.rating ? Number(topRated.rating).toFixed(1) : '—'} RTG` : '—' },
     ];
-  }, [activePlayers]);
+
+    return [...dbRecords, ...baseRecords];
+  }, [activePlayers, programGender]);
 
   const provincialScorers = getProvincialScorers(provStatsProvince);
   const provincialStandings = getProvincialStandings(provStatsProvince);
@@ -649,19 +723,19 @@ export default function StatsHubPage() {
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
                 <Leaderboard
                   title="Golden Boot"
-                  subtitle={`${competition} // ${season}`}
+                  subtitle={`${competition} // ${season} (${programGender})`}
                   rows={computedGoldenBoot}
                   valueLabel="GOALS"
                 />
                 <Leaderboard
                   title="Playmakers"
-                  subtitle={`${competition} // ${season}`}
+                  subtitle={`${competition} // ${season} (${programGender})`}
                   rows={computedAssists}
                   valueLabel="ASSISTS"
                 />
                 <Leaderboard
                   title="Goalkeeping"
-                  subtitle="TOP PERFORMERS // RATING"
+                  subtitle={`TOP PERFORMERS // RATING (${programGender})`}
                   rows={computedGoalkeepers}
                   valueLabel="RATING"
                 />
@@ -790,7 +864,7 @@ export default function StatsHubPage() {
                     DISCIPLINE MONITOR
                   </span>
                   <h2 className="text-sm font-mono font-bold text-charcoal mt-1">
-                    CARDED LEADERS
+                    CARDED LEADERS ({programGender})
                   </h2>
                 </div>
                 <div className="p-3 font-mono">
@@ -835,7 +909,7 @@ export default function StatsHubPage() {
                     HISTORICAL DATABASE
                   </span>
                   <h2 className="text-sm font-mono font-bold text-charcoal mt-1">
-                    RECORDS & MILESTONES
+                    RECORDS & MILESTONES ({programGender})
                   </h2>
                 </div>
                 <div className="p-3">
@@ -862,7 +936,7 @@ export default function StatsHubPage() {
                     EDITOR&apos;S INDEX
                   </span>
                   <h2 className="text-sm font-mono font-bold text-charcoal mt-1">
-                    ALL-CANADIAN TEAM OF THE WEEK
+                    ALL-CANADIAN TEAM OF THE WEEK ({programGender})
                   </h2>
                 </div>
                 <span className="text-[9px] font-mono border border-border px-2 py-1 text-charcoal-soft">
