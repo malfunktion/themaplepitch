@@ -11,6 +11,14 @@ import HistoricalRecords from '@/components/national-teams/HistoricalRecords';
 import { supabase } from '@/lib/supabase/client';
 import type { Player } from '@/lib/types';
 
+// Extended type interface to satisfy TypeScript checks for squad assets
+interface SquadPlayer extends Player {
+  number?: number;
+  caps?: number;
+  clubName?: string;
+  club?: string;
+}
+
 const genders = ['men', 'women'];
 
 export function generateStaticParams() {
@@ -63,13 +71,6 @@ export default async function NationalGenderPage({
   const label = isWomen ? 'CANWNT' : 'CANMNT';
   const activeGenderUpper = isWomen ? 'WOMEN' : 'MEN';
 
-  // Real squad pool: look up the national team's row (created by
-  // scripts/import-canadian-national-teams.mjs, external_id nat-canmnt /
-  // nat-canwnt), then every player whose current_team_id points at it.
-  // Previously this filtered the ~20-row lib/data/demo.ts placeholder
-  // dataset by clubId as a stand-in for "national team roster," which had
-  // nothing to do with the real imported squad and is why the count shown
-  // here never matched what was actually in the database.
   const { data: nationalTeam } = await supabase
     .from('teams')
     .select('id')
@@ -84,7 +85,7 @@ export default async function NationalGenderPage({
         .order('name')
     : { data: [] };
 
-  const roster: Player[] = (rosterData || []) as Player[];
+  const roster: SquadPlayer[] = (rosterData || []) as SquadPlayer[];
 
   return (
     <div className="min-h-screen bg-surface p-4 sm:p-6 lg:p-8 flex flex-col gap-6 text-charcoal dark:text-white">
@@ -138,7 +139,7 @@ export default async function NationalGenderPage({
               </tr>
             </thead>
             <tbody className="divide-y divide-border/60">
-              {roster.map((p: Player, idx: number) => {
+              {roster.map((p: SquadPlayer, idx: number) => {
                 const playerSlug = p.slug || slugify(p.name);
                 const tabType = label; // CANMNT or CANWNT
 
