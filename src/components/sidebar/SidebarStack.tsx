@@ -10,36 +10,50 @@ import SidebarRumourMill from '@/components/home/SidebarRumourMill';
 import SidebarAdWidget from '@/components/home/SidebarAdWidget';
 import SidebarAdWidget4 from '@/components/home/SidebarAdWidget4';
 import SidebarAdWidget5 from '@/components/home/SidebarAdWidget5';
+import StandingsWidget from '@/components/common/StandingsWidget';
 import type { StandingsRow } from '@/lib/types';
 
 interface SidebarStackProps {
   standings?: StandingsRow[];
   nslStandings?: StandingsRow[];
+  mlsStandings?: StandingsRow[];
+  nwslStandings?: StandingsRow[];
   breakpoint?: 'md' | 'lg';
   /**
    * Explicitly allows legacy and new tab names to maintain full backwards compatibility
    * across all page call sites without throwing type errors.
    */
-  defaultTab?: 'standings' | 'provincial' | 'radars' | 'main';
+  defaultTab?: 'standings' | 'provincial' | 'stateside' | 'radars' | 'main';
 }
 
-export default function SidebarStack({ standings = [], nslStandings = [], defaultTab = 'standings' }: SidebarStackProps) {
-  // Map any initial view intent ('standings', 'radars', 'main') to the combined column,
-  // while preserving explicit requests for 'provincial'.
-  const initialTab = defaultTab === 'provincial' ? 'provincial' : 'main';
-  const [activeTab, setActiveTab] = useState<'main' | 'provincial'>(initialTab);
+export default function SidebarStack({ 
+  standings = [], 
+  nslStandings = [], 
+  mlsStandings = [], 
+  nwslStandings = [], 
+  defaultTab = 'standings' 
+}: SidebarStackProps) {
+  // Map any initial view intent to our 3 core tabs
+  const getInitialTab = (): 'standings' | 'provincial' | 'stateside' => {
+    if (defaultTab === 'provincial') return 'provincial';
+    if (defaultTab === 'stateside' || defaultTab === 'radars') return 'stateside';
+    return 'standings';
+  };
+
+  const [activeTab, setActiveTab] = useState<'standings' | 'provincial' | 'stateside'>(getInitialTab());
+  const [statesideLeague, setStatesideLeague] = useState<'MLS' | 'NWSL'>('MLS');
 
   return (
     <div className="flex flex-col gap-4 w-full pb-4">
-      {/* Top Tab Switcher for Provincial view vs Main Dashboard Stack */}
+      {/* 3-Tab Switcher */}
       <div className="flex bg-card border border-border rounded-sm p-1 text-[10px] font-bold sticky top-2 z-20 shadow-xl">
         <button
-          onClick={() => setActiveTab('main')}
+          onClick={() => setActiveTab('standings')}
           className={`flex-1 py-2.5 text-center transition-colors rounded-sm ${
-            activeTab === 'main' ? 'bg-crimson text-white shadow-sm' : 'text-charcoal-soft hover:text-charcoal dark:hover:text-white'
+            activeTab === 'standings' ? 'bg-crimson text-white shadow-sm' : 'text-charcoal-soft hover:text-charcoal dark:hover:text-white'
           }`}
         >
-          [ STANDINGS & RADARS ]
+          [ STANDINGS ]
         </button>
         <button
           onClick={() => setActiveTab('provincial')}
@@ -49,28 +63,76 @@ export default function SidebarStack({ standings = [], nslStandings = [], defaul
         >
           [ PROVINCIAL ]
         </button>
+        <button
+          onClick={() => setActiveTab('stateside')}
+          className={`flex-1 py-2.5 text-center transition-colors rounded-sm ${
+            activeTab === 'stateside' ? 'bg-crimson text-white shadow-sm' : 'text-charcoal-soft hover:text-charcoal dark:hover:text-white'
+          }`}
+        >
+          [ STATESIDE ]
+        </button>
       </div>
 
       <div className="w-full">
-        {activeTab === 'main' && (
+        {activeTab === 'standings' && (
           <div className="flex flex-col gap-6 animate-fadeIn">
-            {/* 1. Standings Widget at the Top */}
+            {/* 1. Main Standings Widget */}
             <ScoutDash standings={standings} nslStandings={nslStandings} />
             <SidebarAdWidget />
-
-            {/* 2. Radar Section Directly Underneath Standings */}
-            <div className="flex flex-col gap-6 pt-2 border-t border-border/40">
-              <ContractRadarWidget />
-              <DualNationalRadar />
-              <SidebarRumourMill />
-              <SidebarAdWidget4 />
-            </div>
           </div>
         )}
 
         {activeTab === 'provincial' && (
           <div className="flex flex-col gap-6 animate-fadeIn">
             <ProvincialPyramidTracker />
+          </div>
+        )}
+
+        {activeTab === 'stateside' && (
+          <div className="flex flex-col gap-6 animate-fadeIn">
+            {/* Stateside Standings Toggle Wrapper */}
+            <div className="bg-card border border-border rounded-sm p-3 flex flex-col gap-3 shadow-sm">
+              <div className="flex items-center justify-between pb-2 border-b border-border">
+                <span className="text-xs font-mono font-bold tracking-widest uppercase">
+                  STATESIDE LEAGUES
+                </span>
+                <div className="flex bg-neutral-100 dark:bg-bg border border-border rounded-sm p-0.5 text-[9px] font-mono font-bold">
+                  <button
+                    onClick={() => setStatesideLeague('MLS')}
+                    className={`px-2.5 py-1 rounded-sm transition-colors ${
+                      statesideLeague === 'MLS' ? 'bg-crimson text-white shadow-sm' : 'text-charcoal-soft hover:text-charcoal dark:hover:text-white'
+                    }`}
+                  >
+                    MLS
+                  </button>
+                  <button
+                    onClick={() => setStatesideLeague('NWSL')}
+                    className={`px-2.5 py-1 rounded-sm transition-colors ${
+                      statesideLeague === 'NWSL' ? 'bg-crimson text-white shadow-sm' : 'text-charcoal-soft hover:text-charcoal dark:hover:text-white'
+                    }`}
+                  >
+                    NWSL
+                  </button>
+                </div>
+              </div>
+              
+              {/* Hijacks the generic StandingsWidget to show MLS or NWSL */}
+              <StandingsWidget
+                title={`${statesideLeague} STANDINGS`}
+                cplStandings={statesideLeague === 'MLS' ? mlsStandings : nwslStandings}
+                nslStandings={[]}
+                defaultTab="CPL"
+                compact={true}
+              />
+            </div>
+
+            {/* Radars flow directly underneath in Stateside Tab */}
+            <div className="flex flex-col gap-6 pt-2 border-t border-border/40">
+              <ContractRadarWidget />
+              <DualNationalRadar />
+              <SidebarRumourMill />
+              <SidebarAdWidget4 />
+            </div>
           </div>
         )}
       </div>
