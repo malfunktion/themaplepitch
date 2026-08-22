@@ -48,8 +48,8 @@ const LEAGUES_TO_IMPORT = [
   { name: 'Canadian Premier League', code: 'CPL', gender: 'men' },
   { name: 'Northern Super League', code: 'NSL', gender: 'women' },
   { name: 'Canadian Championship', code: 'CanChamp', gender: 'men' },
-  { name: 'Major League Soccer', code: 'MLS', gender: 'men' },
-  { name: 'National Womens Soccer League', code: 'NWSL', gender: 'women' }
+  { name: 'American Major League Soccer', code: 'MLS', gender: 'men' }, // Fix applied here
+  { name: "American National Women's Soccer League", code: 'NWSL', gender: 'women' } // Fix applied here
 ];
 
 async function fetchTeamsForLeague(leagueObj) {
