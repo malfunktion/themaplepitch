@@ -117,6 +117,7 @@ export default function SidebarStack({
                 cplStandings={currentStatesideData}
                 hideToggle={true}
                 compact={true}
+                enableConferenceToggle={statesideLeague === 'MLS'}
               />
             </div>
 
