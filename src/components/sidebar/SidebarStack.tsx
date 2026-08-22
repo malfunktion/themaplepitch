@@ -17,21 +17,20 @@ interface SidebarStackProps {
   nslStandings?: StandingsRow[];
   breakpoint?: 'md' | 'lg';
   /**
-   * Explicitly allows legacy and new tab names to maintain full backwards compatibility
-   * across all page call sites without throwing type errors.
+   * Accepts legacy or new tab names to maintain full backwards compatibility
+   * across all page call sites.
    */
   defaultTab?: 'standings' | 'provincial' | 'radars' | 'main';
 }
 
 export default function SidebarStack({ standings = [], nslStandings = [], defaultTab = 'standings' }: SidebarStackProps) {
-  // Map any initial view intent ('standings', 'radars', 'main') to the combined column,
-  // while preserving explicit requests for 'provincial'.
   const initialTab = defaultTab === 'provincial' ? 'provincial' : 'main';
   const [activeTab, setActiveTab] = useState<'main' | 'provincial'>(initialTab);
+  const [radarSubFilter, setRadarSubFilter] = useState<'ALL' | 'MLS' | 'NWSL' | 'CPL' | 'NSL'>('ALL');
 
   return (
     <div className="flex flex-col gap-4 w-full pb-4">
-      {/* Top Tab Switcher for Provincial view vs Main Dashboard Stack */}
+      {/* Top Tab Switcher: Main Stack vs Provincial Pyramid */}
       <div className="flex bg-card border border-border rounded-sm p-1 text-[10px] font-bold sticky top-2 z-20 shadow-xl">
         <button
           onClick={() => setActiveTab('main')}
@@ -58,8 +57,29 @@ export default function SidebarStack({ standings = [], nslStandings = [], defaul
             <ScoutDash standings={standings} nslStandings={nslStandings} />
             <SidebarAdWidget />
 
-            {/* 2. Radar Section Directly Underneath Standings */}
+            {/* 2. Radar Section Directly Underneath Standings with MLS/NWSL Sub-Toggles */}
             <div className="flex flex-col gap-6 pt-2 border-t border-border/40">
+              <div className="flex items-center justify-between px-1">
+                <span className="text-[10px] font-mono font-bold tracking-widest text-charcoal-soft uppercase">
+                  INTEL & RADARS
+                </span>
+                <div className="flex bg-neutral-100 dark:bg-bg border border-border rounded-sm p-0.5 text-[8px] font-mono font-bold">
+                  {(['ALL', 'MLS', 'NWSL', 'CPL', 'NSL'] as const).map((filter) => (
+                    <button
+                      key={filter}
+                      onClick={() => setRadarSubFilter(filter)}
+                      className={`px-1.5 py-0.5 rounded-sm transition-colors ${
+                        radarSubFilter === filter
+                          ? 'bg-crimson text-white shadow-sm'
+                          : 'text-charcoal-soft hover:text-charcoal dark:hover:text-white'
+                      }`}
+                    >
+                      {filter}
+                    </button>
+                  ))}
+                </div>
+              </div>
+
               <ContractRadarWidget />
               <DualNationalRadar />
               <SidebarRumourMill />
