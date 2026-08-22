@@ -16,11 +16,18 @@ interface SidebarStackProps {
   standings?: StandingsRow[];
   nslStandings?: StandingsRow[];
   breakpoint?: 'md' | 'lg';
-  defaultTab?: 'main' | 'provincial';
+  /**
+   * Explicitly allows legacy and new tab names to maintain full backwards compatibility
+   * across all page call sites without throwing type errors.
+   */
+  defaultTab?: 'standings' | 'provincial' | 'radars' | 'main';
 }
 
-export default function SidebarStack({ standings = [], nslStandings = [], defaultTab = 'main' }: SidebarStackProps) {
-  const [activeTab, setActiveTab] = useState<'main' | 'provincial'>(defaultTab);
+export default function SidebarStack({ standings = [], nslStandings = [], defaultTab = 'standings' }: SidebarStackProps) {
+  // Map any initial view intent ('standings', 'radars', 'main') to the combined column,
+  // while preserving explicit requests for 'provincial'.
+  const initialTab = defaultTab === 'provincial' ? 'provincial' : 'main';
+  const [activeTab, setActiveTab] = useState<'main' | 'provincial'>(initialTab);
 
   return (
     <div className="flex flex-col gap-4 w-full pb-4">
