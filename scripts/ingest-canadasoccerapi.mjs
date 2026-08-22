@@ -2,7 +2,7 @@
 import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.SUPABASE_URL || 'https://wsbyyvtcvyhidvijvwuo.supabase.co';
-const SERVICE_ROLE_KEY = process.env.SUPABASE_SERVICE_ROLE_KEY || process.env.SERVICE_ROLE_KEY;
+const SERVICE_ROLE_KEY = process.env.SERVICE_ROLE_KEY || process.env.SUPABASE_SERVICE_ROLE_KEY;
 
 if (!SUPABASE_URL || !SERVICE_ROLE_KEY) {
   console.error('❌ Missing required environment variables (SUPABASE_URL or SERVICE_ROLE_KEY).');
@@ -56,27 +56,20 @@ function normalizeTeamName(name) {
 }
 
 async function ingestTeams() {
-  console.log('🏟️ Ingesting CPL Teams from CanadaSoccerAPI...');
+  console.log('🏟️ Ingesting CPL Teams from CanadaSoccerAPI (Active & Historical)...');
   try {
     const res = await fetch('https://canadasoccerapi.com/api/teams?active_only=false');
     if (!res.ok) throw new Error(`HTTP Error ${res.status}`);
     const body = await res.json();
     const teams = Array.isArray(body) ? body : (body.teams || []);
-    console.log(`   Raw response: ${Array.isArray(body) ? 'array' : 'object'} with ${teams.length} team record(s). Response keys: ${Array.isArray(body) ? 'n/a' : Object.keys(body).join(', ')}`);
+    
     const teamMap = new Map();
-
     for (const team of teams) {
       const rawName = team.name || team.team_name || team.team;
-      if (!rawName) {
-        console.warn('   ⚠️ Skipped a team record with no usable name field. Raw keys:', Object.keys(team).join(', '));
-        continue;
-      }
+      if (!rawName) continue;
+
       const displayName = normalizeTeamName(rawName);
       const slug = slugify(displayName);
-      // external_id is the shared cross-script identity now (see the
-      // matching comment in ingest-apifootball.mjs) — was `cpl-${slug}`,
-      // a scheme unique to this script that collided with the other two
-      // ingest scripts' own external_id schemes on the same row.
       const externalId = slug;
 
       const payload = {
@@ -106,7 +99,6 @@ async function ingestTeams() {
         console.error(`❌ Team sync failed for "${displayName}": ${error.message}`);
       }
     }
-    console.log(`   Team sync complete. ${teamMap.size / 2} team(s) mapped.`);
     return teamMap;
   } catch (err) {
     console.error('❌ Failed to ingest CPL teams:', err.message);
@@ -115,39 +107,28 @@ async function ingestTeams() {
 }
 
 async function ingestHistoricalSeasons(teamMap) {
-  // Spanning from the inaugural 2019 season to 2026 active season as outlined in documentation
   const seasons = [2019, 2020, 2021, 2022, 2023, 2024, 2025, 2026];
-  
   console.log(`⚽ Ingesting Multi-Season Match History & Standings (${seasons[0]} - ${seasons[seasons.length - 1]})...`);
 
   for (const season of seasons) {
     console.log(`\n--- Processing Season: ${season} ---`);
-    
-    // 1. Fetch Matches for Season
+
+    // 1. Fetch & Store Matches
     try {
       const matchRes = await fetch(`https://canadasoccerapi.com/api/matches?season=${season}&limit=500`);
       if (matchRes.ok) {
         const matchBody = await matchRes.json();
         const matches = Array.isArray(matchBody) ? matchBody : (matchBody.matches || []);
-        console.log(`   Raw response: total=${matchBody.total ?? 'n/a'}, count=${matchBody.count ?? 'n/a'}, offset=${matchBody.offset ?? 'n/a'}, limit=${matchBody.limit ?? 'n/a'}, matches array length=${matches.length}`);
         const matchPayloadMap = new Map();
-        let skippedNoName = 0;
-        let skippedNoTeamId = 0;
 
         for (const m of matches) {
           const homeName = normalizeTeamName(m.home_team || m.homeTeam || m.home_team_name);
           const awayName = normalizeTeamName(m.away_team || m.awayTeam || m.away_team_name);
-          if (!homeName || !awayName) { skippedNoName++; continue; }
+          if (!homeName || !awayName) continue;
 
           const homeId = teamMap.get(homeName.toLowerCase()) || teamMap.get(slugify(homeName)) || null;
           const awayId = teamMap.get(awayName.toLowerCase()) || teamMap.get(slugify(awayName)) || null;
-          if (!homeId || !awayId) {
-            skippedNoTeamId++;
-            if (skippedNoTeamId <= 3) {
-              console.warn(`   ⚠️ No team match for "${homeName}" (id=${homeId}) vs "${awayName}" (id=${awayId}) — check these names against teamMap.`);
-            }
-            continue;
-          }
+          if (!homeId || !awayId) continue;
 
           const matchDate = m.date || m.match_date || `${season}-01-01`;
           const dateOnly = matchDate.split('T')[0];
@@ -171,9 +152,6 @@ async function ingestHistoricalSeasons(teamMap) {
           });
         }
 
-        if (skippedNoName > 0) console.log(`   Skipped ${skippedNoName} match(es) with no usable team name.`);
-        if (skippedNoTeamId > 0) console.log(`   Skipped ${skippedNoTeamId} match(es) with a team name that didn't map to a synced team.`);
-
         const payloads = Array.from(matchPayloadMap.values());
         if (payloads.length > 0) {
           const { error } = await supabase.from('matches').upsert(payloads, { onConflict: 'external_id' });
@@ -182,23 +160,45 @@ async function ingestHistoricalSeasons(teamMap) {
           } else {
             console.log(`🎉 Synced ${payloads.length} matches for season ${season}.`);
           }
-        } else {
-          console.log(`   No matches to sync for ${season} (${matches.length} fetched, all filtered out — see skip counts above).`);
         }
-      } else {
-        console.error(`   ❌ Match fetch for ${season} returned HTTP ${matchRes.status}`);
       }
     } catch (err) {
       console.error(`❌ Failed to fetch matches for ${season}:`, err.message);
     }
 
-    // 2. Fetch Standings for Season
+    // 2. Fetch & Store Official Historical Standings
     try {
       const standRes = await fetch(`https://canadasoccerapi.com/api/standings?season=${season}`);
       if (standRes.ok) {
         const standBody = await standRes.json();
         const standings = standBody.standings || [];
-        console.log(`📊 Retrieved ${standings.length} official table records for season ${season} (Source: ${standBody.source || 'official'})`);
+
+        if (standings.length > 0) {
+          const standingsPayloads = standings.map(row => ({
+            season: season,
+            competition: 'CPL',
+            position: row.position,
+            club_name: normalizeTeamName(row.team),
+            played: row.played,
+            won: row.wins,
+            drawn: row.draws,
+            lost: row.losses,
+            goals_for: row.goals_for,
+            goals_against: row.goals_against,
+            goal_difference: row.goal_difference,
+            points: row.points
+          }));
+
+          const { error: standError } = await supabase
+            .from('historical_standings')
+            .upsert(standingsPayloads, { onConflict: 'season,competition,club_name' });
+
+          if (standError) {
+            console.error(`⚠️ Error saving standings for ${season}:`, standError.message);
+          } else {
+            console.log(`📊 Successfully stored ${standingsPayloads.length} official standings rows for season ${season}.`);
+          }
+        }
       }
     } catch (err) {
       console.error(`⚠️ Could not fetch standings for ${season}:`, err.message);
@@ -207,10 +207,10 @@ async function ingestHistoricalSeasons(teamMap) {
 }
 
 async function run() {
-  console.log('🚀 Starting Full CanadaSoccerAPI Historical Pipeline...');
+  console.log('🚀 Starting Full CanadaSoccerAPI Complete Vault Ingestion...');
   const teamMap = await ingestTeams();
   await ingestHistoricalSeasons(teamMap);
-  console.log('\n✨ Complete Historical Data Ingestion Finished Successfully!');
+  console.log('\n✨ Complete Historical Data Vault Fully Packed Successfully!');
 }
 
 run().catch(err => {
