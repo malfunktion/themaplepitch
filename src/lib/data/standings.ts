@@ -13,11 +13,15 @@ type Team = {
 type Match = {
   home_team_id: number;
   away_team_id: number;
-  home_score: number;
-  away_score: number;
+  home_score?: number;
+  away_score?: number;
+  home_goals?: number;
+  away_goals?: number;
   status: string;
   competition: string;
-  season?: number;
+  season?: number | string;
+  match_date?: string;
+  date?: string;
 };
 
 const supabase = createClient();
@@ -30,9 +34,10 @@ const TEAM_ACTIVE_SEASONS: Record<string, { start: number; end: number }> = {
   'Atlético Ottawa': { start: 2020, end: 2026 },
   'Valour FC': { start: 2019, end: 2026 },
   'York United FC': { start: 2019, end: 2024 },
+  'Inter Toronto FC': { start: 2025, end: 2026 },
   'Vancouver FC': { start: 2023, end: 2026 },
   'FC Edmonton': { start: 2019, end: 2023 },
-  'Inter Toronto FC': { start: 2025, end: 2026 },
+  'FC Supra du Québec': { start: 2019, end: 2026 },
   // NSL Clubs (Launched 2025)
   'AFC Toronto': { start: 2025, end: 2026 },
   'Roses de Montréal': { start: 2025, end: 2026 },
@@ -42,27 +47,26 @@ const TEAM_ACTIVE_SEASONS: Record<string, { start: number; end: number }> = {
   'Halifax Tides': { start: 2025, end: 2026 },
 };
 
-const TEAM_NAME_OVERRIDES: Record<string, string> = {
-  'york9': 'York United FC',
-  'york9 fc': 'York United FC',
-  'york united': 'York United FC',
-  'york united fc': 'York United FC',
-  'inter toronto': 'Inter Toronto FC',
-  'inter toronto fc': 'Inter Toronto FC',
-  'fc supra du quebec': 'FC Supra du Québec',
-  'fc supra du québec': 'FC Supra du Québec',
-  'quebec supra': 'FC Supra du Québec',
-  'québec supra': 'FC Supra du Québec',
-  'supra': 'FC Supra du Québec',
-  'supra du québec': 'FC Supra du Québec',
-  'montreal roses': 'Roses de Montréal',
-  'montreal roses fc': 'Roses de Montréal',
-};
-
-function normalizeTeamName(name: string): string {
+function normalizeTeamName(name: string, season: number): string {
   if (!name) return '';
-  const trimmed = name.trim().toLowerCase();
-  return TEAM_NAME_OVERRIDES[trimmed] || name.trim();
+  const lower = name.trim().toLowerCase();
+
+  if (lower.includes('york9') || lower.includes('york united')) {
+    return season >= 2025 ? 'Inter Toronto FC' : 'York United FC';
+  }
+  if (lower.includes('supra') || lower.includes('quebec')) return 'FC Supra du Québec';
+  if (lower.includes('forge')) return 'Forge FC';
+  if (lower.includes('cavalry')) return 'Cavalry FC';
+  if (lower.includes('pacific')) return 'Pacific FC';
+  if (lower.includes('hfx') || lower.includes('wanderers')) return 'HFX Wanderers FC';
+  if (lower.includes('vancouver') && !lower.includes('whitecaps')) return 'Vancouver FC';
+  if (lower.includes('ottawa') || lower.includes('atletico')) return 'Atlético Ottawa';
+  if (lower.includes('valour')) return 'Valour FC';
+  if (lower.includes('edmonton')) return 'FC Edmonton';
+  if (lower.includes('inter toronto')) return 'Inter Toronto FC';
+  if (lower.includes('edmonton')) return 'FC Edmonton';
+
+  return name.trim();
 }
 
 function slugify(name: string): string {
@@ -76,16 +80,9 @@ function slugify(name: string): string {
 
 export async function computeStandings(competition: string, season: number = 2026): Promise<StandingsRow[]> {
   try {
-    const isCpl = competition.toUpperCase() === 'CPL';
-    
-    // Fetch teams and matches filtered by season
     const [teamsRes, matchesRes] = await Promise.all([
-      supabase.from('teams').select('id, name, slug, logo_url, league').eq('league', competition),
-      supabase
-        .from('matches')
-        .select('home_team_id, away_team_id, home_score, away_score, status, competition, season')
-        .eq('competition', competition)
-        .eq('season', season),
+      supabase.from('teams').select('id, name, slug, logo_url, league'),
+      supabase.from('matches').select('*')
     ]);
 
     if (teamsRes.error || !teamsRes.data || teamsRes.data.length === 0) {
@@ -93,22 +90,28 @@ export async function computeStandings(competition: string, season: number = 202
     }
 
     const rawTeams: Team[] = teamsRes.data;
-    const matches: Match[] = matchesRes.data || [];
-    
-    const uniqueTeamsMap = new Map<string, Team>();
+    const allMatches: Match[] = matchesRes.data || [];
 
+    // Filter matches by competition and season in memory for maximum reliability
+    const matches = allMatches.filter(m => {
+      const comp = String(m.competition || '').toUpperCase();
+      if (!comp.includes(competition.toUpperCase())) return false;
+
+      const mSeason = Number(m.season || new Date(m.match_date || m.date || '2026').getFullYear());
+      return mSeason === season;
+    });
+
+    const uniqueTeamsMap = new Map<string, Team>();
     rawTeams.forEach(team => {
-      const canonicalName = normalizeTeamName(team.name);
+      const canonicalName = normalizeTeamName(team.name, season);
       const canonicalLower = canonicalName.toLowerCase();
 
-      // Check if team was active during the requested season
       const lifespan = TEAM_ACTIVE_SEASONS[canonicalName];
       if (lifespan) {
         if (season < lifespan.start || season > lifespan.end) return;
       }
 
-      const existing = uniqueTeamsMap.get(canonicalLower);
-      if (!existing) {
+      if (!uniqueTeamsMap.has(canonicalLower)) {
         uniqueTeamsMap.set(canonicalLower, {
           ...team,
           name: canonicalName,
@@ -120,7 +123,7 @@ export async function computeStandings(competition: string, season: number = 202
     const canonicalIdMap = new Map<number, number>();
 
     rawTeams.forEach(raw => {
-      const canonicalName = normalizeTeamName(raw.name).toLowerCase();
+      const canonicalName = normalizeTeamName(raw.name, season).toLowerCase();
       const targetTeam = uniqueTeamsMap.get(canonicalName);
       if (targetTeam) {
         canonicalIdMap.set(raw.id, targetTeam.id);
@@ -141,8 +144,8 @@ export async function computeStandings(competition: string, season: number = 202
       const away = statsMap[canonicalAwayId];
       if (!home || !away) return;
 
-      const homeScore = m.home_score ?? 0;
-      const awayScore = m.away_score ?? 0;
+      const homeScore = m.home_goals ?? m.home_score ?? 0;
+      const awayScore = m.away_goals ?? m.away_score ?? 0;
 
       home.played += 1;
       away.played += 1;
@@ -228,8 +231,8 @@ export async function getLiveTicker(): Promise<LiveTickerItem[]> {
     return data.map((m: any, idx: number) => ({
       id: String(m.id || idx),
       competition: m.competition || 'CPL',
-      homeTeam: normalizeTeamName(m.home_teams?.name || 'Home Team'),
-      awayTeam: normalizeTeamName(m.away_teams?.name || 'Away Team'),
+      homeTeam: normalizeTeamName(m.home_teams?.name || 'Home Team', 2026),
+      awayTeam: normalizeTeamName(m.away_teams?.name || 'Away Team', 2026),
       homeScore: m.home_score || 0,
       awayScore: m.away_score || 0,
       minute: m.status === 'Live' ? 75 : null,
