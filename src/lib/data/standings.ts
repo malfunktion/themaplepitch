@@ -33,13 +33,13 @@ const TEAM_ACTIVE_SEASONS: Record<string, { start: number; end: number }> = {
   'Pacific FC': { start: 2019, end: 2026 },
   'HFX Wanderers FC': { start: 2019, end: 2026 },
   'Atlético Ottawa': { start: 2020, end: 2026 },
-  'Valour FC': { start: 2019, end: 2025 }, // Folded after 2025 season
+  'Valour FC': { start: 2019, end: 2025 }, // Folded after 2025
   'York United FC': { start: 2019, end: 2024 },
   'Inter Toronto FC': { start: 2025, end: 2026 },
   'Vancouver FC': { start: 2023, end: 2026 },
   'FC Edmonton': { start: 2019, end: 2023 },
   'FC Supra du Québec': { start: 2019, end: 2026 },
-  // NSL Clubs (Launched 2025)
+  // NSL Clubs (All 6 Founding Clubs)
   'AFC Toronto': { start: 2025, end: 2026 },
   'Roses de Montréal': { start: 2025, end: 2026 },
   'Vancouver Rise': { start: 2025, end: 2026 },
@@ -84,6 +84,16 @@ function normalizeTeamName(name: string, season: number): string {
   if (lower.includes('valour')) return 'Valour FC';
   if (lower.includes('edmonton')) return 'FC Edmonton';
   if (lower.includes('inter toronto')) return 'Inter Toronto FC';
+  if (lower.includes('toronto fc')) return 'Toronto FC';
+  if (lower.includes('montreal') || lower.includes('montréal')) {
+    return lower.includes('roses') ? 'Roses de Montréal' : 'CF Montréal';
+  }
+  if (lower.includes('whitecaps')) return 'Vancouver Whitecaps FC';
+  if (lower.includes('afc toronto')) return 'AFC Toronto';
+  if (lower.includes('calgary wild')) return 'Calgary Wild';
+  if (lower.includes('halifax tides')) return 'Halifax Tides';
+  if (lower.includes('ottawa rapid')) return 'Ottawa Rapid';
+  if (lower.includes('vancouver rise')) return 'Vancouver Rise';
 
   return name.trim();
 }
@@ -118,51 +128,50 @@ export async function computeStandings(competition: string, season: number = 202
     const uniqueTeamsMap = new Map<string, Team>();
     const targetCompUpper = competition.toUpperCase();
 
-    // Fallback: If teams table is empty or missing entries, automatically register active clubs for the league
-    if (rawTeams.length === 0) {
-      const fallbackNames = targetCompUpper.includes('NSL') ? Array.from(NSL_CLUBS) :
-                            targetCompUpper.includes('MLS') ? Array.from(MLS_CLUBS) :
-                            targetCompUpper.includes('NWSL') ? Array.from(NWSL_CLUBS) :
-                            Object.keys(TEAM_ACTIVE_SEASONS).filter(k => !NSL_CLUBS.has(k) && !MLS_CLUBS.has(k) && !NWSL_CLUBS.has(k));
-      
-      fallbackNames.forEach((name, idx) => {
-        const lifespan = TEAM_ACTIVE_SEASONS[name];
-        if (lifespan && season >= lifespan.start && season <= lifespan.end) {
-          uniqueTeamsMap.set(name.toLowerCase(), {
-            id: 1000 + idx,
-            name,
-            slug: slugify(name),
-            logo_url: null,
-            league: competition
-          });
-        }
+    // Always ensure base teams for the queried league exist via explicit fallback mapping
+    const getFallbackList = () => {
+      if (targetCompUpper.includes('NSL')) return Array.from(NSL_CLUBS);
+      if (targetCompUpper.includes('MLS')) return Array.from(MLS_CLUBS);
+      if (targetCompUpper.includes('NWSL')) return Array.from(NWSL_CLUBS);
+      return Object.keys(TEAM_ACTIVE_SEASONS).filter(k => !NSL_CLUBS.has(k) && !MLS_CLUBS.has(k) && !NWSL_CLUBS.has(k));
+    };
+
+    getFallbackList().forEach((name, idx) => {
+      const lifespan = TEAM_ACTIVE_SEASONS[name];
+      if (lifespan && season >= lifespan.start && season <= lifespan.end) {
+        uniqueTeamsMap.set(name.toLowerCase(), {
+          id: 5000 + idx,
+          name,
+          slug: slugify(name),
+          logo_url: null,
+          league: competition
+        });
+      }
+    });
+
+    // Override or supplement with raw database teams if matched
+    rawTeams.forEach(team => {
+      const canonicalName = normalizeTeamName(team.name, season);
+      const canonicalLower = canonicalName.toLowerCase();
+
+      const lifespan = TEAM_ACTIVE_SEASONS[canonicalName];
+      if (!lifespan) return;
+      if (season < lifespan.start || season > lifespan.end) return;
+
+      const isNsl = NSL_CLUBS.has(canonicalName);
+      const isMls = MLS_CLUBS.has(canonicalName);
+      const isNwsl = NWSL_CLUBS.has(canonicalName);
+
+      if (targetCompUpper.includes('NSL') && !isNsl) return;
+      if (targetCompUpper.includes('CPL') && (isNsl || isMls || isNwsl)) return;
+      if (targetCompUpper.includes('MLS') && !isMls) return;
+      if (targetCompUpper.includes('NWSL') && !isNwsl) return;
+
+      uniqueTeamsMap.set(canonicalLower, {
+        ...team,
+        name: canonicalName,
       });
-    } else {
-      rawTeams.forEach(team => {
-        const canonicalName = normalizeTeamName(team.name, season);
-        const canonicalLower = canonicalName.toLowerCase();
-
-        const lifespan = TEAM_ACTIVE_SEASONS[canonicalName];
-        if (!lifespan) return;
-        if (season < lifespan.start || season > lifespan.end) return;
-
-        const isNsl = NSL_CLUBS.has(canonicalName);
-        const isMls = MLS_CLUBS.has(canonicalName);
-        const isNwsl = NWSL_CLUBS.has(canonicalName);
-
-        if (targetCompUpper.includes('NSL') && !isNsl) return;
-        if (targetCompUpper.includes('CPL') && (isNsl || isMls || isNwsl)) return;
-        if (targetCompUpper.includes('MLS') && !isMls) return;
-        if (targetCompUpper.includes('NWSL') && !isNwsl) return;
-
-        if (!uniqueTeamsMap.has(canonicalLower)) {
-          uniqueTeamsMap.set(canonicalLower, {
-            ...team,
-            name: canonicalName,
-          });
-        }
-      });
-    }
+    });
 
     const teams = Array.from(uniqueTeamsMap.values());
     const canonicalIdMap = new Map<number, number>();
@@ -294,4 +303,4 @@ export async function getLiveTicker(): Promise<LiveTickerItem[]> {
   } catch (err) {
     return [];
   }
-}
+                     }
