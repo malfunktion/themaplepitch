@@ -17,6 +17,7 @@ interface StandingsWidgetProps {
   };
   compact?: boolean;
   hideToggle?: boolean;
+  enableConferenceToggle?: boolean;
 }
 
 function slugify(name: string) {
@@ -37,38 +38,68 @@ export default function StandingsWidget({
   footerAction,
   compact = false,
   hideToggle = false,
+  enableConferenceToggle = false,
 }: StandingsWidgetProps) {
   const [leagueTab, setLeagueTab] = useState<'CPL' | 'NSL'>(defaultTab);
-  const currentStandings = hideToggle ? cplStandings : (leagueTab === 'CPL' ? cplStandings : nslStandings);
+  const [conferenceTab, setConferenceTab] = useState<'EAST' | 'WEST' | 'ALL'>('EAST');
+
+  let currentStandings = hideToggle ? cplStandings : (leagueTab === 'CPL' ? cplStandings : nslStandings);
+
+  // Filter by conference if enabled
+  if (enableConferenceToggle && conferenceTab !== 'ALL') {
+    currentStandings = currentStandings.filter((row: any) => {
+      const conf = String(row.conference || '').toUpperCase();
+      return conf === conferenceTab;
+    });
+  }
 
   return (
     <div className="bg-card border border-border rounded-sm p-3 flex flex-col gap-3 text-charcoal dark:text-white shadow-sm w-full">
-      {/* Header & League Toggle */}
-      <div className="flex items-center justify-between pb-2 border-b border-border">
+      {/* Header & Toggles */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-2 pb-2 border-b border-border">
         <div className="flex items-center gap-1.5">
           <Trophy className="w-3.5 h-3.5 text-crimson" strokeWidth={1.5} />
           <h2 className="text-xs font-mono font-bold tracking-widest">{title}</h2>
         </div>
-        {!hideToggle && (
-          <div className="flex bg-neutral-100 dark:bg-bg border border-border rounded-sm p-0.5 text-[9px] font-mono font-bold">
-            <button
-              onClick={() => setLeagueTab('CPL')}
-              className={`px-2 py-1 rounded-sm transition-colors ${
-                leagueTab === 'CPL' ? 'bg-crimson text-white shadow-sm' : 'text-charcoal-soft hover:text-charcoal dark:hover:text-white'
-              }`}
-            >
-              CPL ({cplStandings.length})
-            </button>
-            <button
-              onClick={() => setLeagueTab('NSL')}
-              className={`px-2 py-1 rounded-sm transition-colors ${
-                leagueTab === 'NSL' ? 'bg-crimson text-white shadow-sm' : 'text-charcoal-soft hover:text-charcoal dark:hover:text-white'
-              }`}
-            >
-              NSL ({nslStandings.length})
-            </button>
-          </div>
-        )}
+
+        <div className="flex items-center gap-1">
+          {enableConferenceToggle && (
+            <div className="flex bg-neutral-100 dark:bg-bg border border-border rounded-sm p-0.5 text-[8px] font-mono font-bold">
+              {(['EAST', 'WEST', 'ALL'] as const).map((conf) => (
+                <button
+                  key={conf}
+                  onClick={() => setConferenceTab(conf)}
+                  className={`px-2 py-0.5 rounded-sm transition-colors ${
+                    conferenceTab === conf ? 'bg-crimson text-white shadow-sm' : 'text-charcoal-soft hover:text-charcoal dark:hover:text-white'
+                  }`}
+                >
+                  {conf}
+                </button>
+              ))}
+            </div>
+          )}
+
+          {!hideToggle && (
+            <div className="flex bg-neutral-100 dark:bg-bg border border-border rounded-sm p-0.5 text-[9px] font-mono font-bold">
+              <button
+                onClick={() => setLeagueTab('CPL')}
+                className={`px-2 py-1 rounded-sm transition-colors ${
+                  leagueTab === 'CPL' ? 'bg-crimson text-white shadow-sm' : 'text-charcoal-soft hover:text-charcoal dark:hover:text-white'
+                }`}
+              >
+                CPL ({cplStandings.length})
+              </button>
+              <button
+                onClick={() => setLeagueTab('NSL')}
+                className={`px-2 py-1 rounded-sm transition-colors ${
+                  leagueTab === 'NSL' ? 'bg-crimson text-white shadow-sm' : 'text-charcoal-soft hover:text-charcoal dark:hover:text-white'
+                }`}
+              >
+                NSL ({nslStandings.length})
+              </button>
+            </div>
+          )}
+        </div>
       </div>
 
       {/* Standings Table */}
