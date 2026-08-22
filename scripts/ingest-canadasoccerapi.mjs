@@ -85,8 +85,7 @@ async function ingestTeams() {
         gender: 'men',
         venue: team.venue || team.stadium || null,
         city: team.city || null,
-        founded: team.founded || null,
-        status: team.status || 'active'
+        founded: team.founded || null
       };
 
       const { data, error } = await supabase
@@ -126,7 +125,7 @@ async function ingestHistoricalSeasons(teamMap) {
       if (matchRes.ok) {
         const matchBody = await matchRes.json();
         const matches = Array.isArray(matchBody) ? matchBody : (matchBody.matches || []);
-        console.log(`   Raw response: ${matches.length} match record(s) from API. Response keys: ${Array.isArray(matchBody) ? 'n/a (array)' : Object.keys(matchBody).join(', ')}`);
+        console.log(`   Raw response: total=${matchBody.total ?? 'n/a'}, count=${matchBody.count ?? 'n/a'}, offset=${matchBody.offset ?? 'n/a'}, limit=${matchBody.limit ?? 'n/a'}, matches array length=${matches.length}`);
         const matchPayloadMap = new Map();
         let skippedNoName = 0;
         let skippedNoTeamId = 0;
