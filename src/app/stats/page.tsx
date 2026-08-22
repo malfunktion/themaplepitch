@@ -404,10 +404,12 @@ export default function StatsHubPage() {
     }
   };
 
+  // Re-fetches database entities whenever the season dropdown changes
   useEffect(() => {
     async function fetchDatabaseData() {
+      setIsLoading(true);
       try {
-        const res = await fetch('/api/stats', { cache: 'no-store' });
+        const res = await fetch(`/api/stats?season=${season}`, { cache: 'no-store' });
         if (res.ok) {
           const json = await res.json();
           if (json.players) setDbPlayers(json.players);
@@ -420,7 +422,7 @@ export default function StatsHubPage() {
       }
     }
     fetchDatabaseData();
-  }, []);
+  }, [season]);
 
   useEffect(() => {
     getCplStandings().then((data) => {
@@ -434,10 +436,14 @@ export default function StatsHubPage() {
   const activePlayers = dbPlayers;
   const activeTeams = dbTeams;
 
-  // Filtered Players using strict gender matching
+  // Filtered Players using strict gender matching & optional season attribute matching
   const filteredPlayers = useMemo(() => {
     return activePlayers.filter((p: any) => {
       if (!matchesGenderFilter(p, programGender)) return false;
+
+      // If the database record contains a season or year field, filter by it
+      const pSeason = String(p.season || p.year || '');
+      if (pSeason && pSeason !== season) return false;
 
       const comp = String(p.league || p.competitionName || p.competition || '').toUpperCase();
 
@@ -453,7 +459,7 @@ export default function StatsHubPage() {
 
       return p.is_canadian !== false;
     });
-  }, [activePlayers, programGender, competition]);
+  }, [activePlayers, programGender, competition, season]);
 
   const computedGoldenBoot = useMemo<PlayerRow[]>(() => {
     const sorted = [...filteredPlayers].sort((a: any, b: any) => (b.goals ?? 0) - (a.goals ?? 0));
@@ -491,6 +497,8 @@ export default function StatsHubPage() {
   const computedGoalkeepers = useMemo<PlayerRow[]>(() => {
     const keepers = activePlayers.filter((p: any) => {
       if (!matchesGenderFilter(p, programGender)) return false;
+      const pSeason = String(p.season || p.year || '');
+      if (pSeason && pSeason !== season) return false;
       const pos = String(p.position || '').trim().toUpperCase();
       return pos === 'GK' || pos === 'GOALKEEPER';
     });
@@ -509,12 +517,14 @@ export default function StatsHubPage() {
         slug: p.slug || p.external_id || p.id,
       };
     });
-  }, [activePlayers, programGender]);
+  }, [activePlayers, programGender, season]);
 
   // Canadians Abroad Leaderboard
   const computedAbroad = useMemo<PlayerRow[]>(() => {
     const abroad = activePlayers.filter((p: any) => {
       if (!matchesGenderFilter(p, programGender)) return false;
+      const pSeason = String(p.season || p.year || '');
+      if (pSeason && pSeason !== season) return false;
       return isPlayerAbroad(p);
     });
 
@@ -531,7 +541,7 @@ export default function StatsHubPage() {
         slug: p.slug || p.external_id || p.id,
       };
     });
-  }, [activePlayers, programGender]);
+  }, [activePlayers, programGender, season]);
 
   const cleanCplTeams = useMemo(() => {
     const seen = new Set<string>();
@@ -542,7 +552,11 @@ export default function StatsHubPage() {
       const comp = String(t.competition || t.competitionName || t.league || '').toUpperCase();
 
       if (!comp.includes('CPL')) return false;
-      if (DEFUNCT_CPL_TEAMS.has(normKey)) return false;
+
+      // Handle defunct CPL teams based on selected season (e.g., Valour FC shown in 2025, not 2026)
+      const tSeason = Number(t.season || t.year || 2026);
+      if (Number(season) < 2026 && normKey.includes('supra')) return false;
+      if (Number(season) >= 2026 && DEFUNCT_CPL_TEAMS.has(normKey)) return false;
 
       const canonicalName = normalizeTeamName(rawName);
       const canonicalKey = canonicalName.toLowerCase();
@@ -564,7 +578,7 @@ export default function StatsHubPage() {
         league: 'CPL',
       };
     });
-  }, [activeTeams]);
+  }, [activeTeams, season]);
 
   const cleanNslTeams = useMemo(() => {
     const seen = new Set<string>();
@@ -576,6 +590,8 @@ export default function StatsHubPage() {
       const comp = String(t.competition || t.competitionName || t.league || '').toUpperCase();
 
       if (!comp.includes('NSL')) return false;
+      // NSL launched in 2025
+      if (Number(season) < 2025) return false;
       if (seen.has(canonicalKey)) return false;
 
       seen.add(canonicalKey);
@@ -594,7 +610,7 @@ export default function StatsHubPage() {
         league: 'NSL',
       };
     });
-  }, [activeTeams]);
+  }, [activeTeams, season]);
 
   const cleanMlsTeams = useMemo(() => {
     const seen = new Set<string>();
@@ -796,7 +812,7 @@ export default function StatsHubPage() {
                 <MetricCard
                   label="DATABASE PLAYERS"
                   value={String(activePlayers.length)}
-                  detail="SUPABASE SYNCED"
+                  detail={`SUPABASE // ${season}`}
                   accent
                 />
                 <MetricCard
@@ -847,7 +863,7 @@ export default function StatsHubPage() {
 
           {showPlayers && (
             <DataTable
-              title={programGender === 'MEN' ? 'ALL-CANADIAN MEN DATABASE LEADERS' : 'ALL-CANADIAN WOMEN DATABASE LEADERS'}
+              title={programGender === 'MEN' ? `ALL-CANADIAN MEN DATABASE LEADERS (${season})` : `ALL-CANADIAN WOMEN DATABASE LEADERS (${season})`}
               players={filteredPlayers}
               onAddToCompare={handleAddToCompare}
             />
@@ -857,19 +873,19 @@ export default function StatsHubPage() {
             <div className="space-y-5">
               {(competition === 'ALL CANADIAN' || competition === 'CPL') && (
                 <DataTable
-                  title="CPL // CANADIAN PREMIER LEAGUE (2026 ACTIVE)"
+                  title={`CPL // CANADIAN PREMIER LEAGUE (${season} ACTIVE)`}
                   players={cleanCplTeams}
                 />
               )}
-              {(competition === 'ALL CANADIAN' || competition === 'NSL') && (
+              {(competition === 'ALL CANADIAN' || competition === 'NSL') && Number(season) >= 2025 && (
                 <DataTable
-                  title="NSL // NORTHERN SUPER LEAGUE (2026 ACTIVE)"
+                  title={`NSL // NORTHERN SUPER LEAGUE (${season} ACTIVE)`}
                   players={cleanNslTeams}
                 />
               )}
               {(competition === 'ALL CANADIAN' || competition === 'MLS') && (
                 <DataTable
-                  title="MLS // CANADIAN FRANCHISES (TORONTO, MONTREAL, WHITECAPS)"
+                  title={`MLS // CANADIAN FRANCHISES (${season})`}
                   players={cleanMlsTeams}
                 />
               )}
@@ -878,7 +894,7 @@ export default function StatsHubPage() {
 
           {showAbroad && (
             <DataTable
-              title={`GLOBAL CANADIAN PERFORMANCE STREAM // ${programGender}`}
+              title={`GLOBAL CANADIAN PERFORMANCE STREAM // ${programGender} (${season})`}
               players={activePlayers.filter((p: any) => {
                 if (!matchesGenderFilter(p, programGender)) return false;
                 return isPlayerAbroad(p);
@@ -961,7 +977,7 @@ export default function StatsHubPage() {
                     DISCIPLINE MONITOR
                   </span>
                   <h2 className="text-sm font-mono font-bold text-charcoal mt-1">
-                    CARDED LEADERS ({programGender})
+                    CARDED LEADERS ({programGender} // {season})
                   </h2>
                 </div>
                 <div className="p-3 font-mono">
@@ -1033,7 +1049,7 @@ export default function StatsHubPage() {
                     EDITOR&apos;S INDEX
                   </span>
                   <h2 className="text-sm font-mono font-bold text-charcoal mt-1">
-                    ALL-CANADIAN TEAM OF THE WEEK ({programGender})
+                    ALL-CANADIAN TEAM OF THE WEEK ({programGender} // {season})
                   </h2>
                 </div>
                 <span className="text-[9px] font-mono border border-border px-2 py-1 text-charcoal-soft">
