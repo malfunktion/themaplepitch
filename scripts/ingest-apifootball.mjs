@@ -72,9 +72,19 @@ async function runIngestion() {
     const displayName = normalizeTeamName(team.name);
     const teamSlug = slugify(displayName);
 
-    // Build clean team payload matching only standard Supabase teams table columns
+    // external_id is the shared cross-script identity (same value every
+    // script agrees on, since it's derived the same way as slug) — it
+    // used to be `apif-${team.id}`, a scheme only this script knew about,
+    // which collided with ingest-canadasoccerapi.mjs's own `cpl-*` scheme
+    // and ingest-thesportsdb.mjs's `tsdb-*` scheme every time two of the
+    // three scripts touched the same row (whichever ran second would
+    // silently overwrite external_id via its onConflict:'slug' update,
+    // then the next run of a different script would collide on the now-
+    // mismatched value). API-Football's own ID still gets kept, just in
+    // its own dedicated apif_id column instead of fighting over external_id.
     const teamPayload = {
-      external_id: `apif-${team.id}`,
+      external_id: teamSlug,
+      apif_id: String(team.id),
       slug: teamSlug,
       name: displayName,
       league: team.league,

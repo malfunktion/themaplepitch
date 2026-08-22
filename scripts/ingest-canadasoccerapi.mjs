@@ -73,7 +73,11 @@ async function ingestTeams() {
       }
       const displayName = normalizeTeamName(rawName);
       const slug = slugify(displayName);
-      const externalId = `cpl-${slug}`;
+      // external_id is the shared cross-script identity now (see the
+      // matching comment in ingest-apifootball.mjs) — was `cpl-${slug}`,
+      // a scheme unique to this script that collided with the other two
+      // ingest scripts' own external_id schemes on the same row.
+      const externalId = slug;
 
       const payload = {
         external_id: externalId,

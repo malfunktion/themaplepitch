@@ -102,7 +102,14 @@ async function fetchTeamsForLeague(leagueObj) {
 
       const displayName = normalizeTeamName(t.strTeam);
       const slug = slugify(displayName);
-      const externalId = `tsdb-${t.idTeam || slug}`;
+      // external_id is the shared cross-script identity now (see the
+      // matching comment in ingest-apifootball.mjs for why) — was
+      // `tsdb-${t.idTeam}`, a scheme unique to this script that collided
+      // with the other two ingest scripts' own external_id schemes on
+      // the same row. TheSportsDB's own team ID still gets kept, in its
+      // dedicated tsdb_id column instead.
+      const externalId = slug;
+      const tsdbId = t.idTeam || null;
       const newLogo = t.strBadge || t.strLogo || null;
       const newVenue = t.strStadium || null;
       const newCity = t.strLocation || null;
@@ -124,6 +131,7 @@ async function fetchTeamsForLeague(leagueObj) {
 
       const payload = {
         external_id: externalId,
+        tsdb_id: tsdbId,
         slug: slug,
         name: displayName,
         short_name: t.strTeamShort || existing?.short_name || null,
