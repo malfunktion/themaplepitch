@@ -4,13 +4,18 @@ import { createClient } from '@supabase/supabase-js';
 
 const SUPABASE_URL = process.env.NEXT_PUBLIC_SUPABASE_URL || 'https://wsbyyvtcvyhidvijvwuo.supabase.co';
 const SUPABASE_ANON_KEY = process.env.NEXT_PUBLIC_SUPABASE_ANON_KEY || 'mock-key';
-
 const supabase = createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
 export const revalidate = 60;
 
-export async function GET() {
+export async function GET(request: Request) {
   try {
+    // 1. Extract query parameters sent by the frontend
+    const { searchParams } = new URL(request.url);
+    const season = searchParams.get('season') || '2026';
+    const week = searchParams.get('week') || 'ALL';
+
+    // 2. Query Supabase entities
     const [playersRes, teamsRes] = await Promise.all([
       supabase.from('players').select('*'),
       supabase.from('teams').select('*'),
@@ -29,6 +34,8 @@ export async function GET() {
         teams: teamsRes.data ?? [],
         meta: {
           status: 'live',
+          season,
+          week,
           playersCount: playersRes.data?.length ?? 0,
           teamsCount: teamsRes.data?.length ?? 0,
         },
