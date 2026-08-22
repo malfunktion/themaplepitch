@@ -17,42 +17,36 @@ type Match = {
   away_score: number;
   status: string;
   competition: string;
+  season?: number;
 };
 
 const supabase = createClient();
 
-// Official 2026 Active Whitelists & Alias Normalization Maps
-const ACTIVE_CPL_CLUBS = [
-  'cavalry fc',
-  'forge fc',
-  'vancouver fc',
-  'atlético ottawa',
-  'inter toronto fc',
-  'york united fc',
-  'york9',
-  'hfx wanderers fc',
-  'pacific fc',
-  'fc supra du québec',
-  'fc supra du quebec',
-  'quebec supra',
-  'supra du québec'
-];
-
-const ACTIVE_NSL_CLUBS = [
-  'afc toronto',
-  'calgary wild',
-  'halifax tides',
-  'ottawa rapid',
-  'roses de montréal',
-  'montreal roses',
-  'vancouver rise'
-];
+const TEAM_ACTIVE_SEASONS: Record<string, { start: number; end: number }> = {
+  'Forge FC': { start: 2019, end: 2026 },
+  'Cavalry FC': { start: 2019, end: 2026 },
+  'Pacific FC': { start: 2019, end: 2026 },
+  'HFX Wanderers FC': { start: 2019, end: 2026 },
+  'Atlético Ottawa': { start: 2020, end: 2026 },
+  'Valour FC': { start: 2019, end: 2026 },
+  'York United FC': { start: 2019, end: 2024 },
+  'Vancouver FC': { start: 2023, end: 2026 },
+  'FC Edmonton': { start: 2019, end: 2023 },
+  'Inter Toronto FC': { start: 2025, end: 2026 },
+  // NSL Clubs (Launched 2025)
+  'AFC Toronto': { start: 2025, end: 2026 },
+  'Roses de Montréal': { start: 2025, end: 2026 },
+  'Vancouver Rise': { start: 2025, end: 2026 },
+  'Calgary Wild': { start: 2025, end: 2026 },
+  'Ottawa Rapid': { start: 2025, end: 2026 },
+  'Halifax Tides': { start: 2025, end: 2026 },
+};
 
 const TEAM_NAME_OVERRIDES: Record<string, string> = {
-  'york9': 'Inter Toronto FC',
-  'york9 fc': 'Inter Toronto FC',
-  'york united': 'Inter Toronto FC',
-  'york united fc': 'Inter Toronto FC',
+  'york9': 'York United FC',
+  'york9 fc': 'York United FC',
+  'york united': 'York United FC',
+  'york united fc': 'York United FC',
   'inter toronto': 'Inter Toronto FC',
   'inter toronto fc': 'Inter Toronto FC',
   'fc supra du quebec': 'FC Supra du Québec',
@@ -75,65 +69,46 @@ function slugify(name: string): string {
   return (name || '')
     .toLowerCase()
     .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '') // strip accents (Atlético -> Atletico)
+    .replace(/[\u0300-\u036f]/g, '')
     .replace(/[^a-z0-9]+/g, '-')
     .replace(/^-+|-+$/g, '');
 }
 
-export async function computeStandings(competition: string): Promise<StandingsRow[]> {
+export async function computeStandings(competition: string, season: number = 2026): Promise<StandingsRow[]> {
   try {
     const isCpl = competition.toUpperCase() === 'CPL';
-    const targetWhitelist = isCpl ? ACTIVE_CPL_CLUBS : ACTIVE_NSL_CLUBS;
-
+    
+    // Fetch teams and matches filtered by season
     const [teamsRes, matchesRes] = await Promise.all([
       supabase.from('teams').select('id, name, slug, logo_url, league').eq('league', competition),
       supabase
         .from('matches')
-        .select('home_team_id, away_team_id, home_score, away_score, status, competition')
+        .select('home_team_id, away_team_id, home_score, away_score, status, competition, season')
         .eq('competition', competition)
-        .eq('status', 'Finished'),
+        .eq('season', season),
     ]);
 
-    if (teamsRes.error || matchesRes.error || !teamsRes.data || teamsRes.data.length === 0) {
-      // Fallback arrays guaranteeing clean, exact active teams across all pages
-      if (isCpl) {
-        return [
-          { id: 1, position: 1, clubName: 'Forge FC', name: 'Forge FC', played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 0, slug: 'forge-fc' },
-          { id: 2, position: 2, clubName: 'Cavalry FC', name: 'Cavalry FC', played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 0, slug: 'cavalry-fc' },
-          { id: 3, position: 3, clubName: 'Atlético Ottawa', name: 'Atlético Ottawa', played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 0, slug: 'atletico-ottawa' },
-          { id: 4, position: 4, clubName: 'Vancouver FC', name: 'Vancouver FC', played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 0, slug: 'vancouver-fc' },
-          { id: 5, position: 5, clubName: 'FC Supra du Québec', name: 'FC Supra du Québec', played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 0, slug: 'fc-supra-du-quebec' },
-          { id: 6, position: 6, clubName: 'HFX Wanderers FC', name: 'HFX Wanderers FC', played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 0, slug: 'hfx-wanderers-fc' },
-          { id: 7, position: 7, clubName: 'Inter Toronto FC', name: 'Inter Toronto FC', played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 0, slug: 'inter-toronto-fc' },
-          { id: 8, position: 8, clubName: 'Pacific FC', name: 'Pacific FC', played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 0, slug: 'pacific-fc' },
-        ];
-      } else {
-        return [
-          { id: 101, position: 1, clubName: 'AFC Toronto', name: 'AFC Toronto', played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 0, slug: 'afc-toronto' },
-          { id: 102, position: 2, clubName: 'Roses de Montréal', name: 'Roses de Montréal', played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 0, slug: 'roses-de-montreal' },
-          { id: 103, position: 3, clubName: 'Vancouver Rise', name: 'Vancouver Rise', played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 0, slug: 'vancouver-rise' },
-          { id: 104, position: 4, clubName: 'Calgary Wild', name: 'Calgary Wild', played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 0, slug: 'calgary-wild' },
-          { id: 105, position: 5, clubName: 'Ottawa Rapid', name: 'Ottawa Rapid', played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 0, slug: 'ottawa-rapid' },
-          { id: 106, position: 6, clubName: 'Halifax Tides', name: 'Halifax Tides', played: 0, won: 0, drawn: 0, lost: 0, goalsFor: 0, goalsAgainst: 0, goalDifference: 0, points: 0, slug: 'halifax-tides' },
-        ];
-      }
+    if (teamsRes.error || !teamsRes.data || teamsRes.data.length === 0) {
+      return [];
     }
 
     const rawTeams: Team[] = teamsRes.data;
     const matches: Match[] = matchesRes.data || [];
-
+    
     const uniqueTeamsMap = new Map<string, Team>();
+
     rawTeams.forEach(team => {
-      const cleanName = (team.name || '').trim().toLowerCase();
       const canonicalName = normalizeTeamName(team.name);
       const canonicalLower = canonicalName.toLowerCase();
 
-      const isWhitelisted = targetWhitelist.some(w => cleanName.includes(w) || canonicalLower.includes(w));
-      if (!isWhitelisted) return;
+      // Check if team was active during the requested season
+      const lifespan = TEAM_ACTIVE_SEASONS[canonicalName];
+      if (lifespan) {
+        if (season < lifespan.start || season > lifespan.end) return;
+      }
 
       const existing = uniqueTeamsMap.get(canonicalLower);
-      const isCurrentIdentity = cleanName === canonicalLower;
-      if (!existing || (isCurrentIdentity && existing.name.toLowerCase() !== canonicalLower)) {
+      if (!existing) {
         uniqueTeamsMap.set(canonicalLower, {
           ...team,
           name: canonicalName,
@@ -153,7 +128,6 @@ export async function computeStandings(competition: string): Promise<StandingsRo
     });
 
     const statsMap: Record<number, { played: number; won: number; drawn: number; lost: number; gf: number; ga: number; pts: number }> = {};
-
     teams.forEach(team => {
       statsMap[team.id] = { played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, pts: 0 };
     });
@@ -161,9 +135,8 @@ export async function computeStandings(competition: string): Promise<StandingsRo
     matches.forEach(m => {
       const canonicalHomeId = canonicalIdMap.get(m.home_team_id);
       const canonicalAwayId = canonicalIdMap.get(m.away_team_id);
-      
-      if (!canonicalHomeId || !canonicalAwayId || canonicalHomeId === canonicalAwayId) return;
 
+      if (!canonicalHomeId || !canonicalAwayId || canonicalHomeId === canonicalAwayId) return;
       const home = statsMap[canonicalHomeId];
       const away = statsMap[canonicalAwayId];
       if (!home || !away) return;
@@ -228,17 +201,17 @@ export async function computeStandings(competition: string): Promise<StandingsRo
         position: idx + 1,
       }));
   } catch (err) {
-    console.error(`Failed to compute standings for ${competition}:`, err);
+    console.error(`Failed to compute standings for ${competition} in season ${season}:`, err);
     return [];
   }
 }
 
-export async function getCplStandings(): Promise<StandingsRow[]> {
-  return computeStandings('CPL');
+export async function getCplStandings(season: number = 2026): Promise<StandingsRow[]> {
+  return computeStandings('CPL', season);
 }
 
-export async function getNslStandings(): Promise<StandingsRow[]> {
-  return computeStandings('NSL');
+export async function getNslStandings(season: number = 2026): Promise<StandingsRow[]> {
+  return computeStandings('NSL', season);
 }
 
 export async function getLiveTicker(): Promise<LiveTickerItem[]> {
