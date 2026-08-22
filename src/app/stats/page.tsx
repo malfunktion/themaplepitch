@@ -43,7 +43,6 @@ const tabs: { id: ViewMode; label: string }[] = [
   { id: 'COLLEGIATE', label: 'COLLEGIATE (NCAA/U SPORTS)' },
 ];
 
-// Unified Team Name Normalization & De-duplication Map
 const TEAM_NAME_OVERRIDES: Record<string, string> = {
   'forge': 'Forge FC',
   'forge fc': 'Forge FC',
@@ -57,10 +56,10 @@ const TEAM_NAME_OVERRIDES: Record<string, string> = {
   'vancouver fc': 'Vancouver FC',
   'atletico ottawa': 'Atlético Ottawa',
   'atlético ottawa': 'Atlético Ottawa',
-  'york9': 'Inter Toronto FC',
-  'york9 fc': 'Inter Toronto FC',
-  'york united': 'Inter Toronto FC',
-  'york united fc': 'Inter Toronto FC',
+  'york9': 'York United FC',
+  'york9 fc': 'York United FC',
+  'york united': 'York United FC',
+  'york united fc': 'York United FC',
   'inter toronto': 'Inter Toronto FC',
   'inter toronto fc': 'Inter Toronto FC',
   'toronto fc': 'Toronto FC',
@@ -70,16 +69,26 @@ const TEAM_NAME_OVERRIDES: Record<string, string> = {
   'montréal': 'CF Montréal',
   'vancouver whitecaps': 'Vancouver Whitecaps',
   'vancouver whitecaps fc': 'Vancouver Whitecaps',
-  'fc supra du quebec': 'FC Supra du Québec',
-  'fc supra du québec': 'FC Supra du Québec',
-  'quebec supra': 'FC Supra du Québec',
-  'québec supra': 'FC Supra du Québec',
-  'supra': 'FC Supra du Québec',
+  'valour fc': 'Valour FC',
+  'valour': 'Valour FC',
+  'fc edmonton': 'FC Edmonton',
+  'edmonton': 'FC Edmonton',
 };
 
-const DEFUNCT_CPL_TEAMS = new Set(['fc edmonton', 'edmonton', 'valour fc', 'valour']);
+// Team Active Years Mapping for Historical Accuracy
+const TEAM_ACTIVE_SEASONS: Record<string, { start: number; end: number }> = {
+  'Forge FC': { start: 2019, end: 2026 },
+  'Cavalry FC': { start: 2019, end: 2026 },
+  'Pacific FC': { start: 2019, end: 2026 },
+  'HFX Wanderers FC': { start: 2019, end: 2026 },
+  'Atlético Ottawa': { start: 2020, end: 2026 },
+  'Valour FC': { start: 2019, end: 2026 },
+  'York United FC': { start: 2019, end: 2024 },
+  'Vancouver FC': { start: 2023, end: 2026 },
+  'FC Edmonton': { start: 2019, end: 2023 },
+  'Inter Toronto FC': { start: 2025, end: 2026 },
+};
 
-// Program Historical Records & Milestones
 const menRecords = [
   { label: 'ALL-TIME CPL GOAL LEADER', value: 'Terran Campbell — 38 Goals' },
   { label: 'MOST CPL APPEARANCES', value: 'Karifa Yao — 130 Matches' },
@@ -133,7 +142,6 @@ function isPlayerAbroad(p: any) {
   return true;
 }
 
-// STRICT EXCLUSIVE GENDER MATCHING (Prevents 'women'.includes('men') substring bug)
 function matchesGenderFilter(p: any, targetGender: Gender) {
   const playerGender = String(p.gender || '').toLowerCase().trim();
   const target = targetGender.toLowerCase().trim();
@@ -227,7 +235,7 @@ function Leaderboard({
         </div>
         {rows.length === 0 ? (
           <div className="py-6 text-center text-[10px] text-charcoal-soft">
-            NO RECORDS FOUND
+            NO RECORDS FOUND FOR THIS PERIOD
           </div>
         ) : (
           rows.map((row) => (
@@ -305,7 +313,7 @@ function DataTable({
             {players.length === 0 ? (
               <tr>
                 <td colSpan={5} className="px-4 py-6 text-center text-charcoal-soft">
-                  NO DATABASE RECORDS SYNCED
+                  NO DATABASE RECORDS SYNCED FOR THIS SELECTION
                 </td>
               </tr>
             ) : (
@@ -385,6 +393,7 @@ export default function StatsHubPage() {
   const [view, setView] = useState<ViewMode>('OVERVIEW');
   const [competition, setCompetition] = useState('ALL CANADIAN');
   const [season, setSeason] = useState('2026');
+  const [week, setWeek] = useState('ALL'); // NEW: Week selector state
   const [provStatsProvince, setProvStatsProvince] = useState<'ON' | 'QC' | 'BC' | 'AB'>('ON');
   const [dbPlayers, setDbPlayers] = useState<any[]>([]);
   const [dbTeams, setDbTeams] = useState<any[]>([]);
@@ -404,12 +413,11 @@ export default function StatsHubPage() {
     }
   };
 
-  // Re-fetches database entities whenever the season dropdown changes
   useEffect(() => {
     async function fetchDatabaseData() {
       setIsLoading(true);
       try {
-        const res = await fetch(`/api/stats?season=${season}`, { cache: 'no-store' });
+        const res = await fetch(`/api/stats?season=${season}&week=${week}`, { cache: 'no-store' });
         if (res.ok) {
           const json = await res.json();
           if (json.players) setDbPlayers(json.players);
@@ -422,40 +430,38 @@ export default function StatsHubPage() {
       }
     }
     fetchDatabaseData();
-  }, [season]);
+  }, [season, week]);
 
   useEffect(() => {
-    getCplStandings().then((data) => {
+    getCplStandings(Number(season)).then((data) => {
       if (data) setStandings(data);
     });
-    getNslStandings().then((data) => {
+    getNslStandings(Number(season)).then((data) => {
       if (data) setNslStandings(data);
     });
-  }, []);
+  }, [season]);
 
   const activePlayers = dbPlayers;
   const activeTeams = dbTeams;
 
-  // Filtered Players using strict gender matching & optional season attribute matching
+  // Filtered Players respecting season & gender
   const filteredPlayers = useMemo(() => {
+    const targetYear = Number(season);
     return activePlayers.filter((p: any) => {
       if (!matchesGenderFilter(p, programGender)) return false;
 
-      // If the database record contains a season or year field, filter by it
-      const pSeason = String(p.season || p.year || '');
-      if (pSeason && pSeason !== season) return false;
+      const pSeason = Number(p.season || p.year || 0);
+      if (pSeason && pSeason !== targetYear && season !== 'ALL') {
+        // Fallback: if player table doesn't have multi-season breakdown, only show for current/latest year
+        if (targetYear < 2026 && pSeason === 2026) return false;
+      }
 
       const comp = String(p.league || p.competitionName || p.competition || '').toUpperCase();
 
-      if (competition === 'CPL') {
-        return comp.includes('CPL');
-      } else if (competition === 'NSL') {
-        return comp.includes('NSL');
-      } else if (competition === 'MLS') {
-        return comp.includes('MLS');
-      } else if (competition === 'ABROAD') {
-        return isPlayerAbroad(p);
-      }
+      if (competition === 'CPL') return comp.includes('CPL');
+      if (competition === 'NSL') return comp.includes('NSL');
+      if (competition === 'MLS') return comp.includes('MLS');
+      if (competition === 'ABROAD') return isPlayerAbroad(p);
 
       return p.is_canadian !== false;
     });
@@ -493,12 +499,8 @@ export default function StatsHubPage() {
     });
   }, [filteredPlayers]);
 
-  // STRICT GOALKEEPER FILTERING: ONLY players with position === 'GK' matching program gender
   const computedGoalkeepers = useMemo<PlayerRow[]>(() => {
-    const keepers = activePlayers.filter((p: any) => {
-      if (!matchesGenderFilter(p, programGender)) return false;
-      const pSeason = String(p.season || p.year || '');
-      if (pSeason && pSeason !== season) return false;
+    const keepers = filteredPlayers.filter((p: any) => {
       const pos = String(p.position || '').trim().toUpperCase();
       return pos === 'GK' || pos === 'GOALKEEPER';
     });
@@ -517,17 +519,10 @@ export default function StatsHubPage() {
         slug: p.slug || p.external_id || p.id,
       };
     });
-  }, [activePlayers, programGender, season]);
+  }, [filteredPlayers]);
 
-  // Canadians Abroad Leaderboard
   const computedAbroad = useMemo<PlayerRow[]>(() => {
-    const abroad = activePlayers.filter((p: any) => {
-      if (!matchesGenderFilter(p, programGender)) return false;
-      const pSeason = String(p.season || p.year || '');
-      if (pSeason && pSeason !== season) return false;
-      return isPlayerAbroad(p);
-    });
-
+    const abroad = filteredPlayers.filter((p: any) => isPlayerAbroad(p));
     const sorted = [...abroad].sort((a: any, b: any) => (b.rating ?? 0) - (a.rating ?? 0));
     return sorted.slice(0, 5).map((p: any, idx: number) => {
       const playerName = p.name || p.full_name || 'Player';
@@ -541,25 +536,26 @@ export default function StatsHubPage() {
         slug: p.slug || p.external_id || p.id,
       };
     });
-  }, [activePlayers, programGender, season]);
+  }, [filteredPlayers]);
 
+  // HISTORICAL TEAM FILTERING: Only show teams active during the selected season
   const cleanCplTeams = useMemo(() => {
+    const targetSeason = Number(season);
     const seen = new Set<string>();
 
     const filtered = activeTeams.filter((t: any) => {
       const rawName = String(t.name || t.clubName || '').trim();
-      const normKey = rawName.toLowerCase();
+      const canonicalName = normalizeTeamName(rawName);
+      const canonicalKey = canonicalName.toLowerCase();
       const comp = String(t.competition || t.competitionName || t.league || '').toUpperCase();
 
       if (!comp.includes('CPL')) return false;
 
-      // Handle defunct CPL teams based on selected season (e.g., Valour FC shown in 2025, not 2026)
-      const tSeason = Number(t.season || t.year || 2026);
-      if (Number(season) < 2026 && normKey.includes('supra')) return false;
-      if (Number(season) >= 2026 && DEFUNCT_CPL_TEAMS.has(normKey)) return false;
-
-      const canonicalName = normalizeTeamName(rawName);
-      const canonicalKey = canonicalName.toLowerCase();
+      // Check active years mapping
+      const lifespan = TEAM_ACTIVE_SEASONS[canonicalName];
+      if (lifespan) {
+        if (targetSeason < lifespan.start || targetSeason > lifespan.end) return false;
+      }
 
       if (seen.has(canonicalKey)) return false;
       seen.add(canonicalKey);
@@ -581,6 +577,7 @@ export default function StatsHubPage() {
   }, [activeTeams, season]);
 
   const cleanNslTeams = useMemo(() => {
+    const targetSeason = Number(season);
     const seen = new Set<string>();
 
     const filtered = activeTeams.filter((t: any) => {
@@ -590,10 +587,10 @@ export default function StatsHubPage() {
       const comp = String(t.competition || t.competitionName || t.league || '').toUpperCase();
 
       if (!comp.includes('NSL')) return false;
-      // NSL launched in 2025
-      if (Number(season) < 2025) return false;
-      if (seen.has(canonicalKey)) return false;
+      // NSL active from 2025 onwards
+      if (targetSeason < 2025) return false;
 
+      if (seen.has(canonicalKey)) return false;
       seen.add(canonicalKey);
       return true;
     });
@@ -732,10 +729,12 @@ export default function StatsHubPage() {
                   {isLoading ? 'SYNCING DB...' : `${activePlayers.length} DB ENTRIES`}
                 </span>
                 <span className="px-2 py-1 border border-border text-charcoal-soft rounded-sm">
-                  UPDATED // {season}
+                  {season} // {week === 'ALL' ? 'FULL SEASON' : `WEEK ${week}`}
                 </span>
               </div>
             </div>
+            
+            {/* Filter Bar with Season, Week, and Competition Selectors */}
             <div className="p-3 border-b border-border bg-surface/40 flex flex-col sm:flex-row gap-2">
               <div className="flex items-center gap-1 bg-card border border-border p-1 rounded-sm w-full sm:w-auto">
                 {(['MEN', 'WOMEN'] as Gender[]).map((gender) => (
@@ -752,6 +751,8 @@ export default function StatsHubPage() {
                   </button>
                 ))}
               </div>
+              
+              {/* Season Selector */}
               <select
                 value={season}
                 onChange={(e) => setSeason(e.target.value)}
@@ -766,6 +767,22 @@ export default function StatsHubPage() {
                 <option value="2020">2020</option>
                 <option value="2019">2019</option>
               </select>
+
+              {/* NEW: Week Selector */}
+              <select
+                value={week}
+                onChange={(e) => setWeek(e.target.value)}
+                className="bg-card border border-border rounded-sm px-3 py-2 text-[10px] font-mono text-charcoal"
+              >
+                <option value="ALL">ALL WEEKS</option>
+                {Array.from({ length: 28 }, (_, i) => (
+                  <option key={i + 1} value={String(i + 1)}>
+                    Matchweek {i + 1}
+                  </option>
+                ))}
+              </select>
+
+              {/* Competition Selector */}
               <select
                 value={competition}
                 onChange={(e) => setCompetition(e.target.value)}
@@ -778,6 +795,7 @@ export default function StatsHubPage() {
                 <option>ABROAD</option>
               </select>
             </div>
+
             <nav aria-label="Statistics sections" className="overflow-x-auto border-b border-border">
               <div className="flex min-w-max px-2">
                 {tabs.map((tab) => (
@@ -818,42 +836,42 @@ export default function StatsHubPage() {
                 <MetricCard
                   label="REGISTERED CLUBS"
                   value={String(activeTeams.length)}
-                  detail="LEAGUES & PATHWAYS"
+                  detail={`ACTIVE IN ${season}`}
                 />
                 <MetricCard
                   label="CPL CLUBS"
-                  value={String(standings.length)}
-                  detail="LIVE STANDINGS"
+                  value={String(cleanCplTeams.length)}
+                  detail={`${season} ROSTER`}
                 />
                 <MetricCard
                   label="NSL CLUBS"
-                  value={String(nslStandings.length)}
-                  detail="LIVE STANDINGS"
+                  value={String(cleanNslTeams.length)}
+                  detail={`${season} ROSTER`}
                 />
               </section>
 
               <div className="grid grid-cols-1 xl:grid-cols-2 gap-5">
                 <Leaderboard
                   title="Golden Boot"
-                  subtitle={`${competition} // ${season} (${programGender})`}
+                  subtitle={`${competition} // ${season} (${week === 'ALL' ? 'Full Season' : `Week ${week}`})`}
                   rows={computedGoldenBoot}
                   valueLabel="GOALS"
                 />
                 <Leaderboard
                   title="Playmakers"
-                  subtitle={`${competition} // ${season} (${programGender})`}
+                  subtitle={`${competition} // ${season} (${week === 'ALL' ? 'Full Season' : `Week ${week}`})`}
                   rows={computedAssists}
                   valueLabel="ASSISTS"
                 />
                 <Leaderboard
                   title="Goalkeeping"
-                  subtitle={`GOALKEEPER LEADERS // (${programGender})`}
+                  subtitle={`GOALKEEPER LEADERS // (${season})`}
                   rows={computedGoalkeepers}
                   valueLabel="RATING"
                 />
                 <Leaderboard
                   title="Canadian Abroad"
-                  subtitle={`GLOBAL PERFORMANCE INDEX // ${programGender}`}
+                  subtitle={`GLOBAL PERFORMANCE INDEX // ${season}`}
                   rows={computedAbroad}
                   valueLabel="RATING"
                 />
@@ -873,13 +891,13 @@ export default function StatsHubPage() {
             <div className="space-y-5">
               {(competition === 'ALL CANADIAN' || competition === 'CPL') && (
                 <DataTable
-                  title={`CPL // CANADIAN PREMIER LEAGUE (${season} ACTIVE)`}
+                  title={`CPL // CANADIAN PREMIER LEAGUE (${season} ACTIVE ROSTER)`}
                   players={cleanCplTeams}
                 />
               )}
               {(competition === 'ALL CANADIAN' || competition === 'NSL') && Number(season) >= 2025 && (
                 <DataTable
-                  title={`NSL // NORTHERN SUPER LEAGUE (${season} ACTIVE)`}
+                  title={`NSL // NORTHERN SUPER LEAGUE (${season} ACTIVE ROSTER)`}
                   players={cleanNslTeams}
                 />
               )}
@@ -909,8 +927,7 @@ export default function StatsHubPage() {
                 NCAA / U SPORTS
               </div>
               <div className="text-xs font-mono text-charcoal-soft mt-2">
-                Collegiate pathway data isn&apos;t tracked in the database yet. This tab will
-                populate once a verified NCAA/U SPORTS source is connected.
+                Collegiate pathway data is static and managed independently of professional season filters.
               </div>
             </section>
           )}
@@ -1040,47 +1057,6 @@ export default function StatsHubPage() {
               </section>
             </div>
           )}
-
-          {showOverview && (
-            <section className="bg-card border border-border rounded-sm overflow-hidden">
-              <div className="p-4 border-b border-border flex items-center justify-between">
-                <div>
-                  <span className="text-[9px] font-mono tracking-widest text-charcoal-soft">
-                    EDITOR&apos;S INDEX
-                  </span>
-                  <h2 className="text-sm font-mono font-bold text-charcoal mt-1">
-                    ALL-CANADIAN TEAM OF THE WEEK ({programGender} // {season})
-                  </h2>
-                </div>
-                <span className="text-[9px] font-mono border border-border px-2 py-1 text-charcoal-soft">
-                  TOP RATED DB
-                </span>
-              </div>
-              <div className="p-4 grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 gap-2">
-                {computedTeamOfWeek.map((p) => (
-                  <Link
-                    key={p.playerId}
-                    href={`/players/${p.slug}`}
-                    prefetch={false}
-                    className="border border-border/60 bg-surface/40 hover:border-crimson rounded-sm p-2 flex items-center gap-2 transition-colors"
-                  >
-                    <span className="w-7 h-7 bg-border rounded-sm flex items-center justify-center text-[8px] font-bold shrink-0">
-                      {p.initials}
-                    </span>
-                    <div className="min-w-0">
-                      <div className="text-[10px] font-mono font-bold truncate hover:text-crimson">
-                        {p.name}
-                      </div>
-                      <div className="text-[8px] font-mono text-charcoal-soft truncate">
-                        {p.club} {'// '}
-                        {p.league}
-                      </div>
-                    </div>
-                  </Link>
-                ))}
-              </div>
-            </section>
-          )}
         </main>
 
         <aside className="lg:col-span-4 flex flex-col gap-5">
@@ -1097,6 +1073,10 @@ export default function StatsHubPage() {
               <div className="flex justify-between">
                 <span>SEASON</span>
                 <b className="text-charcoal">{season}</b>
+              </div>
+              <div className="flex justify-between">
+                <span>MATCHWEEK</span>
+                <b className="text-charcoal">{week === 'ALL' ? 'Full Season' : `Week ${week}`}</b>
               </div>
               <div className="flex justify-between">
                 <span>PROGRAM</span>
