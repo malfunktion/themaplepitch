@@ -2,273 +2,127 @@
 import { createClient } from '@/lib/supabase/client';
 import type { StandingsRow, LiveTickerItem } from '@/lib/types';
 
-type Team = {
-  id: number;
-  name: string;
-  slug: string | null;
-  logo_url: string | null;
-  league: string;
-  conference?: 'East' | 'West';
-};
-
-type Match = {
-  home_team_id: number;
-  away_team_id: number;
-  home_score?: number;
-  away_score?: number;
-  home_goals?: number;
-  away_goals?: number;
-  status: string;
-  competition: string;
-  season?: number | string;
-  match_date?: string;
-  date?: string;
-};
-
 const supabase = createClient();
 
-// Full Conference Mappings for MLS and NWSL to ensure 100% league coverage
-const MLS_EAST_CLUBS = [
-  'Toronto FC', 'CF Montréal', 'Atlanta United', 'Chicago Fire', 'FC Cincinnati', 
-  'Columbus Crew', 'DC United', 'Inter Miami CF', 'Nashville SC', 'New England Revolution', 
-  'New York City FC', 'New York Red Bulls', 'Orlando City SC', 'Philadelphia Union', 'Charlotte FC', 'St. Louis City SC'
-];
-
-const MLS_WEST_CLUBS = [
-  'Vancouver Whitecaps FC', 'Austin FC', 'Colorado Rapids', 'FC Dallas', 'Houston Dynamo', 
-  'LA Galaxy', 'Los Angeles FC', 'Minnesota United', 'Portland Timbers', 'Real Salt Lake', 
-  'San Jose Earthquakes', 'Seattle Sounders', 'Sporting Kansas City', 'St. Louis City SC', 'San Diego FC'
-];
-
-const NWSL_CLUBS = [
-  'Portland Thorns FC', 'San Diego Wave FC', 'Seattle Reign FC', 
-  'Racing Louisville FC', 'Washington Spirit', 'North Carolina Courage', 'Chicago Red Stars',
-  'Angel City FC', 'Bay FC', 'Houston Dash', 'Kansas City Current', 'NJ/NY Gotham FC', 
-  'Orlando Pride', 'Utah Royals', 'San Diego Wave FC'
-];
-
-const NSL_CLUBS = ['AFC Toronto', 'Roses de Montréal', 'Vancouver Rise', 'Calgary Wild', 'Ottawa Rapid', 'Halifax Tides'];
-const CPL_CLUBS = ['Forge FC', 'Cavalry FC', 'Pacific FC', 'HFX Wanderers FC', 'Atlético Ottawa', 'Vancouver FC', 'Inter Toronto FC', 'FC Supra du Québec'];
-
-const TEAM_ACTIVE_SEASONS: Record<string, { start: number; end: number; conference?: 'East' | 'West' }> = {
-  // CPL
-  'Forge FC': { start: 2019, end: 2026 },
-  'Cavalry FC': { start: 2019, end: 2026 },
-  'Pacific FC': { start: 2019, end: 2026 },
-  'HFX Wanderers FC': { start: 2019, end: 2026 },
-  'Atlético Ottawa': { start: 2020, end: 2026 },
-  'Valour FC': { start: 2019, end: 2025 },
-  'York United FC': { start: 2019, end: 2024 },
-  'Inter Toronto FC': { start: 2025, end: 2026 },
-  'Vancouver FC': { start: 2023, end: 2026 },
-  'FC Edmonton': { start: 2019, end: 2023 },
-  'FC Supra du Québec': { start: 2019, end: 2026 },
-  // NSL
-  'AFC Toronto': { start: 2025, end: 2026 },
-  'Roses de Montréal': { start: 2025, end: 2026 },
-  'Vancouver Rise': { start: 2025, end: 2026 },
-  'Calgary Wild': { start: 2025, end: 2026 },
-  'Ottawa Rapid': { start: 2025, end: 2026 },
-  'Halifax Tides': { start: 2025, end: 2026 },
-  // MLS East
-  ...Object.fromEntries(MLS_EAST_CLUBS.map(c => [c, { start: 2019, end: 2026, conference: 'East' as const }])),
-  // MLS West
-  ...Object.fromEntries(MLS_WEST_CLUBS.map(c => [c, { start: 2019, end: 2026, conference: 'West' as const }])),
-  // NWSL (Unified / Multi-conference pool)
-  ...Object.fromEntries(NWSL_CLUBS.map(c => [c, { start: 2025, end: 2026, conference: 'East' as const }])),
+// Temporal Franchise Lifespan & Historical Name mapping per season
+const CPL_FRANCHISE_HISTORY: Record<string, { start: number; end: number; getName: (season: number) => string }> = {
+  'forge': { start: 2019, end: 2026, getName: () => 'Forge FC' },
+  'cavalry': { start: 2019, end: 2026, getName: () => 'Cavalry FC' },
+  'pacific': { start: 2019, end: 2026, getName: () => 'Pacific FC' },
+  'hfx wanderers': { start: 2019, end: 2026, getName: () => 'HFX Wanderers FC' },
+  'atletico ottawa': { start: 2020, end: 2026, getName: () => 'Atlético Ottawa' },
+  'valour': { start: 2019, end: 2025, getName: () => 'Valour FC' }, // Folded after 2025
+  'vancouver fc': { start: 2023, end: 2026, getName: () => 'Vancouver FC' },
+  // The Evolution of the York/Inter Toronto Franchise
+  'york_inter': { 
+    start: 2019, 
+    end: 2026, 
+    getName: (season: number) => {
+      if (season <= 2020) return 'York9 FC';
+      if (season <= 2024) return 'York United FC';
+      return 'Inter Toronto FC';
+    } 
+  },
+  'edmonton': { start: 2019, end: 2023, getName: () => 'FC Edmonton' },
+  'supra': { start: 2019, end: 2026, getName: () => 'FC Supra du Québec' }
 };
-
-function normalizeTeamName(name: string, season: number): string {
-  if (!name) return '';
-  const lower = name.trim().toLowerCase();
-
-  if (lower.includes('york9') || lower.includes('york united')) {
-    return season >= 2025 ? 'Inter Toronto FC' : 'York United FC';
-  }
-  if (lower.includes('supra') || lower.includes('quebec')) return 'FC Supra du Québec';
-  if (lower.includes('forge')) return 'Forge FC';
-  if (lower.includes('cavalry')) return 'Cavalry FC';
-  if (lower.includes('pacific')) return 'Pacific FC';
-  if (lower.includes('hfx') || lower.includes('wanderers')) return 'HFX Wanderers FC';
-  if (lower.includes('vancouver') && !lower.includes('whitecaps')) return 'Vancouver FC';
-  if (lower.includes('ottawa') || lower.includes('atletico')) return 'Atlético Ottawa';
-  if (lower.includes('valour')) return 'Valour FC';
-  if (lower.includes('edmonton')) return 'FC Edmonton';
-  if (lower.includes('inter toronto')) return 'Inter Toronto FC';
-  if (lower.includes('toronto fc')) return 'Toronto FC';
-  if (lower.includes('montreal') || lower.includes('montréal')) {
-    return lower.includes('roses') ? 'Roses de Montréal' : 'CF Montréal';
-  }
-  if (lower.includes('whitecaps')) return 'Vancouver Whitecaps FC';
-
-  return name.trim();
-}
-
-function slugify(name: string): string {
-  return (name || '')
-    .toLowerCase()
-    .normalize('NFD')
-    .replace(/[\u0300-\u036f]/g, '')
-    .replace(/[^a-z0-9]+/g, '-')
-    .replace(/^-+|-+$/g, '');
-}
 
 export async function computeStandings(competition: string, season: number = 2026): Promise<StandingsRow[]> {
   try {
-    const [teamsRes, matchesRes] = await Promise.all([
-      supabase.from('teams').select('id, name, slug, logo_url, league'),
-      supabase.from('matches').select('*')
-    ]);
+    const compUpper = competition.toUpperCase();
 
-    const rawTeams: Team[] = teamsRes.data || [];
-    const allMatches: Match[] = matchesRes.data || [];
+    // If querying CPL historical standings, check our dedicated historical_standings table first!
+    if (compUpper === 'CPL') {
+      const { data: histData, error: histErr } = await supabase
+        .from('historical_standings')
+        .select('*')
+        .eq('season', season)
+        .eq('competition', 'CPL');
 
-    const matches = allMatches.filter(m => {
-      const comp = String(m.competition || '').toUpperCase();
-      if (!comp.includes(competition.toUpperCase())) return false;
-
-      const mSeason = Number(m.season || new Date(m.match_date || m.date || '2026').getFullYear());
-      return mSeason === season;
-    });
-
-    const uniqueTeamsMap = new Map<string, Team>();
-    const targetCompUpper = competition.toUpperCase();
-
-    // Determine baseline list based on league
-    const getBaselineList = () => {
-      if (targetCompUpper.includes('NSL')) return NSL_CLUBS;
-      if (targetCompUpper.includes('MLS')) return [...MLS_EAST_CLUBS, ...MLS_WEST_CLUBS];
-      if (targetCompUpper.includes('NWSL')) return NWSL_CLUBS;
-      return CPL_CLUBS;
-    };
-
-    // Populate baseline structural fallback so all teams are always present
-    Array.from(new Set(getBaselineList())).forEach((name, idx) => {
-      const lifespan = TEAM_ACTIVE_SEASONS[name];
-      if (lifespan && season >= lifespan.start && season <= lifespan.end) {
-        uniqueTeamsMap.set(name.toLowerCase(), {
-          id: 9000 + idx,
-          name,
-          slug: slugify(name),
-          logo_url: null,
-          league: competition,
-          conference: lifespan.conference
-        });
+      if (!histErr && histData && histData.length > 0) {
+        return histData
+          .sort((a, b) => b.points - a.points || b.goal_difference - a.goal_difference || b.goals_for - a.goals_for)
+          .map((row, idx) => ({
+            id: idx + 1,
+            slug: slugify(row.club_name),
+            external_id: `${season}-${slugify(row.club_name)}`,
+            logoUrl: null,
+            position: row.position || idx + 1,
+            clubName: row.club_name,
+            name: row.club_name,
+            played: row.played,
+            won: row.won,
+            drawn: row.drawn,
+            lost: row.lost,
+            goalsFor: row.goals_for,
+            goalsAgainst: row.goals_against,
+            goalDifference: row.goal_difference,
+            points: row.points,
+          }));
       }
-    });
+    }
 
-    // Merge actual database records
-    rawTeams.forEach(team => {
-      const canonicalName = normalizeTeamName(team.name, season);
-      const canonicalLower = canonicalName.toLowerCase();
+    // Fallback or non-CPL dynamic calculation from matches table
+    const { data: matchesRes } = await supabase
+      .from('matches')
+      .select('*, home_teams:teams!home_team_id(name), away_teams:teams!away_team_id(name)')
+      .eq('season', season);
 
-      const lifespan = TEAM_ACTIVE_SEASONS[canonicalName];
-      if (!lifespan) return;
-      if (season < lifespan.start || season > lifespan.end) return;
-
-      const isNsl = NSL_CLUBS.includes(canonicalName);
-      const isMls = MLS_EAST_CLUBS.includes(canonicalName) || MLS_WEST_CLUBS.includes(canonicalName);
-      const isNwsl = NWSL_CLUBS.includes(canonicalName);
-
-      if (targetCompUpper.includes('NSL') && !isNsl) return;
-      if (targetCompUpper.includes('CPL') && (isNsl || isMls || isNwsl)) return;
-      if (targetCompUpper.includes('MLS') && !isMls) return;
-      if (targetCompUpper.includes('NWSL') && !isNwsl) return;
-
-      uniqueTeamsMap.set(canonicalLower, {
-        ...team,
-        name: canonicalName,
-        conference: lifespan.conference
-      });
-    });
-
-    const teams = Array.from(uniqueTeamsMap.values());
-    const canonicalIdMap = new Map<number, number>();
-
-    rawTeams.forEach(raw => {
-      const canonicalName = normalizeTeamName(raw.name, season).toLowerCase();
-      const targetTeam = uniqueTeamsMap.get(canonicalName);
-      if (targetTeam) {
-        canonicalIdMap.set(raw.id, targetTeam.id);
-      }
-    });
-
-    const statsMap: Record<number, { played: number; won: number; drawn: number; lost: number; gf: number; ga: number; pts: number }> = {};
-    teams.forEach(team => {
-      statsMap[team.id] = { played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, pts: 0 };
-    });
+    const matches = (matchesRes || []).filter(m => String(m.competition || '').toUpperCase().includes(compUpper));
+    
+    // Aggregate points dynamically if pre-calculated standings aren't found
+    const statsMap = new Map<string, { name: string; played: number; won: number; drawn: number; lost: number; gf: number; ga: number; pts: number }>();
 
     matches.forEach(m => {
-      const canonicalHomeId = canonicalIdMap.get(m.home_team_id) || m.home_team_id;
-      const canonicalAwayId = canonicalIdMap.get(m.away_team_id) || m.away_team_id;
+      const homeName = m.home_teams?.name || 'Home Team';
+      const awayName = m.away_teams?.name || 'Away Team';
+      const hScore = m.home_goals ?? m.home_score ?? 0;
+      const aScore = m.away_goals ?? m.away_score ?? 0;
 
-      if (!canonicalHomeId || !canonicalAwayId || canonicalHomeId === canonicalAwayId) return;
-      const home = statsMap[canonicalHomeId];
-      const away = statsMap[canonicalAwayId];
-      if (!home || !away) return;
+      if (!statsMap.has(homeName)) statsMap.set(homeName, { name: homeName, played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, pts: 0 });
+      if (!statsMap.has(awayName)) statsMap.set(awayName, { name: awayName, played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, pts: 0 });
 
-      const homeScore = m.home_goals ?? m.home_score ?? 0;
-      const awayScore = m.away_goals ?? m.away_score ?? 0;
+      const h = statsMap.get(homeName)!;
+      const a = statsMap.get(awayName)!;
 
-      home.played += 1;
-      away.played += 1;
-      home.gf += homeScore;
-      home.ga += awayScore;
-      away.gf += awayScore;
-      away.ga += homeScore;
+      h.played += 1; a.played += 1;
+      h.gf += hScore; h.ga += aScore;
+      a.gf += aScore; a.ga += hScore;
 
-      if (homeScore > awayScore) {
-        home.won += 1;
-        home.pts += 3;
-        away.lost += 1;
-      } else if (homeScore < awayScore) {
-        away.won += 1;
-        away.pts += 3;
-        home.lost += 1;
-      } else {
-        home.drawn += 1;
-        home.pts += 1;
-        away.drawn += 1;
-        away.pts += 1;
-      }
+      if (hScore > aScore) { h.won += 1; h.pts += 3; a.lost += 1; }
+      else if (hScore < aScore) { a.won += 1; a.pts += 3; h.lost += 1; }
+      else { h.drawn += 1; h.pts += 1; a.drawn += 1; a.pts += 1; }
     });
 
-    return teams
-      .map(team => {
-        const s = statsMap[team.id] || { played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, pts: 0 };
-        return {
-          id: team.id,
-          slug: team.slug || slugify(team.name),
-          external_id: String(team.id),
-          logoUrl: team.logo_url || null,
-          position: 1,
-          clubName: team.name,
-          name: team.name,
-          played: s.played,
-          won: s.won,
-          drawn: s.drawn,
-          lost: s.lost,
-          goalsFor: s.gf,
-          goalsAgainst: s.ga,
-          goalDifference: s.gf - s.ga,
-          points: s.pts,
-          conference: team.conference,
-        };
-      })
-      .sort((a, b) => 
-        b.points - a.points || 
-        b.goalDifference - a.goalDifference || 
-        (b.goalsFor || 0) - (a.goalsFor || 0) ||
-        a.clubName.localeCompare(b.clubName)
-      )
-      .map((row, idx) => ({
-        ...row,
+    return Array.from(statsMap.values())
+      .map((s, idx) => ({
+        id: idx + 1,
+        slug: slugify(s.name),
+        external_id: slugify(s.name),
+        logoUrl: null,
         position: idx + 1,
-      }));
+        clubName: s.name,
+        name: s.name,
+        played: s.played,
+        won: s.won,
+        drawn: s.drawn,
+        lost: s.lost,
+        goalsFor: s.gf,
+        goalsAgainst: s.ga,
+        goalDifference: s.gf - s.ga,
+        points: s.pts,
+      }))
+      .sort((a, b) => b.points - a.points || b.goalDifference - a.goalDifference || b.goalsFor - a.goalsFor)
+      .map((row, idx) => ({ ...row, position: idx + 1 }));
+
   } catch (err) {
-    console.error(`Failed to compute standings for ${competition} in season ${season}:`, err);
+    console.error(`Error computing standings for ${competition} (${season}):`, err);
     return [];
   }
+}
+
+function slugify(name: string): string {
+  return (name || '').toLowerCase().normalize('NFD').replace(/[\u0300-\u036f]/g, '').replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
 }
 
 export async function getCplStandings(season: number = 2026): Promise<StandingsRow[]> {
@@ -286,29 +140,3 @@ export async function getMlsStandings(season: number = 2026): Promise<StandingsR
 export async function getNwslStandings(season: number = 2026): Promise<StandingsRow[]> {
   return computeStandings('NWSL', season);
 }
-
-export async function getLiveTicker(): Promise<LiveTickerItem[]> {
-  try {
-    const { data, error } = await supabase
-      .from('matches')
-      .select('id, competition, home_score, away_score, status, home_teams:teams!home_team_id(name), away_teams:teams!away_team_id(name)')
-      .limit(6);
-
-    if (error || !data || data.length === 0) {
-      return [];
-    }
-
-    return data.map((m: any, idx: number) => ({
-      id: String(m.id || idx),
-      competition: m.competition || 'CPL',
-      homeTeam: normalizeTeamName(m.home_teams?.name || 'Home Team', 2026),
-      awayTeam: normalizeTeamName(m.away_teams?.name || 'Away Team', 2026),
-      homeScore: m.home_score || 0,
-      awayScore: m.away_score || 0,
-      minute: m.status === 'Live' ? 75 : null,
-      isLive: m.status === 'Live',
-    }));
-  } catch (err) {
-    return [];
-  }
-  }
