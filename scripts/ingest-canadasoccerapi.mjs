@@ -62,11 +62,15 @@ async function ingestTeams() {
     if (!res.ok) throw new Error(`HTTP Error ${res.status}`);
     const body = await res.json();
     const teams = Array.isArray(body) ? body : (body.teams || []);
+    console.log(`   Raw response: ${Array.isArray(body) ? 'array' : 'object'} with ${teams.length} team record(s). Response keys: ${Array.isArray(body) ? 'n/a' : Object.keys(body).join(', ')}`);
     const teamMap = new Map();
 
     for (const team of teams) {
       const rawName = team.name || team.team_name || team.team;
-      if (!rawName) continue;
+      if (!rawName) {
+        console.warn('   ⚠️ Skipped a team record with no usable name field. Raw keys:', Object.keys(team).join(', '));
+        continue;
+      }
       const displayName = normalizeTeamName(rawName);
       const slug = slugify(displayName);
       const externalId = `cpl-${slug}`;
@@ -95,8 +99,11 @@ async function ingestTeams() {
         teamMap.set(data.name.toLowerCase(), data.id);
         teamMap.set(data.slug, data.id);
         console.log(`✅ Synced Team: ${data.name} (ID: ${data.id})`);
+      } else if (error) {
+        console.error(`❌ Team sync failed for "${displayName}": ${error.message}`);
       }
     }
+    console.log(`   Team sync complete. ${teamMap.size / 2} team(s) mapped.`);
     return teamMap;
   } catch (err) {
     console.error('❌ Failed to ingest CPL teams:', err.message);
@@ -119,16 +126,25 @@ async function ingestHistoricalSeasons(teamMap) {
       if (matchRes.ok) {
         const matchBody = await matchRes.json();
         const matches = Array.isArray(matchBody) ? matchBody : (matchBody.matches || []);
+        console.log(`   Raw response: ${matches.length} match record(s) from API. Response keys: ${Array.isArray(matchBody) ? 'n/a (array)' : Object.keys(matchBody).join(', ')}`);
         const matchPayloadMap = new Map();
+        let skippedNoName = 0;
+        let skippedNoTeamId = 0;
 
         for (const m of matches) {
           const homeName = normalizeTeamName(m.home_team || m.homeTeam || m.home_team_name);
           const awayName = normalizeTeamName(m.away_team || m.awayTeam || m.away_team_name);
-          if (!homeName || !awayName) continue;
+          if (!homeName || !awayName) { skippedNoName++; continue; }
 
           const homeId = teamMap.get(homeName.toLowerCase()) || teamMap.get(slugify(homeName)) || null;
           const awayId = teamMap.get(awayName.toLowerCase()) || teamMap.get(slugify(awayName)) || null;
-          if (!homeId || !awayId) continue;
+          if (!homeId || !awayId) {
+            skippedNoTeamId++;
+            if (skippedNoTeamId <= 3) {
+              console.warn(`   ⚠️ No team match for "${homeName}" (id=${homeId}) vs "${awayName}" (id=${awayId}) — check these names against teamMap.`);
+            }
+            continue;
+          }
 
           const matchDate = m.date || m.match_date || `${season}-01-01`;
           const dateOnly = matchDate.split('T')[0];
@@ -152,6 +168,9 @@ async function ingestHistoricalSeasons(teamMap) {
           });
         }
 
+        if (skippedNoName > 0) console.log(`   Skipped ${skippedNoName} match(es) with no usable team name.`);
+        if (skippedNoTeamId > 0) console.log(`   Skipped ${skippedNoTeamId} match(es) with a team name that didn't map to a synced team.`);
+
         const payloads = Array.from(matchPayloadMap.values());
         if (payloads.length > 0) {
           const { error } = await supabase.from('matches').upsert(payloads, { onConflict: 'external_id' });
@@ -160,7 +179,11 @@ async function ingestHistoricalSeasons(teamMap) {
           } else {
             console.log(`🎉 Synced ${payloads.length} matches for season ${season}.`);
           }
+        } else {
+          console.log(`   No matches to sync for ${season} (${matches.length} fetched, all filtered out — see skip counts above).`);
         }
+      } else {
+        console.error(`   ❌ Match fetch for ${season} returned HTTP ${matchRes.status}`);
       }
     } catch (err) {
       console.error(`❌ Failed to fetch matches for ${season}:`, err.message);
