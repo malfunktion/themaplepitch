@@ -8,6 +8,7 @@ type Team = {
   slug: string | null;
   logo_url: string | null;
   league: string;
+  conference?: 'East' | 'West';
 };
 
 type Match = {
@@ -26,46 +27,56 @@ type Match = {
 
 const supabase = createClient();
 
-const TEAM_ACTIVE_SEASONS: Record<string, { start: number; end: number }> = {
-  // CPL Clubs
+// Full Conference Mappings for MLS and NWSL to ensure 100% league coverage
+const MLS_EAST_CLUBS = [
+  'Toronto FC', 'CF Montréal', 'Atlanta United', 'Chicago Fire', 'FC Cincinnati', 
+  'Columbus Crew', 'DC United', 'Inter Miami CF', 'Nashville SC', 'New England Revolution', 
+  'New York City FC', 'New York Red Bulls', 'Orlando City SC', 'Philadelphia Union', 'Charlotte FC', 'St. Louis City SC'
+];
+
+const MLS_WEST_CLUBS = [
+  'Vancouver Whitecaps FC', 'Austin FC', 'Colorado Rapids', 'FC Dallas', 'Houston Dynamo', 
+  'LA Galaxy', 'Los Angeles FC', 'Minnesota United', 'Portland Timbers', 'Real Salt Lake', 
+  'San Jose Earthquakes', 'Seattle Sounders', 'Sporting Kansas City', 'St. Louis City SC', 'San Diego FC'
+];
+
+const NWSL_CLUBS = [
+  'Portland Thorns FC', 'San Diego Wave FC', 'Seattle Reign FC', 
+  'Racing Louisville FC', 'Washington Spirit', 'North Carolina Courage', 'Chicago Red Stars',
+  'Angel City FC', 'Bay FC', 'Houston Dash', 'Kansas City Current', 'NJ/NY Gotham FC', 
+  'Orlando Pride', 'Utah Royals', 'San Diego Wave FC'
+];
+
+const NSL_CLUBS = ['AFC Toronto', 'Roses de Montréal', 'Vancouver Rise', 'Calgary Wild', 'Ottawa Rapid', 'Halifax Tides'];
+const CPL_CLUBS = ['Forge FC', 'Cavalry FC', 'Pacific FC', 'HFX Wanderers FC', 'Atlético Ottawa', 'Vancouver FC', 'Inter Toronto FC', 'FC Supra du Québec'];
+
+const TEAM_ACTIVE_SEASONS: Record<string, { start: number; end: number; conference?: 'East' | 'West' }> = {
+  // CPL
   'Forge FC': { start: 2019, end: 2026 },
   'Cavalry FC': { start: 2019, end: 2026 },
   'Pacific FC': { start: 2019, end: 2026 },
   'HFX Wanderers FC': { start: 2019, end: 2026 },
   'Atlético Ottawa': { start: 2020, end: 2026 },
-  'Valour FC': { start: 2019, end: 2025 }, // Folded after 2025
+  'Valour FC': { start: 2019, end: 2025 },
   'York United FC': { start: 2019, end: 2024 },
   'Inter Toronto FC': { start: 2025, end: 2026 },
   'Vancouver FC': { start: 2023, end: 2026 },
   'FC Edmonton': { start: 2019, end: 2023 },
   'FC Supra du Québec': { start: 2019, end: 2026 },
-  // NSL Clubs (All 6 Founding Clubs)
+  // NSL
   'AFC Toronto': { start: 2025, end: 2026 },
   'Roses de Montréal': { start: 2025, end: 2026 },
   'Vancouver Rise': { start: 2025, end: 2026 },
   'Calgary Wild': { start: 2025, end: 2026 },
   'Ottawa Rapid': { start: 2025, end: 2026 },
   'Halifax Tides': { start: 2025, end: 2026 },
-  // MLS Canadian Franchises
-  'Toronto FC': { start: 2019, end: 2026 },
-  'CF Montréal': { start: 2019, end: 2026 },
-  'Vancouver Whitecaps FC': { start: 2019, end: 2026 },
-  // NWSL Tracked Clubs (Canadian Expats)
-  'Portland Thorns FC': { start: 2025, end: 2026 },
-  'San Diego Wave FC': { start: 2025, end: 2026 },
-  'Seattle Reign FC': { start: 2025, end: 2026 },
-  'Racing Louisville FC': { start: 2025, end: 2026 },
-  'Washington Spirit': { start: 2025, end: 2026 },
-  'North Carolina Courage': { start: 2025, end: 2026 },
-  'Chicago Red Stars': { start: 2025, end: 2026 },
+  // MLS East
+  ...Object.fromEntries(MLS_EAST_CLUBS.map(c => [c, { start: 2019, end: 2026, conference: 'East' as const }])),
+  // MLS West
+  ...Object.fromEntries(MLS_WEST_CLUBS.map(c => [c, { start: 2019, end: 2026, conference: 'West' as const }])),
+  // NWSL (Unified / Multi-conference pool)
+  ...Object.fromEntries(NWSL_CLUBS.map(c => [c, { start: 2025, end: 2026, conference: 'East' as const }])),
 };
-
-const NSL_CLUBS = new Set(['AFC Toronto', 'Roses de Montréal', 'Vancouver Rise', 'Calgary Wild', 'Ottawa Rapid', 'Halifax Tides']);
-const MLS_CLUBS = new Set(['Toronto FC', 'CF Montréal', 'Vancouver Whitecaps FC']);
-const NWSL_CLUBS = new Set([
-  'Portland Thorns FC', 'San Diego Wave FC', 'Seattle Reign FC', 
-  'Racing Louisville FC', 'Washington Spirit', 'North Carolina Courage', 'Chicago Red Stars'
-]);
 
 function normalizeTeamName(name: string, season: number): string {
   if (!name) return '';
@@ -89,11 +100,6 @@ function normalizeTeamName(name: string, season: number): string {
     return lower.includes('roses') ? 'Roses de Montréal' : 'CF Montréal';
   }
   if (lower.includes('whitecaps')) return 'Vancouver Whitecaps FC';
-  if (lower.includes('afc toronto')) return 'AFC Toronto';
-  if (lower.includes('calgary wild')) return 'Calgary Wild';
-  if (lower.includes('halifax tides')) return 'Halifax Tides';
-  if (lower.includes('ottawa rapid')) return 'Ottawa Rapid';
-  if (lower.includes('vancouver rise')) return 'Vancouver Rise';
 
   return name.trim();
 }
@@ -128,28 +134,30 @@ export async function computeStandings(competition: string, season: number = 202
     const uniqueTeamsMap = new Map<string, Team>();
     const targetCompUpper = competition.toUpperCase();
 
-    // Always ensure base teams for the queried league exist via explicit fallback mapping
-    const getFallbackList = () => {
-      if (targetCompUpper.includes('NSL')) return Array.from(NSL_CLUBS);
-      if (targetCompUpper.includes('MLS')) return Array.from(MLS_CLUBS);
-      if (targetCompUpper.includes('NWSL')) return Array.from(NWSL_CLUBS);
-      return Object.keys(TEAM_ACTIVE_SEASONS).filter(k => !NSL_CLUBS.has(k) && !MLS_CLUBS.has(k) && !NWSL_CLUBS.has(k));
+    // Determine baseline list based on league
+    const getBaselineList = () => {
+      if (targetCompUpper.includes('NSL')) return NSL_CLUBS;
+      if (targetCompUpper.includes('MLS')) return [...MLS_EAST_CLUBS, ...MLS_WEST_CLUBS];
+      if (targetCompUpper.includes('NWSL')) return NWSL_CLUBS;
+      return CPL_CLUBS;
     };
 
-    getFallbackList().forEach((name, idx) => {
+    // Populate baseline structural fallback so all teams are always present
+    Array.from(new Set(getBaselineList())).forEach((name, idx) => {
       const lifespan = TEAM_ACTIVE_SEASONS[name];
       if (lifespan && season >= lifespan.start && season <= lifespan.end) {
         uniqueTeamsMap.set(name.toLowerCase(), {
-          id: 5000 + idx,
+          id: 9000 + idx,
           name,
           slug: slugify(name),
           logo_url: null,
-          league: competition
+          league: competition,
+          conference: lifespan.conference
         });
       }
     });
 
-    // Override or supplement with raw database teams if matched
+    // Merge actual database records
     rawTeams.forEach(team => {
       const canonicalName = normalizeTeamName(team.name, season);
       const canonicalLower = canonicalName.toLowerCase();
@@ -158,9 +166,9 @@ export async function computeStandings(competition: string, season: number = 202
       if (!lifespan) return;
       if (season < lifespan.start || season > lifespan.end) return;
 
-      const isNsl = NSL_CLUBS.has(canonicalName);
-      const isMls = MLS_CLUBS.has(canonicalName);
-      const isNwsl = NWSL_CLUBS.has(canonicalName);
+      const isNsl = NSL_CLUBS.includes(canonicalName);
+      const isMls = MLS_EAST_CLUBS.includes(canonicalName) || MLS_WEST_CLUBS.includes(canonicalName);
+      const isNwsl = NWSL_CLUBS.includes(canonicalName);
 
       if (targetCompUpper.includes('NSL') && !isNsl) return;
       if (targetCompUpper.includes('CPL') && (isNsl || isMls || isNwsl)) return;
@@ -170,6 +178,7 @@ export async function computeStandings(competition: string, season: number = 202
       uniqueTeamsMap.set(canonicalLower, {
         ...team,
         name: canonicalName,
+        conference: lifespan.conference
       });
     });
 
@@ -227,8 +236,6 @@ export async function computeStandings(competition: string, season: number = 202
     return teams
       .map(team => {
         const s = statsMap[team.id] || { played: 0, won: 0, drawn: 0, lost: 0, gf: 0, ga: 0, pts: 0 };
-        const gf = s.gf;
-        const ga = s.ga;
         return {
           id: team.id,
           slug: team.slug || slugify(team.name),
@@ -241,10 +248,11 @@ export async function computeStandings(competition: string, season: number = 202
           won: s.won,
           drawn: s.drawn,
           lost: s.lost,
-          goalsFor: gf,
-          goalsAgainst: ga,
-          goalDifference: gf - ga,
+          goalsFor: s.gf,
+          goalsAgainst: s.ga,
+          goalDifference: s.gf - s.ga,
           points: s.pts,
+          conference: team.conference,
         };
       })
       .sort((a, b) => 
@@ -303,4 +311,4 @@ export async function getLiveTicker(): Promise<LiveTickerItem[]> {
   } catch (err) {
     return [];
   }
-                     }
+  }
