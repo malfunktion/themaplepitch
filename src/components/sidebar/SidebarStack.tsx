@@ -19,10 +19,6 @@ interface SidebarStackProps {
   mlsStandings?: StandingsRow[];
   nwslStandings?: StandingsRow[];
   breakpoint?: 'md' | 'lg';
-  /**
-   * Explicitly allows legacy and new tab names to maintain full backwards compatibility
-   * across all page call sites without throwing type errors.
-   */
   defaultTab?: 'standings' | 'provincial' | 'stateside' | 'radars' | 'main';
 }
 
@@ -33,7 +29,6 @@ export default function SidebarStack({
   nwslStandings = [], 
   defaultTab = 'standings' 
 }: SidebarStackProps) {
-  // Map any initial view intent to our 3 core tabs
   const getInitialTab = (): 'standings' | 'provincial' | 'stateside' => {
     if (defaultTab === 'provincial') return 'provincial';
     if (defaultTab === 'stateside' || defaultTab === 'radars') return 'stateside';
@@ -42,6 +37,8 @@ export default function SidebarStack({
 
   const [activeTab, setActiveTab] = useState<'standings' | 'provincial' | 'stateside'>(getInitialTab());
   const [statesideLeague, setStatesideLeague] = useState<'MLS' | 'NWSL'>('MLS');
+
+  const currentStatesideData = statesideLeague === 'MLS' ? mlsStandings : nwslStandings;
 
   return (
     <div className="flex flex-col gap-4 w-full pb-4">
@@ -76,7 +73,6 @@ export default function SidebarStack({
       <div className="w-full">
         {activeTab === 'standings' && (
           <div className="flex flex-col gap-6 animate-fadeIn">
-            {/* 1. Main Standings Widget */}
             <ScoutDash standings={standings} nslStandings={nslStandings} />
             <SidebarAdWidget />
           </div>
@@ -103,7 +99,7 @@ export default function SidebarStack({
                       statesideLeague === 'MLS' ? 'bg-crimson text-white shadow-sm' : 'text-charcoal-soft hover:text-charcoal dark:hover:text-white'
                     }`}
                   >
-                    MLS
+                    MLS ({mlsStandings.length})
                   </button>
                   <button
                     onClick={() => setStatesideLeague('NWSL')}
@@ -111,17 +107,15 @@ export default function SidebarStack({
                       statesideLeague === 'NWSL' ? 'bg-crimson text-white shadow-sm' : 'text-charcoal-soft hover:text-charcoal dark:hover:text-white'
                     }`}
                   >
-                    NWSL
+                    NWSL ({nwslStandings.length})
                   </button>
                 </div>
               </div>
               
-              {/* Hijacks the generic StandingsWidget to show MLS or NWSL */}
               <StandingsWidget
                 title={`${statesideLeague} STANDINGS`}
-                cplStandings={statesideLeague === 'MLS' ? mlsStandings : nwslStandings}
-                nslStandings={[]}
-                defaultTab="CPL"
+                cplStandings={currentStatesideData}
+                hideToggle={true}
                 compact={true}
               />
             </div>
