@@ -18,7 +18,7 @@ import { homeLayout } from '@/lib/homeLayout.config';
 import type { WireStory, StandingsRow } from '@/lib/types';
 import { client } from '@/lib/sanity';
 import { getWireFeed } from '@/lib/data/newsWire';
-import { getCplStandings, getNslStandings } from '@/lib/data/standings';
+import { getCplStandings, getNslStandings, getMlsStandings, getNwslStandings } from '@/lib/data/standings';
 import { supabase } from '@/lib/supabase/client';
 
 export const dynamic = 'force-dynamic';
@@ -53,12 +53,23 @@ async function getPlayerSpotlights() {
 }
 
 export default async function HomePage() {
-  const [settings, spotlights, wireFeed, standings, nslStandings, playersRes] = await Promise.all([
+  const [
+    settings, 
+    spotlights, 
+    wireFeed, 
+    standings, 
+    nslStandings, 
+    mlsStandings, 
+    nwslStandings, 
+    playersRes
+  ] = await Promise.all([
     getSiteSettings(),
     getPlayerSpotlights(),
     getWireFeed({ limit: 6 }),
     getCplStandings(),
     getNslStandings(),
+    getMlsStandings(),
+    getNwslStandings(),
     supabase
       .from('players')
       .select(`
@@ -124,9 +135,15 @@ export default async function HomePage() {
         </div>
         
         <div className="lg:col-span-4 flex flex-col gap-4 sticky top-6">
-          <SidebarStack standings={standings} nslStandings={nslStandings} defaultTab="standings" />
+          <SidebarStack 
+            standings={standings} 
+            nslStandings={nslStandings}
+            mlsStandings={mlsStandings}
+            nwslStandings={nwslStandings}
+            defaultTab="standings" 
+          />
         </div>
       </div>
     </div>
   );
-}
+    }
