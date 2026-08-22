@@ -76,28 +76,6 @@ function resolveTeamNameForSeason(rawName: string, season: number): string {
   return rawName.trim();
 }
 
-// Team Active Years Mapping
-const TEAM_ACTIVE_SEASONS: Record<string, { start: number; end: number }> = {
-  'Forge FC': { start: 2019, end: 2026 },
-  'Cavalry FC': { start: 2019, end: 2026 },
-  'Pacific FC': { start: 2019, end: 2026 },
-  'HFX Wanderers FC': { start: 2019, end: 2026 },
-  'Atlético Ottawa': { start: 2020, end: 2026 },
-  'Valour FC': { start: 2019, end: 2026 },
-  'York United FC': { start: 2019, end: 2024 },
-  'Inter Toronto FC': { start: 2025, end: 2026 },
-  'Vancouver FC': { start: 2023, end: 2026 },
-  'FC Edmonton': { start: 2019, end: 2023 },
-  'FC Supra du Québec': { start: 2019, end: 2026 },
-  // NSL Clubs (Launched 2025)
-  'AFC Toronto': { start: 2025, end: 2026 },
-  'Roses de Montréal': { start: 2025, end: 2026 },
-  'Vancouver Rise': { start: 2025, end: 2026 },
-  'Calgary Wild': { start: 2025, end: 2026 },
-  'Ottawa Rapid': { start: 2025, end: 2026 },
-  'Halifax Tides': { start: 2025, end: 2026 },
-};
-
 const menRecords = [
   { label: 'ALL-TIME CPL GOAL LEADER', value: 'Terran Campbell — 38 Goals' },
   { label: 'MOST CPL APPEARANCES', value: 'Karifa Yao — 130 Matches' },
@@ -277,7 +255,120 @@ function Leaderboard({
   );
 }
 
-// Standings Table Component for Team Streams Tab
+function DataTable({
+  title,
+  players,
+  onAddToCompare,
+}: {
+  title: string;
+  players: any[];
+  onAddToCompare?: (player: ComparePlayer) => void;
+}) {
+  return (
+    <section className="bg-card border border-border rounded-sm overflow-hidden font-mono">
+      <div className="p-4 border-b border-border flex items-center justify-between gap-4">
+        <div>
+          <span className="text-[9px] tracking-[0.18em] text-charcoal-soft uppercase">
+            DATABASE ENTITY STREAM
+          </span>
+          <h2 className="text-sm font-bold text-charcoal uppercase mt-1">
+            {title}
+          </h2>
+        </div>
+        <span className="text-[9px] text-charcoal-soft">
+          {players.length} RECORDS
+        </span>
+      </div>
+      <div className="overflow-x-auto">
+        <table className="w-full min-w-[620px] text-left">
+          <thead className="text-[8px] uppercase tracking-widest text-charcoal-soft bg-surface/60 border-b border-border">
+            <tr>
+              <th className="px-4 py-2">Rank</th>
+              <th className="px-4 py-2">Player / Club</th>
+              <th className="px-4 py-2">League {'// Position'}</th>
+              <th className="px-4 py-2 text-right">Metrics</th>
+              <th className="px-4 py-2 text-right">Action</th>
+            </tr>
+          </thead>
+          <tbody className="text-[10px] divide-y divide-border/40">
+            {players.length === 0 ? (
+              <tr>
+                <td colSpan={5} className="px-4 py-6 text-center text-charcoal-soft">
+                  NO DATABASE RECORDS SYNCED FOR THIS SELECTION
+                </td>
+              </tr>
+            ) : (
+              players.map((p: any, idx: number) => {
+                const teamObj = Array.isArray(p.current_team) ? p.current_team[0] : p.current_team;
+                const entitySlug = p.slug || p.external_id || p.id || slugify(p.name || 'player');
+                const playerName = p.name || p.full_name || 'Player';
+                const playerClub = resolveTeamNameForSeason(teamObj?.name || p.clubName || p.club || 'Pro Club', 2026);
+                const playerLeague = p.league || p.competitionName || 'Pro';
+                const statSummary = p.goals !== undefined && p.goals !== null ? `${p.goals} G` : 'Active';
+                return (
+                  <tr
+                    key={`${title}-${p.id || idx}`}
+                    className="hover:bg-surface/50 transition-colors"
+                  >
+                    <td className="px-4 py-2.5 text-charcoal-soft font-bold">
+                      {p.rank || idx + 1}
+                    </td>
+                    <td className="px-4 py-2.5">
+                      <Link
+                        href={`/players/${entitySlug}`}
+                        prefetch={false}
+                        className="text-charcoal font-bold hover:text-crimson transition-colors"
+                      >
+                        {playerName}
+                      </Link>
+                      {p.is_canadian === false && (
+                        <span className="ml-1.5 text-[8px] text-charcoal-soft border border-border px-1 rounded-xs">
+                          INTL
+                        </span>
+                      )}
+                    </td>
+                    <td className="px-4 py-2.5 text-charcoal-soft">
+                      {playerLeague} {'//'} {p.position || 'GEN'}
+                    </td>
+                    <td className="px-4 py-2.5 text-right text-crimson font-bold">
+                      {statSummary}
+                    </td>
+                    <td className="px-4 py-2.5 text-right space-x-2">
+                      {onAddToCompare && (
+                        <button
+                          onClick={() =>
+                            onAddToCompare({
+                              playerId: String(p.id || entitySlug),
+                              name: playerName,
+                              club: playerClub,
+                              league: playerLeague,
+                              statSummary,
+                            })
+                          }
+                          className="text-[8px] border border-border px-2 py-1 text-charcoal hover:border-crimson hover:text-crimson transition-colors"
+                        >
+                          [ + COMPARE ]
+                        </button>
+                      )}
+                      <Link
+                        href={`/players/${entitySlug}`}
+                        prefetch={false}
+                        className="text-[9px] text-crimson hover:underline"
+                      >
+                        [ DOSSIER → ]
+                      </Link>
+                    </td>
+                  </tr>
+                );
+              })
+            )}
+          </tbody>
+        </table>
+      </div>
+    </section>
+  );
+}
+
 function StandingsTable({
   title,
   standings,
@@ -399,7 +490,6 @@ export default function StatsHubPage() {
   }, [season, week]);
 
   useEffect(() => {
-    // Fetch base standings for the selected season (used for Team Streams tab & Standings)
     getCplStandings(Number(season)).then((data) => {
       if (data) setStandings(data);
     });
@@ -511,22 +601,6 @@ export default function StatsHubPage() {
         club: resolveTeamNameForSeason(teamObj?.name || p.league || 'Pro Club', Number(season)),
         yellows: p.yellow_cards ?? 0,
         reds: p.red_cards ?? 0,
-        slug: p.slug || p.external_id || p.id,
-      };
-    });
-  }, [filteredPlayers, season]);
-
-  const computedTeamOfWeek = useMemo(() => {
-    const sorted = [...filteredPlayers].sort((a: any, b: any) => (b.rating ?? 0) - (a.rating ?? 0));
-    return sorted.slice(0, 6).map((p: any) => {
-      const teamObj = Array.isArray(p.current_team) ? p.current_team[0] : p.current_team;
-      const playerName = p.name || 'Player';
-      return {
-        playerId: p.id || p.slug,
-        name: playerName,
-        club: resolveTeamNameForSeason(teamObj?.name || p.league || 'Pro Club', Number(season)),
-        league: p.league || 'Domestic',
-        initials: playerName.split(' ').map((n: string) => n[0]).join('.'),
         slug: p.slug || p.external_id || p.id,
       };
     });
