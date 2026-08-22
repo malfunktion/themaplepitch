@@ -16,6 +16,7 @@ interface StandingsWidgetProps {
     href: string;
   };
   compact?: boolean;
+  hideToggle?: boolean;
 }
 
 function slugify(name: string) {
@@ -35,9 +36,10 @@ export default function StandingsWidget({
   defaultTab = 'CPL',
   footerAction,
   compact = false,
+  hideToggle = false,
 }: StandingsWidgetProps) {
   const [leagueTab, setLeagueTab] = useState<'CPL' | 'NSL'>(defaultTab);
-  const currentStandings = leagueTab === 'CPL' ? cplStandings : nslStandings;
+  const currentStandings = hideToggle ? cplStandings : (leagueTab === 'CPL' ? cplStandings : nslStandings);
 
   return (
     <div className="bg-card border border-border rounded-sm p-3 flex flex-col gap-3 text-charcoal dark:text-white shadow-sm w-full">
@@ -47,24 +49,26 @@ export default function StandingsWidget({
           <Trophy className="w-3.5 h-3.5 text-crimson" strokeWidth={1.5} />
           <h2 className="text-xs font-mono font-bold tracking-widest">{title}</h2>
         </div>
-        <div className="flex bg-neutral-100 dark:bg-bg border border-border rounded-sm p-0.5 text-[9px] font-mono font-bold">
-          <button
-            onClick={() => setLeagueTab('CPL')}
-            className={`px-2 py-1 rounded-sm transition-colors ${
-              leagueTab === 'CPL' ? 'bg-crimson text-white shadow-sm' : 'text-charcoal-soft hover:text-charcoal dark:hover:text-white'
-            }`}
-          >
-            CPL ({cplStandings.length})
-          </button>
-          <button
-            onClick={() => setLeagueTab('NSL')}
-            className={`px-2 py-1 rounded-sm transition-colors ${
-              leagueTab === 'NSL' ? 'bg-crimson text-white shadow-sm' : 'text-charcoal-soft hover:text-charcoal dark:hover:text-white'
-            }`}
-          >
-            NSL ({nslStandings.length})
-          </button>
-        </div>
+        {!hideToggle && (
+          <div className="flex bg-neutral-100 dark:bg-bg border border-border rounded-sm p-0.5 text-[9px] font-mono font-bold">
+            <button
+              onClick={() => setLeagueTab('CPL')}
+              className={`px-2 py-1 rounded-sm transition-colors ${
+                leagueTab === 'CPL' ? 'bg-crimson text-white shadow-sm' : 'text-charcoal-soft hover:text-charcoal dark:hover:text-white'
+              }`}
+            >
+              CPL ({cplStandings.length})
+            </button>
+            <button
+              onClick={() => setLeagueTab('NSL')}
+              className={`px-2 py-1 rounded-sm transition-colors ${
+                leagueTab === 'NSL' ? 'bg-crimson text-white shadow-sm' : 'text-charcoal-soft hover:text-charcoal dark:hover:text-white'
+              }`}
+            >
+              NSL ({nslStandings.length})
+            </button>
+          </div>
+        )}
       </div>
 
       {/* Standings Table */}
@@ -109,7 +113,7 @@ export default function StandingsWidget({
             ) : (
               <tr>
                 <td colSpan={compact ? 4 : 5} className="py-6 text-center text-xs text-charcoal-soft font-mono italic">
-                  No standings data available for {leagueTab}.
+                  No standings data available{hideToggle ? '.' : ` for ${leagueTab}.`}
                 </td>
               </tr>
             )}
